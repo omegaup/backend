@@ -1,0 +1,20 @@
+# Ignore temporary files
+*~
+*.swp
+tags
+nohup.out
+tags
+
+# Ignore SSL-related stuff
+*.jks
+*.crt
+*.key
+*.pem
+*.srl
+
+# SBT-related stuff
+target/
+
+# Ignore Mac crap :P
+frontend/.DS_Store
+.DS_Store
