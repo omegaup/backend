@@ -5,6 +5,7 @@ import java.io.File
 import java.io.InputStreamReader
 import java.util.concurrent.Callable
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeoutException
 import java.util.concurrent.TimeUnit
 
 import omegaup._
@@ -327,6 +328,10 @@ object Minijail extends Object with Sandbox with Log with Using {
         try {
           syscallName = future.get(1, TimeUnit.SECONDS)
         } catch {
+          case e: TimeoutException => {
+            info("Timeout reading syscall name")
+            helper.destroy
+          }
           case e: Exception => {
             error("Failed to read syscall name: {}", e)
             helper.destroy
