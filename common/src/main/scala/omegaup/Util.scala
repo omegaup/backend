@@ -4,6 +4,7 @@ import java.io._
 import java.net._
 import java.util._
 import java.security.KeyStore
+import java.security.MessageDigest
 import java.security.cert.X509Certificate
 import javax.net.ssl._
 import net.liftweb.json._
@@ -464,6 +465,26 @@ object FileUtil extends Object with Using {
 				copy(inputStream, outputStream)
 			}}
 		}}
+	}
+
+	@throws(classOf[IOException])
+	def copy_sha1(src: InputStream, dest: OutputStream): String = {
+		val md = MessageDigest.getInstance("SHA1")
+		val buffer = Array.ofDim[Byte](1024)
+		var read = 0
+
+		while( { read = src.read(buffer) ; read > 0 } ) {
+			md.update(buffer, 0, read)
+			dest.write(buffer, 0, read)
+		}
+
+		val digest = md.digest()
+		val sb = new StringBuilder(digest.length * 2)
+		for (b <- digest) {
+			sb.append(Character.forDigit((b >> 4) & 0xF, 16))
+			sb.append(Character.forDigit(b & 0xF, 16))
+		}
+		sb.toString
 	}
 
 	@throws(classOf[IOException])

@@ -406,20 +406,24 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
     inputDirectory.mkdirs
 
     try {
-      for (entry <- entries) {
-        using (new InflaterInputStream(entry.data)) { blob => {
-          blob.skip(5)
-          var size = 0L
-          var cur = 0
-          while ({ cur = blob.read ; cur > 0 }) {
-            size = 10 * size + (cur - '0')
-          }
+      // SHA1SUMS is a safe filename, since all input files have the .in extension.
+      using (new PrintWriter(new File(inputDirectory, "SHA1SUMS"))) { sha1 => {
+        for (entry <- entries) {
+          using (new InflaterInputStream(entry.data)) { blob => {
+            blob.skip(5)
+            var size = 0L
+            var cur = 0
+            while ({ cur = blob.read ; cur > 0 }) {
+              size = 10 * size + (cur - '0')
+            }
 
-          using (new FileOutputStream(new File(inputDirectory, entry.name))) {
-            FileUtil.copy(blob, _)
-          }
-        }}
-      }
+            using (new FileOutputStream(new File(inputDirectory, entry.name))) { out => {
+              val hash = FileUtil.copy_sha1(blob, out)
+              sha1.printf("%s  %s\n", hash, entry.name)
+            }}
+          }}
+        }
+      }}
 
       new InputOutputMessage()
     } catch {
