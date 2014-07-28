@@ -373,7 +373,7 @@ class CompileSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
         printf("100\n");
         return 0;
       }
-    """)), Some("c"), Some(List(("validator.c", "foo")))))
+    """)), Some("c"), Some(List(("Main.c", "foo")))))
     test2.status should equal ("judge error")
 
     val test3 = runner.compile(CompileInputMessage("c", List(("Main.c", """
@@ -383,7 +383,7 @@ class CompileSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
         printf("100\n");
         return 0;
       }
-    """)), Some("c"), Some(List(("validator.c", """
+    """)), Some("c"), Some(List(("Main.c", """
       #include<stdio.h>
       #include<stdlib.h>
       int main() {
@@ -405,7 +405,7 @@ class CompileSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
         printf("100\n");
         return 0;
       }
-    """)), Some("c"), Some(List(("validator.c", """
+    """)), Some("c"), Some(List(("Main.c", """
       #include<stdio.h>
       #include<stdlib.h>
       int main() {
@@ -442,7 +442,7 @@ class CompileSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
         printf("%lf\n", a + b);
         return 0;
       }
-    """)), Some("c"), Some(List(("validator.c", """
+    """)), Some("c"), Some(List(("Main.c", """
       #include<stdio.h>
       #include<stdlib.h>
       int main() {
@@ -473,7 +473,7 @@ class CompileSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
         std::cout << a*a + b*b << std::endl;
         return 0;
       }
-    """)), Some("py"), Some(List(("validator.py", """
+    """)), Some("py"), Some(List(("Main.py", """
 data = open("data.in", "r")
 a, b = map(float, data.readline().strip().split())
 user = float(raw_input().strip())

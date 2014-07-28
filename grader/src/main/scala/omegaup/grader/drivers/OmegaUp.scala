@@ -6,13 +6,53 @@ import omegaup.grader._
 import java.io._
 import java.util.concurrent._
 import scala.util.matching.Regex
-import scala.collection.mutable.ListBuffer
+import scala.collection.mutable.{ListBuffer, TreeSet}
 import Language._
 import Veredict._
 import Status._
 import Validator._
 
-object OmegaUpDriver extends Driver with Log {
+object OmegaUpDriver extends Driver with Log with Using {
+  def getInputName(alias: String): String = {
+    val runtime = Runtime.getRuntime
+    val params = List("/usr/bin/git", "ls-tree", "HEAD", "-d", "cases/in")
+    val env = List[String]()
+    val path = new File(Config.get("problems.root", "problems"), alias)
+
+    // Call git to obtain the hash of the cases/in directory.
+    pusing (runtime.exec(params.toArray, env.toArray, path)) { p => {
+      using (new BufferedReader(new InputStreamReader(p.getInputStream))) { reader =>
+        reader.readLine.split("\\s")(2)
+      }
+    }}
+  }
+
+  def getInputEntries(alias: String, inputName: String): Iterable[InputEntry] = {
+    val runtime = Runtime.getRuntime
+    val params = List("/usr/bin/git", "ls-tree", inputName)
+    val env = List[String]()
+    val path = new File(Config.get("problems.root", "problems"), alias)
+    val objectsPath = new File(path, ".git/objects")
+    val treeHashes = new TreeSet[(String, String)]
+
+    // Get the files in the directory from git.
+    pusing (runtime.exec(params.toArray, env.toArray, path)) { p => {
+      var line: String = null
+      using (new BufferedReader(new InputStreamReader(p.getInputStream))) { reader =>{
+        while ({ line = reader.readLine ; line != null } ){
+          var tokens = line.split("\\s")
+          treeHashes += ((tokens(3), tokens(2)))
+        }
+      }}
+    }}
+
+    // Return a lazy view with the hashes plus their stream.
+    treeHashes.view.map { case (name: String, hash: String) => {
+        val file = new File(objectsPath, hash.substring(0, 2) + "/" + hash.substring(2))
+        new InputEntry(name, new FileInputStream(file), file.length, hash)
+    }}
+  }
+
   override def run(ctx: RunContext, run: Run): Run = {
     // If using the literal validator, we can skip the run.
     if (run.problem.validator == Validator.Literal) return run
@@ -49,9 +89,7 @@ object OmegaUpDriver extends Driver with Log {
       return run
     }
 
-    val input = FileUtil.read(
-      Config.get("problems.root", "problems") + "/" + alias + "/inputname"
-    ).trim
+    val input = getInputName(alias)
     val msg = new RunInputMessage(
       output.token.get,
       debug = ctx.debug,
@@ -77,7 +115,7 @@ object OmegaUpDriver extends Driver with Log {
     run.status = Status.Running
     Manager.updateVeredict(ctx, run)
 
-    val target = new File(Config.get("grader.root", "grader") + "/" + id + "/")
+    val target = new File(Config.get("grader.root", "grader"), id.toString)
     FileUtil.deleteDirectory(target)
     target.mkdir
     val placer = new CasePlacer(target)
@@ -90,10 +128,9 @@ object OmegaUpDriver extends Driver with Log {
     if (response.status != "ok") {
       if (response.error.get ==  "missing input") {
         info("Received a missing input message, trying to send input from {} ({})", alias, ctx.service.name)
-        val inputZip = new File(Config.get("problems.root", "problems"), alias + "/cases.zip")
         ctx.trace(EventCategory.Input) {
           if(ctx.service.input(
-            input, new FileInputStream(inputZip), inputZip.length.toInt
+            input, getInputEntries(alias, input)
           ).status != "ok") {
             throw new RuntimeException("Unable to send input. giving up.")
           }

@@ -1,7 +1,10 @@
 package omegaup.runner
 
 import java.io._
-import java.util.zip._
+import java.nio.file.Files
+import java.util.zip.InflaterInputStream
+import java.util.zip.ZipInputStream
+import java.util.zip.ZipEntry
 import scala.collection.{mutable,immutable}
 import omegaup._
 import omegaup.data._
@@ -390,12 +393,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
   def removeCompileDir(token: String): Unit = {
     val runDirectory = new File(Config.get("compile.root", ".") + "/" + token)
    
-    // HACKHACKHACK Investigar por qué esto está ocurriendo.
-    // if (!runDirectory.exists) throw new IllegalArgumentException("Invalid token")
-    if (!runDirectory.exists) {
-      error("Directory {} was removed earlier. This is an error", runDirectory)
-      return
-    }
+    if (!runDirectory.exists) throw new IllegalArgumentException("Invalid token")
 
     if (!Config.get("runner.preserve", false)) {
       error("Removing directory {}", runDirectory)
@@ -403,22 +401,32 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
     }
   }
 
-  def input(inputName: String, inputStream: InputStream, size: Int = -1): InputOutputMessage = {
-    val inputDirectory = new File(Config.get("input.root", ".") + "/" + inputName)
-    inputDirectory.mkdirs()
-    
-    using (new ZipInputStream(inputStream)) { input => {
-      var entry: ZipEntry = input.getNextEntry
-    
-      while(entry != null) {
-        using (new FileOutputStream(new File(inputDirectory, entry.getName))) {
-          FileUtil.copy(input, _)
-        }
-        input.closeEntry
-        entry = input.getNextEntry
+  def input(inputName: String, entries: Iterable[InputEntry]): InputOutputMessage = {
+    val inputDirectory = new File(Config.get("input.root", "."), inputName)
+    inputDirectory.mkdirs
+
+    try {
+      for (entry <- entries) {
+        using (new InflaterInputStream(entry.data)) { blob => {
+          blob.skip(5)
+          var size = 0L
+          var cur = 0
+          while ({ cur = blob.read ; cur > 0 }) {
+            size = 10 * size + (cur - '0')
+          }
+
+          using (new FileOutputStream(new File(inputDirectory, entry.name))) {
+            FileUtil.copy(blob, _)
+          }
+        }}
       }
-    }}
-    
-    new InputOutputMessage()
+
+      new InputOutputMessage()
+    } catch {
+      case e: Exception => {
+        FileUtil.deleteDirectory(inputDirectory)
+        throw e
+      }
+    }
   }
 }
