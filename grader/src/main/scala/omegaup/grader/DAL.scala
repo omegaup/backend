@@ -56,6 +56,10 @@ object GraderData {
 					case null => None
 					case x: String => Some(x.toLong)
 				},
+				stack_limit = rs.getString("stack_limit") match {
+					case null => None
+					case x: String => Some(x.toLong)
+				},
 				open_time = rs.getTimestamp("open_time") match {
 					case null => None
 					case x: Timestamp => Some(x)

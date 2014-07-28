@@ -195,7 +195,8 @@ object Minijail extends Object with Sandbox with Log with Using {
       "-2", errorFile,
       "-M", metaFile,
       "-t", (timeLimit * 1000).toInt.toString,
-      "-O", message.outputLimit.toString
+      "-O", message.outputLimit.toString,
+	  "-k", message.stackLimit.toString
     )
 
     originalInputFile match {

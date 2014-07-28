@@ -23,7 +23,7 @@ object OmegaUpDriver extends Driver with Log {
     val errorFile = new File(Config.get("grader.root", "grader"), + id + ".err")
 
     info("Compiling {} {} on {}", alias, id, ctx.service.name)
-
+	
     if (errorFile.exists) {
       errorFile.delete
     }
@@ -64,6 +64,10 @@ object OmegaUpDriver extends Driver with Log {
         case _ => 65535
       },
       outputLimit = run.problem.output_limit match {
+        case Some(x) => x.toLong
+        case _ => 10240
+      },
+	  stackLimit = run.problem.stack_limit match {
         case Some(x) => x.toLong
         case _ => 10240
       },
