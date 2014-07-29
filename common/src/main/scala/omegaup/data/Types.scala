@@ -149,7 +149,7 @@ class Problem(
 	var time_limit: Option[Long] = Some(3000),
 	var memory_limit: Option[Long] = Some(64),
 	var output_limit: Option[Long] = Some(10240),
-	var stack_limit: Option[Long] = Some(10240),
+	var stack_limit: Option[Long] = Some(10240000),
 	var visits: Long = 0,
 	var submissions: Long = 0,
 	var accepted: Long = 0,
