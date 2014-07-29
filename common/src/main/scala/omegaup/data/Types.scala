@@ -175,7 +175,7 @@ class Problem(
       time_limit = this.time_limit,
       memory_limit = this.memory_limit,
       output_limit = this.output_limit,
-	  stack_limit = this.stack_limit,
+      stack_limit = this.stack_limit,
       visits = this.visits,
       submissions = this.submissions,
       accepted = this.accepted,
