@@ -69,7 +69,7 @@ object OmegaUpDriver extends Driver with Log {
       },
       stackLimit = run.problem.stack_limit match {
         case Some(x) => x.toLong
-        case _ => 10240
+        case _ => 10485760
       },
       input = Some(input)
     )
