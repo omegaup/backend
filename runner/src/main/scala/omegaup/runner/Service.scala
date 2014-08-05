@@ -6,6 +6,7 @@ import javax.servlet.http._
 import net.liftweb.json._
 import org.eclipse.jetty.server.Request
 import org.eclipse.jetty.server.handler._
+import org.kamranzafar.jtar.{TarInputStream, TarEntry}
 import omegaup._
 import omegaup.data._
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorOutputStream
@@ -229,11 +230,11 @@ object Service extends Object with Log with Using {
                   info("/input/")
                   
                   response.setStatus(HttpServletResponse.SC_OK)
-                  if(request.getContentType() != "application/zip" ||
+                  if(request.getContentType() != "application/x-tar" ||
                      request.getHeader("Content-Disposition") == null) {
                     new InputOutputMessage(
                       status = "error",
-                      error = Some("Content-Type must be \"application/zip\", " +
+                      error = Some("Content-Type must be \"application/x-tar\", " +
                                    "Content-Disposition must be \"attachment\" and a filename " +
                                    "must be specified"
                               )
@@ -244,7 +245,26 @@ object Service extends Object with Log with Using {
       
                     val ContentDispositionRegex(inputName) =
                       request.getHeader("Content-Disposition")
-                    runner.input(inputName, request.getInputStream)
+
+                    using (new TarInputStream(request.getInputStream)) { tar => {
+                      var entry: TarEntry = null
+                      runner.input(inputName, new Iterable[InputEntry] {
+                          def iterator = new Iterator[InputEntry] {
+                            private var entry = tar.getNextEntry
+                            private var chunk: ChunkInputStream = null
+                            def hasNext = {
+                              if (chunk != null) chunk.close
+                              entry != null
+                            }
+                            def next = {
+                              val retVal = entry
+                              entry = tar.getNextEntry
+                              chunk = new ChunkInputStream(tar, retVal.getSize)
+                              new InputEntry(retVal.getName, chunk, retVal.getSize, null)
+                            }
+                          }
+                      })
+                    }}
                   }
                 } catch {
                   case e: Exception => {

@@ -65,7 +65,7 @@ trait Grader extends Object with Log with Using {
 		} else {
 			val weights = new mutable.ListMap[String,mutable.ListMap[String,Double]]
 
-			val inputs = new File(Config.get("problems.root", "./problems") + "/" + alias + "/cases/")
+			val inputs = new File(Config.get("problems.root", "./problems"), alias + "/cases/in/")
 				.listFiles
 				.filter { _.getName.endsWith(".in") }
 
@@ -143,7 +143,7 @@ trait Grader extends Object with Log with Using {
 							val rawScore = gradeCase(
 								run,
 								name,
-								new File(Config.get("problems.root", "./problems") + "/" + alias + "/cases/" + f.getName.replace(".meta", ".out")),
+								new File(Config.get("problems.root", "./problems"), alias + "/cases/out/" + f.getName.replace(".meta", ".out")),
 								new File(f.getCanonicalPath.replace(".meta", ".out")),
 								metas(name)._2
 							)

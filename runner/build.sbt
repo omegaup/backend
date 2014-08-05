@@ -23,6 +23,7 @@ libraryDependencies ++= Seq(
   "ch.qos.logback" % "logback-classic" % "1.1.1",
   "commons-codec" % "commons-codec" % "1.9",
   "org.apache.commons" % "commons-compress" % "1.8",
+  "org.kamranzafar" % "jtar" % "2.2",
   "org.scalatest" %% "scalatest" % "2.1.2" % "test"
 )
 

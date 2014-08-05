@@ -4,39 +4,10 @@ import omegaup._
 import omegaup.data._
 import java.io._
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream
+import org.kamranzafar.jtar.{TarEntry, TarHeader, TarOutputStream}
 import net.liftweb.json._
 
 class OmegaUpRunstreamReader(callback: RunCaseCallback) extends Object with Using with Log {
-	class ChunkInputStream(stream: InputStream, length: Int) extends InputStream {
-		var remaining = length
-
-		override def available(): Int = Math.min(remaining, stream.available)
-		override def close(): Unit = {}
-		override def markSupported(): Boolean = false
-		override def mark(readLimit: Int): Unit = {}
-		override def read(): Int = {
-			if (remaining == 0) {
-				-1
-			}	else {
-				remaining -= 1
-				stream.read
-			}
-		}
-		override def read(b: Array[Byte]): Int = read(b, 0, b.length)
-		override def read(b: Array[Byte], off: Int, len: Int): Int = {
-			if (remaining == 0) return -1
-			val r = stream.read(b, off, Math.min(remaining, len))
-			remaining -= r
-			r
-		}
-		override def skip(n: Long): Long = {
-			if (remaining == 0) return 0
-			val r = stream.skip(Math.min(remaining, n))
-			remaining -= r.toInt
-			r
-		}
-	}
-
 	def apply(inputStream: InputStream): RunOutputMessage = {
 		using (new BZip2CompressorInputStream(inputStream)) { bzip2 => {
 			val dis = new DataInputStream(bzip2)
@@ -44,15 +15,8 @@ class OmegaUpRunstreamReader(callback: RunCaseCallback) extends Object with Usin
 			while (dis.readBoolean) {
 				val filename = dis.readUTF
 				val length = dis.readLong
-				val chunk = new ChunkInputStream(dis, length.toInt)
-				callback(filename, length, chunk)
-				var remaining = chunk.remaining
-				while (remaining > 0) {
-					val s = dis.skip(remaining)
-					if (s == 0) {
-						throw new RuntimeException("Cannot read the rest of the file")
-					}
-					remaining -= s.toInt
+				using (new ChunkInputStream(dis, length.toInt)) {
+					callback(filename, length, _)
 				}
 			}
 
@@ -62,7 +26,7 @@ class OmegaUpRunstreamReader(callback: RunCaseCallback) extends Object with Usin
 	}
 }
 
-class RunnerProxy(val hostname: String, port: Int) extends RunnerService with Log {
+class RunnerProxy(val hostname: String, port: Int) extends RunnerService with Using with Log {
 	private val url = "https://" + hostname + ":" + port
 
 	def name() = hostname
@@ -82,8 +46,25 @@ class RunnerProxy(val hostname: String, port: Int) extends RunnerService with Lo
 		Https.send[RunOutputMessage, RunInputMessage](url + "/run/", message, reader.apply _)
 	}
 	
-	def input(inputName: String, inputStream: InputStream, size: Int = -1): InputOutputMessage = {
-		Https.zip_send[InputOutputMessage](url + "/input/", inputStream, size, inputName)
+	def input(inputName: String, entries: Iterable[InputEntry]): InputOutputMessage = {
+		Https.stream_send[InputOutputMessage](
+			url + "/input/",
+			"application/x-tar",
+			inputName,
+			{ stream => {
+				using (new TarOutputStream(stream)) { tar => {
+					for (entry <- entries) {
+						val tarEntry = new TarEntry(new TarHeader)
+						tarEntry.setSize(entry.length)
+						tarEntry.setName(entry.name)
+						tar.putNextEntry(tarEntry)
+						using (entry.data) {
+							FileUtil.copy(_, tar)
+						}
+					}
+				}}
+			}}
+		)
 	}
 	
 	override def hashCode() = 28227 + 97 * hostname.hashCode + port

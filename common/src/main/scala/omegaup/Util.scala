@@ -4,6 +4,7 @@ import java.io._
 import java.net._
 import java.util._
 import java.security.KeyStore
+import java.security.MessageDigest
 import java.security.cert.X509Certificate
 import javax.net.ssl._
 import net.liftweb.json._
@@ -367,19 +368,29 @@ object Https extends Object with Log with Using {
 			conn.addRequestProperty("Content-Disposition", "attachment; filename=" + zipname + ";")
 			conn.setFixedLengthStreamingMode(zipSize)
 			conn.setDoOutput(true)
-			val outputStream = conn.getOutputStream
-			val buffer = Array.ofDim[Byte](1024)
-			var read = 0
-			var reading = true
+			using (conn.getOutputStream) { outputStream => {
+				using (inputStream) {
+					FileUtil.copy(_, outputStream)
+				}
+			}}
 		
-			while(reading) {
-				read = inputStream.read(buffer)
-				if (read == -1) reading = false
-				else outputStream.write(buffer, 0, read)
+			Serialization.read[T](new InputStreamReader(conn.getInputStream()))
+		}}
+	}
+
+	def stream_send[T](url:String, mimeType: String, filename: String, callback:OutputStream=>Unit, runner: Boolean = true)(implicit mf: Manifest[T]): T = {
+		debug("Requesting {}", url)
+		
+		implicit val formats = Serialization.formats(NoTypeHints)
+
+		cusing (connect(url, runner)) { conn => {
+			conn.addRequestProperty("Content-Type", mimeType)
+			conn.addRequestProperty("Content-Disposition", "attachment; filename=" + filename + ";")
+			conn.setDoOutput(true)
+
+			using (conn.getOutputStream) {
+				callback(_)
 			}
-		
-			inputStream.close
-			outputStream.close
 		
 			Serialization.read[T](new InputStreamReader(conn.getInputStream()))
 		}}
@@ -454,6 +465,26 @@ object FileUtil extends Object with Using {
 				copy(inputStream, outputStream)
 			}}
 		}}
+	}
+
+	@throws(classOf[IOException])
+	def copy_sha1(src: InputStream, dest: OutputStream): String = {
+		val md = MessageDigest.getInstance("SHA1")
+		val buffer = Array.ofDim[Byte](1024)
+		var read = 0
+
+		while( { read = src.read(buffer) ; read > 0 } ) {
+			md.update(buffer, 0, read)
+			dest.write(buffer, 0, read)
+		}
+
+		val digest = md.digest()
+		val sb = new StringBuilder(digest.length * 2)
+		for (b <- digest) {
+			sb.append(Character.forDigit((b >> 4) & 0xF, 16))
+			sb.append(Character.forDigit(b & 0xF, 16))
+		}
+		sb.toString
 	}
 
 	@throws(classOf[IOException])
@@ -578,5 +609,42 @@ object DataUriStream extends Object with Log {
 }
 
 class DataUriInputStream(stream: InputStream) extends FilterInputStream(DataUriStream(stream)) with Log {}
+
+
+class ChunkInputStream(stream: InputStream, length: Long) extends InputStream {
+	var remaining = length
+
+	override def available(): Int = Math.min(remaining.toInt, stream.available)
+	override def close(): Unit = {
+		while (remaining > 0) {
+			if (skip(remaining) == 0) {
+				throw new IOException("Cannot close current chunk")
+			}
+		}
+	}
+	override def markSupported(): Boolean = false
+	override def mark(readLimit: Int): Unit = {}
+	override def read(): Int = {
+		if (remaining == 0) {
+			-1
+		}	else {
+			remaining -= 1
+			stream.read
+		}
+	}
+	override def read(b: Array[Byte]): Int = read(b, 0, b.length)
+	override def read(b: Array[Byte], off: Int, len: Int): Int = {
+		if (remaining == 0) return -1
+		val r = stream.read(b, off, Math.min(remaining.toInt, len))
+		remaining -= r
+		r
+	}
+	override def skip(n: Long): Long = {
+		if (remaining == 0) return 0
+		val r = stream.skip(Math.min(remaining, n))
+		remaining -= r.toInt
+		r
+	}
+}
 
 /* vim: set noexpandtab: */
