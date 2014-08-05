@@ -246,21 +246,19 @@ object Service extends Object with Log with Using {
                     val ContentDispositionRegex(inputName) =
                       request.getHeader("Content-Disposition")
 
-                    using (new TarInputStream(request.getInputStream)) { tar => {
-                      var entry: TarEntry = null
+                    using (new TarInputStream(new BufferedInputStream(request.getInputStream))) { tar => {
                       runner.input(inputName, new Iterable[InputEntry] {
                           def iterator = new Iterator[InputEntry] {
-                            private var entry = tar.getNextEntry
+                            private var entry: TarEntry = null
                             private var chunk: ChunkInputStream = null
                             def hasNext = {
                               if (chunk != null) chunk.close
+                              entry = tar.getNextEntry
                               entry != null
                             }
                             def next = {
-                              val retVal = entry
-                              entry = tar.getNextEntry
-                              chunk = new ChunkInputStream(tar, retVal.getSize)
-                              new InputEntry(retVal.getName, chunk, retVal.getSize, null)
+                              chunk = new ChunkInputStream(tar, entry.getSize)
+                              new InputEntry(entry.getName, chunk, entry.getSize, null)
                             }
                           }
                       })
