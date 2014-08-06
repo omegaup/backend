@@ -610,7 +610,6 @@ object DataUriStream extends Object with Log {
 
 class DataUriInputStream(stream: InputStream) extends FilterInputStream(DataUriStream(stream)) with Log {}
 
-
 class ChunkInputStream(stream: InputStream, length: Long) extends InputStream {
 	var remaining = length
 
@@ -618,31 +617,39 @@ class ChunkInputStream(stream: InputStream, length: Long) extends InputStream {
 	override def close(): Unit = {
 		while (remaining > 0) {
 			if (skip(remaining) == 0) {
-				throw new IOException("Cannot close current chunk")
+				throw new IOException("Cannot close current chunk: " + remaining + " bytes remaining")
 			}
 		}
 	}
 	override def markSupported(): Boolean = false
+	override def reset(): Unit = throw new IOException("Mark is not supported")
 	override def mark(readLimit: Int): Unit = {}
 	override def read(): Int = {
 		if (remaining == 0) {
 			-1
 		}	else {
+			val r = stream.read
+			if (r == -1) {
+				throw new IOException("Premature EOF while reading a chunk with " + remaining + " bytes remaining")
+			}
 			remaining -= 1
-			stream.read
+			r
 		}
 	}
 	override def read(b: Array[Byte]): Int = read(b, 0, b.length)
 	override def read(b: Array[Byte], off: Int, len: Int): Int = {
 		if (remaining == 0) return -1
 		val r = stream.read(b, off, Math.min(remaining.toInt, len))
+		if (r == -1) {
+			throw new IOException("Premature EOF while reading a chunk with " + remaining + " bytes remaining")
+		}
 		remaining -= r
 		r
 	}
 	override def skip(n: Long): Long = {
 		if (remaining == 0) return 0
 		val r = stream.skip(Math.min(remaining, n))
-		remaining -= r.toInt
+		remaining -= r
 		r
 	}
 }
