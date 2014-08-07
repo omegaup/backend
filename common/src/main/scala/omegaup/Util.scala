@@ -387,6 +387,7 @@ object Https extends Object with Log with Using {
 			conn.addRequestProperty("Content-Type", mimeType)
 			conn.addRequestProperty("Content-Disposition", "attachment; filename=" + filename + ";")
 			conn.setDoOutput(true)
+			conn.setChunkedStreamingMode(0)
 
 			using (conn.getOutputStream) {
 				callback(_)
@@ -491,10 +492,14 @@ object FileUtil extends Object with Using {
 	def copy(src: InputStream, dest: OutputStream): Unit = {
 		val buffer = Array.ofDim[Byte](1024)
 		var read = 0
+		var written: Long = 0
 
-		while( { read = src.read(buffer) ; read > 0 } ) {
+		while( { read = src.read(buffer) ; read != -1 } ) {
 			dest.write(buffer, 0, read)
+			written += read
 		}
+
+		written
 	}
 		
 	@throws(classOf[IOException])

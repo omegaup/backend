@@ -53,21 +53,14 @@ class RunnerProxy(val hostname: String, port: Int) extends RunnerService with Us
 			inputName,
 			{ stream => {
 				using (new TarArchiveOutputStream(stream)) { tar => {
-					try {
-						for (entry <- entries) {
-							val tarEntry = new TarArchiveEntry(entry.name)
-							tarEntry.setSize(entry.length)
-							tar.putArchiveEntry(tarEntry)
-							using (entry.data) {
-								FileUtil.copy(_, tar)
-							}
-							tar.closeArchiveEntry
+					for (entry <- entries) {
+						val tarEntry = new TarArchiveEntry(entry.name)
+						tarEntry.setSize(entry.length)
+						tar.putArchiveEntry(tarEntry)
+						using (entry.data) {
+							FileUtil.copy(_, tar)
 						}
-					} catch {
-						case e: Exception => {
-							error("Error sending the input .tar {}", e)
-							throw e
-						}
+						tar.closeArchiveEntry
 					}
 				}}
 			}}
