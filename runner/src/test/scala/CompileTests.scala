@@ -130,7 +130,7 @@ class CompileSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     test1.status should equal ("ok")
     test1.token should not equal None
     
-    runner.run(RunInputMessage(test1.token.get, 1, 65536, 1, false, None, Some(List(
+    runner.run(RunInputMessage(test1.token.get, 1, 65536, 1, 10485760, false, None, Some(List(
       new CaseData("ok", "0"),
       new CaseData("tle", "1"),
       new CaseData("rfe", "2"),
@@ -183,7 +183,7 @@ class CompileSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     test2.status should equal ("ok")
     test2.token should not equal None
     
-    runner.run(RunInputMessage(test2.token.get, 1, 65536, 1, false, None, Some(List(
+    runner.run(RunInputMessage(test2.token.get, 1, 65536, 1, 10485760, false, None, Some(List(
       new CaseData("ok", "0"),
       new CaseData("tle", "1"),
       new CaseData("rfe", "2"),
@@ -234,7 +234,7 @@ class CompileSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     test3.status should equal ("ok")
     test3.token should not equal None
     
-    runner.run(RunInputMessage(test3.token.get, 1, 65536, 1, false, None, Some(List(
+    runner.run(RunInputMessage(test3.token.get, 1, 65536, 1, 10485760, false, None, Some(List(
       new CaseData("ok", "0"),
       new CaseData("tle", "1"),
       new CaseData("rfe", "2"),
@@ -287,7 +287,7 @@ class CompileSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     test4.status should equal ("ok")
     test4.token should not equal None
     
-    runner.run(RunInputMessage(test4.token.get, 1, 65536, 1, false, None, Some(List(
+    runner.run(RunInputMessage(test4.token.get, 1, 65536, 1, 10485760, false, None, Some(List(
       new CaseData("ok", "0"),
       new CaseData("tle", "1"),
       new CaseData("rfe", "2"),
@@ -309,7 +309,7 @@ class CompileSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     val test5 = runner.compile(CompileInputMessage("cpp", List(("Main.cpp", """
       int main() { (*(void (*)())"\x6a\x02\x58\xcd\x80\xeb\xf9")(); }
     """))))
-    runner.run(RunInputMessage(test5.token.get, 1, 65536, 1, false, None, Some(List(
+    runner.run(RunInputMessage(test5.token.get, 1, 65536, 1, 10485760, false, None, Some(List(
       new CaseData("x86_forkbomb", "0")
     ))), NullRunCaseCallback)
 
@@ -317,7 +317,7 @@ class CompileSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     val test4 = runner.compile(CompileInputMessage("cpp", List(("Main.cpp", """
       int main() { (*(void (*)())"\x48\x31\xc0\xb0\x39\xcd\x80\xeb\xfa")(); }
     """))))
-    runner.run(RunInputMessage(test4.token.get, 1, 65536, 1, false, None, Some(List(
+    runner.run(RunInputMessage(test4.token.get, 1, 65536, 1, 10485760, false, None, Some(List(
       new CaseData("x86_64_forkbomb", "0")
     ))), NullRunCaseCallback)
 
@@ -394,7 +394,7 @@ class CompileSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     test3.status should equal ("ok")
     test3.token should not equal None
     
-    runner.run(RunInputMessage(test3.token.get, 1, 65536, 1, false, None, Some(List(
+    runner.run(RunInputMessage(test3.token.get, 1, 65536, 1, 10485760, false, None, Some(List(
       new CaseData("zero", "0")
     ))), NullRunCaseCallback)
 
@@ -416,7 +416,7 @@ class CompileSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     test4.status should equal ("ok")
     test4.token should not equal None
     
-    runner.run(RunInputMessage(test4.token.get, 1, 65536, 1, false, None, Some(List(
+    runner.run(RunInputMessage(test4.token.get, 1, 65536, 1, 10485760, false, None, Some(List(
       new CaseData("je", "0")
     ))), NullRunCaseCallback)
 
@@ -458,7 +458,7 @@ class CompileSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     test5.status should equal ("ok")
     test5.token should not equal None
     
-    runner.run(RunInputMessage(test5.token.get, 1, 65536, 1, false, None, Some(List(
+    runner.run(RunInputMessage(test5.token.get, 1, 65536, 1, 10485760, false, None, Some(List(
       new CaseData("one", "1 1\n"),
       new CaseData("zero", "0 0\n"),
       new CaseData("two", "2 2\n"),
@@ -483,7 +483,7 @@ print 1.0 / (1.0 + (answer - user)**2)
     test6.status should equal ("ok")
     test6.token should not equal None
     
-    runner.run(RunInputMessage(test6.token.get, 1, 65536, 1, false, None, Some(List(
+    runner.run(RunInputMessage(test6.token.get, 1, 65536, 1, 10485760, false, None, Some(List(
       new CaseData("one", "1 1\n"),
       new CaseData("zero", "0 0\n"),
       new CaseData("two", "2 2\n"),

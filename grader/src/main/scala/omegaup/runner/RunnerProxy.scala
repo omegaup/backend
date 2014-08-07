@@ -4,7 +4,7 @@ import omegaup._
 import omegaup.data._
 import java.io._
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream
-import org.kamranzafar.jtar.{TarEntry, TarHeader, TarOutputStream}
+import org.apache.commons.compress.archivers.tar.{TarArchiveOutputStream, TarArchiveEntry}
 import net.liftweb.json._
 
 class OmegaUpRunstreamReader(callback: RunCaseCallback) extends Object with Using with Log {
@@ -52,15 +52,15 @@ class RunnerProxy(val hostname: String, port: Int) extends RunnerService with Us
 			"application/x-tar",
 			inputName,
 			{ stream => {
-				using (new TarOutputStream(stream)) { tar => {
+				using (new TarArchiveOutputStream(stream)) { tar => {
 					for (entry <- entries) {
-						val tarEntry = new TarEntry(new TarHeader)
+						val tarEntry = new TarArchiveEntry(entry.name)
 						tarEntry.setSize(entry.length)
-						tarEntry.setName(entry.name)
-						tar.putNextEntry(tarEntry)
+						tar.putArchiveEntry(tarEntry)
 						using (entry.data) {
 							FileUtil.copy(_, tar)
 						}
+						tar.closeArchiveEntry
 					}
 				}}
 			}}

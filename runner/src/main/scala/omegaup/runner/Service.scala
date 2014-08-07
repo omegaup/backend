@@ -6,10 +6,10 @@ import javax.servlet.http._
 import net.liftweb.json._
 import org.eclipse.jetty.server.Request
 import org.eclipse.jetty.server.handler._
-import org.kamranzafar.jtar.{TarInputStream, TarEntry}
 import omegaup._
 import omegaup.data._
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorOutputStream
+import org.apache.commons.compress.archivers.tar.{TarArchiveInputStream, TarArchiveEntry}
 
 class OmegaUpRunstreamWriter(outputStream: OutputStream) extends Closeable with RunCaseCallback with Log {
   private val bzip2 = new BZip2CompressorOutputStream(outputStream)
@@ -246,14 +246,26 @@ object Service extends Object with Log with Using {
                     val ContentDispositionRegex(inputName) =
                       request.getHeader("Content-Disposition")
 
-                    using (new TarInputStream(new BufferedInputStream(request.getInputStream))) { tar => {
+                    var tarStream: InputStream = request.getInputStream
+
+                    // Some debugging code to diagnose input transmission problems.
+                    if (Config.get("runner.tar.preserve", false)) {
+                      var tarFile = new File(Config.get("input.root", "."), inputName + ".tar")
+                      using (new FileOutputStream(tarFile)) {
+                        FileUtil.copy(tarStream, _)
+                      }
+                      tarStream.close
+                      tarStream = new FileInputStream(tarFile)
+                    }
+
+                    using (new TarArchiveInputStream(new BufferedInputStream(tarStream))) { tar => {
                       runner.input(inputName, new Iterable[InputEntry] {
                           def iterator = new Iterator[InputEntry] {
-                            private var entry: TarEntry = null
+                            private var entry: TarArchiveEntry = null
                             private var chunk: ChunkInputStream = null
                             def hasNext = {
                               if (chunk != null) chunk.close
-                              entry = tar.getNextEntry
+                              entry = tar.getNextTarEntry
                               entry != null
                             }
                             def next = {

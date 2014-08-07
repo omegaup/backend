@@ -145,6 +145,7 @@ CREATE TABLE IF NOT EXISTS `Problems` (
   `time_limit` int(11) DEFAULT '3000',
   `memory_limit` int(11) DEFAULT '64',
   `output_limit` int(11) NOT NULL DEFAULT '10240',
+  `stack_limit` int(11) NOT NULL DEFAULT '10485760',
   `visits` int(11) NOT NULL DEFAULT '0',
   `submissions` int(11) NOT NULL DEFAULT '0',
   `accepted` int(11) NOT NULL DEFAULT '0',
