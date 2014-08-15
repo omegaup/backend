@@ -5,6 +5,7 @@ import omegaup.data._
 import omegaup.grader._
 import java.io._
 import java.util.concurrent._
+import java.util.zip.DeflaterOutputStream
 import scala.util.matching.Regex
 import scala.collection.mutable.{ListBuffer, TreeSet}
 import Language._
@@ -33,6 +34,7 @@ object OmegaUpDriver extends Driver with Log with Using {
     val env = List[String]()
     val path = new File(Config.get("problems.root", "problems"), alias)
     val objectsPath = new File(path, ".git/objects")
+    val casesPath = new File(path, "cases/in")
     val treeHashes = new TreeSet[(String, String)]
 
     // Get the files in the directory from git.
@@ -49,7 +51,23 @@ object OmegaUpDriver extends Driver with Log with Using {
     // Return a lazy view with the hashes plus their stream.
     treeHashes.view.map { case (name: String, hash: String) => {
         val file = new File(objectsPath, hash.substring(0, 2) + "/" + hash.substring(2))
-        new InputEntry(name, new FileInputStream(file), file.length, hash)
+        if (file.exists) {
+          new InputEntry(name, new FileInputStream(file), file.length, hash)
+        } else {
+          // The file is likely within a .pack file. We need to compress it manually.
+          // TODO(lhchavez): It's probably not a great idea to do this in-memory.
+          val originalFile = new File(casesPath, name)
+          val header = s"blob ${originalFile.length}\u0000".getBytes
+          val bytes = new ByteArrayOutputStream
+          using (new DeflaterOutputStream(bytes)) { zlib => {
+            zlib.write(header)
+            using (new FileInputStream(originalFile)) {
+              FileUtil.copy(_, zlib)
+            }
+          }}
+
+          new InputEntry(name, new ByteArrayInputStream(bytes.toByteArray), bytes.size, null)
+        }
     }}
   }
 
