@@ -42,8 +42,10 @@ object OmegaUpDriver extends Driver with Log with Using {
       var line: String = null
       using (new BufferedReader(new InputStreamReader(p.getInputStream))) { reader =>{
         while ({ line = reader.readLine ; line != null } ){
-          var tokens = line.split("\\s")
-          treeHashes += ((tokens(3), tokens(2)))
+          var tokens = line.split("\t")
+          val name = tokens(1)
+          tokens = tokens(0).split(" ")
+          treeHashes += ((name, tokens(2)))
         }
       }}
     }}
