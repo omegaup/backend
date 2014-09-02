@@ -1,4 +1,4 @@
-package omegaup.grader
+package com.omegaup.grader
 
 import java.io._
 import java.text.ParseException
@@ -7,10 +7,10 @@ import javax.servlet.http._
 import org.eclipse.jetty.server.Request
 import org.eclipse.jetty.server.handler._
 import net.liftweb.json._
-import omegaup._
-import omegaup.data._
-import omegaup.runner._
-import omegaup.broadcaster.Broadcaster
+import com.omegaup._
+import com.omegaup.data._
+import com.omegaup.runner._
+import com.omegaup.broadcaster.Broadcaster
 import Status._
 import Veredict._
 import Validator._
@@ -191,7 +191,7 @@ object Manager extends Object with Log {
 
 	private def updateConfiguration(embeddedRunner: Boolean) = {
 		if (Config.get("grader.embedded_runner.enable", false) && !embeddedRunner) {
-			RunnerDispatcher.addRunner(new omegaup.runner.Runner("#embedded-runner", Minijail))
+			RunnerDispatcher.addRunner(new com.omegaup.runner.Runner("#embedded-runner", Minijail))
 		}
 		val source = Config.get("grader.routing.table", "")
 		try {
@@ -217,7 +217,7 @@ object Manager extends Object with Log {
 	}
 	
 	def init(configPath: String) = {
-		import omegaup.data._
+		import com.omegaup.data._
 
 		updateConfiguration(false)
 

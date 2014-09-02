@@ -1,8 +1,8 @@
-package omegaup.grader
+package com.omegaup.grader
 
 import java.sql._
-import omegaup.data._
-import omegaup.Database._
+import com.omegaup.data._
+import com.omegaup.Database._
 
 import Veredict._
 import Validator._

@@ -5,6 +5,7 @@ tags
 nohup.out
 tags
 test-env/
+.tests/
 
 # Ignore SSL-related stuff
 *.jks

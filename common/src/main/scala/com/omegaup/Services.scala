@@ -1,6 +1,6 @@
-package omegaup
+package com.omegaup
 
-import omegaup.data._
+import com.omegaup.data._
 import java.io.InputStream
 import java.io.OutputStream
 

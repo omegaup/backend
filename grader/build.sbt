@@ -11,7 +11,7 @@ scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature")
 exportJars := true
 
 packageOptions in (Compile, packageBin) +=
-    Package.ManifestAttributes( java.util.jar.Attributes.Name.MAIN_CLASS -> "omegaup.Service" )
+    Package.ManifestAttributes( java.util.jar.Attributes.Name.MAIN_CLASS -> "com.omegaup.Service" )
 
 libraryDependencies ++= Seq(
   "org.eclipse.jetty" % "jetty-server" % "9.1.5.v20140505",
@@ -40,13 +40,13 @@ ProguardKeys.options in Proguard ++= Seq(
   "-dontnote",
   "-dontwarn",
   "-keep interface scala.ScalaObject",
-  "-keep class omegaup.*",
-  "-keep class omegaup.data.*",
-  "-keep class omegaup.grader.*",
-  "-keep class omegaup.runner.*",
-  "-keepclassmembers class omegaup.data.* { *; }",
-  "-keepclassmembers class omegaup.runner.* { *; }",
-  "-keepclassmembers class omegaup.Service { *; }",
+  "-keep class com.omegaup.*",
+  "-keep class com.omegaup.data.*",
+  "-keep class com.omegaup.grader.*",
+  "-keep class com.omegaup.runner.*",
+  "-keepclassmembers class com.omegaup.data.* { *; }",
+  "-keepclassmembers class com.omegaup.runner.* { *; }",
+  "-keepclassmembers class com.omegaup.Service { *; }",
   "-keep class scala.collection.JavaConversions",
   "-keep class org.eclipse.jetty.util.log.Slf4jLog",
   "-keep class org.eclipse.jetty.websocket.server.WebSocketServerFactory { *; }",
@@ -55,7 +55,7 @@ ProguardKeys.options in Proguard ++= Seq(
   "-keep class org.eclipse.jetty.websocket.**",
   "-keep class ch.qos.logback.classic.Logger",
   "-keep class ch.qos.logback.classic.spi.ThrowableProxy",
-  ProguardOptions.keepMain("omegaup.Service")
+  ProguardOptions.keepMain("com.omegaup.Service")
 )
 
 ProguardKeys.inputFilter in Proguard := { file =>

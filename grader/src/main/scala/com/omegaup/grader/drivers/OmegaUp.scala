@@ -1,8 +1,8 @@
-package omegaup.grader.drivers
+package com.omegaup.grader.drivers
 
-import omegaup._
-import omegaup.data._
-import omegaup.grader._
+import com.omegaup._
+import com.omegaup.data._
+import com.omegaup.grader._
 import java.io._
 import java.util.concurrent._
 import java.util.zip.DeflaterOutputStream

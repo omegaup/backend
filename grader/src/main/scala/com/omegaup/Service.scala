@@ -1,4 +1,4 @@
-package omegaup
+package com.omegaup
 
 trait ServiceInterface {
 	def stop(): Unit
@@ -27,7 +27,7 @@ object Service extends Object with Log with Using {
 		// logger
 		Logging.init
 
-		val servers = List(omegaup.broadcaster.Broadcaster.init, omegaup.grader.Manager.init(configPath))
+		val servers = List(com.omegaup.broadcaster.Broadcaster.init, com.omegaup.grader.Manager.init(configPath))
 		
 		Runtime.getRuntime.addShutdownHook(new Thread() {
 			override def run() = {

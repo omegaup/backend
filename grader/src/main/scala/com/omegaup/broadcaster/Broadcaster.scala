@@ -1,4 +1,4 @@
-package omegaup.broadcaster
+package com.omegaup.broadcaster
 
 import java.io._
 import java.util.zip._
@@ -13,9 +13,9 @@ import org.eclipse.jetty.servlet._
 import net.liftweb.json._
 import scala.collection.{mutable,immutable}
 import scala.collection.JavaConversions._
-import omegaup._
-import omegaup.data._
-import omegaup.grader._
+import com.omegaup._
+import com.omegaup.data._
+import com.omegaup.grader._
 
 case class RunDetails(
 	username: String,

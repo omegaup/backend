@@ -1,4 +1,4 @@
-package omegaup.grader
+package com.omegaup.grader
 
 import java.io._
 import java.util._
@@ -7,8 +7,8 @@ import scala.collection.Iterator
 import scala.collection.mutable
 import scala.collection.immutable.Map
 import net.liftweb.json._
-import omegaup._
-import omegaup.data._
+import com.omegaup._
+import com.omegaup.data._
 import Veredict._
 
 trait Grader extends Object with Log with Using {

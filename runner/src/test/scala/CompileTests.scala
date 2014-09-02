@@ -1,8 +1,8 @@
 import java.io._
 
-import omegaup._
-import omegaup.data._
-import omegaup.runner._
+import com.omegaup._
+import com.omegaup.data._
+import com.omegaup.runner._
 import org.slf4j._
 
 import org.scalatest.{FlatSpec, BeforeAndAfterAll}

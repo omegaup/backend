@@ -1,7 +1,7 @@
-import omegaup._
-import omegaup.data._
-import omegaup.grader._
-import omegaup.grader.drivers._
+import com.omegaup._
+import com.omegaup.data._
+import com.omegaup.grader._
+import com.omegaup.grader.drivers._
 
 import Language._
 

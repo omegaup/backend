@@ -1,5 +1,5 @@
-import omegaup.grader._
-import omegaup.data._
+import com.omegaup.grader._
+import com.omegaup.data._
 
 import java.text.ParseException
 import org.scalatest._

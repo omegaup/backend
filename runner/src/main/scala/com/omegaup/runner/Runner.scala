@@ -1,4 +1,4 @@
-package omegaup.runner
+package com.omegaup.runner
 
 import java.io._
 import java.nio.file.Files
@@ -6,8 +6,8 @@ import java.util.zip.InflaterInputStream
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipEntry
 import scala.collection.{mutable,immutable}
-import omegaup._
-import omegaup.data._
+import com.omegaup._
+import com.omegaup.data._
 
 class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with Using {
   def name() = name

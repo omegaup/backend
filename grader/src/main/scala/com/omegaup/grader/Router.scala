@@ -1,11 +1,11 @@
-package omegaup.grader
+package com.omegaup.grader
 
 import java.util.concurrent._
 import java.text.ParseException
-import omegaup._
-import omegaup.data._
-import omegaup.grader.drivers._
-import omegaup.runner._
+import com.omegaup._
+import com.omegaup.data._
+import com.omegaup.grader.drivers._
+import com.omegaup.runner._
 import scala.util.parsing.combinator.syntactical._
 import scala.collection.immutable.{HashMap, HashSet}
 
@@ -297,7 +297,7 @@ object RunnerDispatcher extends ServiceInterface with Log {
 						case inner: java.net.SocketException => {
 							// Probably a network error of some sort. No use in re-queueing the runner.
 							ctx.service match {
-								case proxy: omegaup.runner.RunnerProxy => RunnerDispatcher.deregister(proxy.hostname, proxy.port)
+								case proxy: com.omegaup.runner.RunnerProxy => RunnerDispatcher.deregister(proxy.hostname, proxy.port)
 								case _ => {}
 							}
 
@@ -329,7 +329,7 @@ object RunnerDispatcher extends ServiceInterface with Log {
 
 					// Probably a network error of some sort. No use in re-queueing the runner.
 					ctx.service match {
-						case proxy: omegaup.runner.RunnerProxy => RunnerDispatcher.deregister(proxy.hostname, proxy.port)
+						case proxy: com.omegaup.runner.RunnerProxy => RunnerDispatcher.deregister(proxy.hostname, proxy.port)
 						case _ => {}
 					}
 
@@ -403,7 +403,7 @@ object RunnerDispatcher extends ServiceInterface with Log {
 		if (!runnerQueue.contains(runner))
 			runnerQueue += runner
 		runner match {
-			case proxy: omegaup.runner.RunnerProxy => {
+			case proxy: com.omegaup.runner.RunnerProxy => {
 				val endpoint = new RunnerEndpoint(proxy.hostname, proxy.port)
 				registeredEndpoints(endpoint) = System.currentTimeMillis
 			}
@@ -419,7 +419,7 @@ object RunnerDispatcher extends ServiceInterface with Log {
 			Config.get("grader.runner.queue_timeout", 10 * 60 * 1000)
 		runnerQueue.dequeueAll (
 			_ match {
-				case proxy: omegaup.runner.RunnerProxy => {
+				case proxy: com.omegaup.runner.RunnerProxy => {
 					val endpoint = new RunnerEndpoint(proxy.hostname, proxy.port)
 					// Also expire stale endpoints.
 					if (registeredEndpoints.contains(endpoint) &&

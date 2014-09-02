@@ -14,6 +14,8 @@ lazy val backend = project.in(file(".")).aggregate(runner, grader)
 
 lazy val common = project
 
-lazy val runner = project.dependsOn(common)
+lazy val libinteractive = project
+
+lazy val runner = project.dependsOn(common, libinteractive)
 
 lazy val grader = project.dependsOn(common, runner)

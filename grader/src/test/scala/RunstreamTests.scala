@@ -1,7 +1,7 @@
-import omegaup.grader._
-import omegaup.runner._
-import omegaup.data._
-import omegaup._
+import com.omegaup.grader._
+import com.omegaup.runner._
+import com.omegaup.data._
+import com.omegaup._
 
 import java.io._
 import org.scalatest._

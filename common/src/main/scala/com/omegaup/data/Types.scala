@@ -1,4 +1,4 @@
-package omegaup.data
+package com.omegaup.data
 
 import java.sql._
 

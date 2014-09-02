@@ -1,4 +1,4 @@
-package omegaup
+package com.omegaup
 
 import java.io._
 import java.net._

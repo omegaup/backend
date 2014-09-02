@@ -1,7 +1,7 @@
-package omegaup.runner
+package com.omegaup.runner
 
-import omegaup._
-import omegaup.data._
+import com.omegaup._
+import com.omegaup.data._
 import java.io._
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream
 import org.apache.commons.compress.archivers.tar.{TarArchiveOutputStream, TarArchiveEntry}

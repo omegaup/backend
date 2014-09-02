@@ -1,4 +1,4 @@
-package omegaup.runner
+package com.omegaup.runner
 
 import java.io._
 import javax.servlet._
@@ -6,8 +6,8 @@ import javax.servlet.http._
 import net.liftweb.json._
 import org.eclipse.jetty.server.Request
 import org.eclipse.jetty.server.handler._
-import omegaup._
-import omegaup.data._
+import com.omegaup._
+import com.omegaup.data._
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorOutputStream
 import org.apache.commons.compress.archivers.tar.{TarArchiveInputStream, TarArchiveEntry}
 

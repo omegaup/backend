@@ -1,0 +1,3 @@
+[submodule "libinteractive"]
+	path = libinteractive
+	url = https://github.com/omegaup/libinteractive.git

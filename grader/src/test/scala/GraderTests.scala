@@ -1,4 +1,4 @@
-import omegaup.grader._
+import com.omegaup.grader._
 
 import java.io._
 import org.scalatest.FlatSpec
