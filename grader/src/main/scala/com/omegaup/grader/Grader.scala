@@ -9,7 +9,7 @@ import scala.collection.immutable.Map
 import net.liftweb.json._
 import com.omegaup._
 import com.omegaup.data._
-import Veredict._
+import Verdict._
 
 trait Grader extends Object with Log with Using {
 	def grade(ctx: RunContext, run: Run): Run = {
@@ -19,7 +19,7 @@ trait Grader extends Object with Log with Using {
 		info("Grading {} {} with {}", alias, run.id, run.problem.validator)
 
 		run.status = Status.Ready
-		run.veredict = Veredict.Accepted
+		run.verdict = Verdict.Accepted
 		run.runtime = 0
 		run.memory = 0
 		
@@ -99,39 +99,39 @@ trait Grader extends Object with Log with Using {
 				run.memory = math.max(run.memory, meta("mem").toLong)
 			}
 			val v = meta("status") match {
-				case "XX" => Veredict.JudgeError
-				case "OK" => Veredict.Accepted
-				case "RE" => Veredict.RuntimeError
-				case "TO" => Veredict.TimeLimitExceeded
-				case "ML" => Veredict.MemoryLimitExceeded
-				case "OL" => Veredict.OutputLimitExceeded
-				case "FO" => Veredict.RestrictedFunctionError
-				case "FA" => Veredict.RestrictedFunctionError
-				case "SG" => Veredict.RuntimeError
-				case _    => Veredict.JudgeError
+				case "XX" => Verdict.JudgeError
+				case "OK" => Verdict.Accepted
+				case "RE" => Verdict.RuntimeError
+				case "TO" => Verdict.TimeLimitExceeded
+				case "ML" => Verdict.MemoryLimitExceeded
+				case "OL" => Verdict.OutputLimitExceeded
+				case "FO" => Verdict.RestrictedFunctionError
+				case "FA" => Verdict.RestrictedFunctionError
+				case "SG" => Verdict.RuntimeError
+				case _    => Verdict.JudgeError
 			}
 
 			if (run.language == Language.Cpp && meta("status") == "SG") {
 				val errFile = new File(f.getCanonicalPath.replace(".meta", ".err"))
 				if (errFile.exists && FileUtil.read(errFile.getCanonicalPath).contains("std::bad_alloc")) {
-					if (run.veredict < Veredict.MemoryLimitExceeded) run.veredict = Veredict.MemoryLimitExceeded
-				} else if(run.veredict < v) run.veredict = v
+					if (run.verdict < Verdict.MemoryLimitExceeded) run.verdict = Verdict.MemoryLimitExceeded
+				} else if(run.verdict < v) run.verdict = v
 			} else if (run.language == Language.Java) {
 				val errFile = new File(f.getCanonicalPath.replace(".meta", ".err"))
 				if (errFile.exists && FileUtil.read(errFile.getCanonicalPath).contains("java.lang.OutOfMemoryError")) {
-					if (run.veredict < Veredict.MemoryLimitExceeded) run.veredict = Veredict.MemoryLimitExceeded
-				} else if(run.veredict < v) run.veredict = v
-			} else if(run.veredict < v) run.veredict = v
+					if (run.verdict < Verdict.MemoryLimitExceeded) run.verdict = Verdict.MemoryLimitExceeded
+				} else if(run.verdict < v) run.verdict = v
+			} else if(run.verdict < v) run.verdict = v
 		}}
 		
-		if (run.veredict == Veredict.JudgeError) {
+		if (run.verdict == Verdict.JudgeError) {
 			run.runtime = 0
 			run.memory = 0
 			run.score = 0
 		} else {
 			val caseScores = weights.map { case (group, data) => {
 				val scores = data.map { case (name, weight) => {
-						var veredict = if (metas.contains(name)) {
+						var verdict = if (metas.contains(name)) {
 							metas(name)._2("status")
 						} else {
 							"OK"
@@ -148,7 +148,7 @@ trait Grader extends Object with Log with Using {
 								metas(name)._2
 							)
 
-							veredict = if (rawScore == 1.0) {
+							verdict = if (rawScore == 1.0) {
 								"AC"
 							} else if (rawScore > 0) {
 								"PA"
@@ -161,18 +161,18 @@ trait Grader extends Object with Log with Using {
 							0.0
 						}
 
-						new CaseVeredictMessage(
+						new CaseVerdictMessage(
 							name,
-							veredict,
+							verdict,
 							score * weight
 						)
 					}
 				}
 
-				new GroupVeredictMessage(
+				new GroupVerdictMessage(
 					group,
 					scores.toList,
-					if (scores.forall(caseVeredict => caseVeredict.veredict == "AC" || caseVeredict.veredict == "PA")) {
+					if (scores.forall(caseVerdict => caseVerdict.verdict == "AC" || caseVerdict.verdict == "PA")) {
 						scores.foldLeft(0.0)(_+_.score)
 					} else {
 						0.0
@@ -207,8 +207,8 @@ trait Grader extends Object with Log with Using {
 
 			run.score = scala.math.round(run.score * 1024 * 1024) / (1024.0 * 1024.0)
 			
-			if(run.score == 0 && run.veredict < Veredict.WrongAnswer) run.veredict = Veredict.WrongAnswer
-			else if(run.score < (1-1e-9) && run.veredict < Veredict.PartialAccepted) run.veredict = Veredict.PartialAccepted
+			if(run.score == 0 && run.verdict < Verdict.WrongAnswer) run.verdict = Verdict.WrongAnswer
+			else if(run.score < (1-1e-9) && run.verdict < Verdict.PartialAccepted) run.verdict = Verdict.PartialAccepted
 		}
 		
 		run.contest_score = run.problem.points match {
@@ -237,7 +237,7 @@ object LiteralGrader extends Grader {
 		debug("Grading {}", run)
 		
 		run.status = Status.Ready
-		run.veredict = Veredict.WrongAnswer
+		run.verdict = Verdict.WrongAnswer
 		run.score = try {
 			val inA = new BufferedReader(new FileReader(FileUtil.read(Config.get("problems.root", "problems") + "/" + run.problem.alias + "/output").trim))
 			val inB = new BufferedReader(new FileReader(FileUtil.read(Config.get("submissions.root", "submissions") + "/" + run.guid)))
@@ -273,14 +273,14 @@ object LiteralGrader extends Grader {
 			points
 		} catch {
 			case e: Exception => {
-				run.veredict = Veredict.JudgeError
+				run.verdict = Verdict.JudgeError
 				error("", e)
 				
 				0
 			}
 		}
 		
-		if (run.score == 1) run.veredict = Veredict.Accepted
+		if (run.score == 1) run.verdict = Verdict.Accepted
 
 		run
 	}

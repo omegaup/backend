@@ -4,7 +4,7 @@ import java.sql._
 import com.omegaup.data._
 import com.omegaup.Database._
 
-import Veredict._
+import Verdict._
 import Validator._
 import Server._
 import Language._
@@ -20,7 +20,7 @@ object GraderData {
 			),
 			language = Language.withName(rs.getString("language")),
 			status = Status.withName(rs.getString("status")),
-			veredict = Veredict.withName(rs.getString("veredict")),
+			verdict = Verdict.withName(rs.getString("verdict")),
 			time = rs.getTimestamp("time"),
 			submit_delay = rs.getInt("submit_delay"),
 			score = rs.getDouble("score"),
@@ -154,9 +154,9 @@ object GraderData {
 		
 	def update(run: Run)(implicit connection: Connection): Run = {
 		execute(
-			"UPDATE Runs SET status = ?, veredict = ?, runtime = ?, memory = ?, score = ?, contest_score = ?, judged_by = ? WHERE run_id = ?;",
+			"UPDATE Runs SET status = ?, verdict = ?, runtime = ?, memory = ?, score = ?, contest_score = ?, judged_by = ? WHERE run_id = ?;",
 			run.status,
-			run.veredict,
+			run.verdict,
 			run.runtime,
 			run.memory,
 			run.score,
@@ -172,7 +172,7 @@ object GraderData {
 		
 	def insert(run: Run)(implicit connection: Connection): Run = {
 		execute(
-			"INSERT INTO Runs (user_id, problem_id, contest_id, guid, language, veredict, ip, time) VALUES(?, ?, ?, ?, ?, ?, ?, ?);",
+			"INSERT INTO Runs (user_id, problem_id, contest_id, guid, language, verdict, ip, time) VALUES(?, ?, ?, ?, ?, ?, ?, ?);",
 			run.user.id,
 			run.problem.id,
 			run.contest match {
@@ -181,7 +181,7 @@ object GraderData {
 			},
 			run.guid,
 			run.language,
-			run.veredict,
+			run.verdict,
 			run.ip,
 			run.time
 		)

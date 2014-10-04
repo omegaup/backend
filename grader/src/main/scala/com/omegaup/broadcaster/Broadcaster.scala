@@ -27,7 +27,7 @@ case class RunDetails(
 	score: Double,
 	contest_score: Option[Double],
 	status: String,
-	veredict: String,
+	verdict: String,
 	submit_delay: Long,
 	time: Long,
 	language: String
@@ -150,7 +150,7 @@ object Broadcaster extends Object with Runnable with Log with Using {
 							score = run.score,
 							contest_score = run.contest_score,
 							status = run.status.toString,
-							veredict = run.veredict.toString,
+							verdict = run.verdict.toString,
 							submit_delay = run.submit_delay,
 							time = run.time.getTime / 1000,
 							language = run.language.toString

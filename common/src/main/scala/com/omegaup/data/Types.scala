@@ -31,7 +31,7 @@ object Language extends Enumeration {
 	val  Ruby = Value(5, "rb")
 	val  Perl = Value(6, "pl")
 	val  CSharp = Value(7, "cs")
-	val  Pascal = Value(8, "p")
+	val  Pascal = Value(8, "pas")
 	val  KarelPascal = Value(9, "kp")
 	val  KarelJava = Value(10, "kj")
 	val  Literal = Value(11, "cat")
@@ -48,8 +48,8 @@ object Status extends Enumeration {
 	val  Ready = Value(5, "ready")
 }
 
-object Veredict extends Enumeration {
-	type Veredict = Value
+object Verdict extends Enumeration {
+	type Verdict = Value
 	val  Accepted = Value(1, "AC")
 	val  PartialAccepted = Value(2, "PA")
 	val  PresentationError = Value(3, "PE")
@@ -84,7 +84,7 @@ object PenaltyTimeStart extends Enumeration {
 }
 
 import Validator._
-import Veredict._
+import Verdict._
 import Status._
 import Server._
 import Language._
@@ -209,7 +209,7 @@ class Run(
 	var guid: String = "",
 	var language: Language = Language.C,
 	var status: Status = Status.New,
-	var veredict: Veredict = Veredict.JudgeError,
+	var verdict: Verdict = Verdict.JudgeError,
 	var runtime: Long = 0,
 	var memory: Long = 0,
 	var score: Double = 0,
@@ -228,7 +228,7 @@ class Run(
       guid = this.guid,
       language = this.language,
       status = this.status,
-      veredict = this.veredict,
+      verdict = this.verdict,
       runtime = this.runtime,
       memory = this.memory,
       score = this.score,

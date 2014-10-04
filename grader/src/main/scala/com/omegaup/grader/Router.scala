@@ -314,7 +314,7 @@ object RunnerDispatcher extends ServiceInterface with Log {
 								case Some(x) => Some(0)
 							}
 							ctx.run.status = Status.Ready
-							ctx.run.veredict = Veredict.JudgeError
+							ctx.run.verdict = Verdict.JudgeError
 						}
 					}
 
@@ -351,14 +351,14 @@ object RunnerDispatcher extends ServiceInterface with Log {
 							case Some(x) => Some(0)
 						}
 						ctx.run.status = Status.Ready
-						ctx.run.veredict = Veredict.JudgeError
+						ctx.run.verdict = Verdict.JudgeError
 
 						ctx.run
 					}
 				}
 			}
 
-			Manager.updateVeredict(ctx, ctx.run)
+			Manager.updateVerdict(ctx, ctx.run)
 		}
 	}
 

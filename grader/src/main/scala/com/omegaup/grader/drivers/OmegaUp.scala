@@ -9,7 +9,7 @@ import java.util.zip.DeflaterOutputStream
 import scala.util.matching.Regex
 import scala.collection.mutable.{ListBuffer, TreeSet}
 import Language._
-import Veredict._
+import Verdict._
 import Status._
 import Validator._
 
@@ -90,7 +90,7 @@ object OmegaUpDriver extends Driver with Log with Using {
 
     run.status = Status.Compiling
     run.judged_by = Some(ctx.service.name)
-    Manager.updateVeredict(ctx, run)
+    Manager.updateVerdict(ctx, run)
 
     val code = FileUtil.read(Config.get("submissions.root", "submissions") + "/" + run.guid)
     val output = ctx.trace(EventCategory.Compile) {
@@ -101,7 +101,7 @@ object OmegaUpDriver extends Driver with Log with Using {
       FileUtil.write(errorFile, output.error.get)
   
       run.status = Status.Ready
-      run.veredict = Veredict.CompileError
+      run.verdict = Verdict.CompileError
       run.memory = 0
       run.runtime = 0
       run.score = 0
@@ -133,7 +133,7 @@ object OmegaUpDriver extends Driver with Log with Using {
     )
   
     run.status = Status.Running
-    Manager.updateVeredict(ctx, run)
+    Manager.updateVerdict(ctx, run)
 
     val target = new File(Config.get("grader.root", "grader"), id.toString)
     FileUtil.deleteDirectory(target)
@@ -203,7 +203,7 @@ object OmegaUpDriver extends Driver with Log with Using {
     var validatorCode: Option[List[(String, String)]] = None
 
     if (run.problem.validator == Validator.Custom) {
-      List("c", "cpp", "py", "p", "rb").map(lang => {
+      List("c", "cpp", "py", "pas", "rb").map(lang => {
         (lang -> new File(
           Config.get("problems.root", "problems"),
           run.problem.alias + "/validator." + lang)

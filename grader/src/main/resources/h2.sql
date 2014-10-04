@@ -197,7 +197,7 @@ CREATE TABLE IF NOT EXISTS `Runs` (
   `guid` char(32) NOT NULL,
   `language` varchar(5) NOT NULL,
   `status` varchar(10) NOT NULL DEFAULT 'new',
-  `veredict` varchar(5) NOT NULL,
+  `verdict` varchar(5) NOT NULL,
   `runtime` int(11) NOT NULL DEFAULT '0',
   `memory` int(11) NOT NULL DEFAULT '0',
   `score` double NOT NULL DEFAULT '0',

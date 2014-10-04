@@ -1,7 +1,7 @@
 import com.omegaup.data._
 import com.omegaup.Database._
 
-import Veredict._
+import Verdict._
 import Validator._
 import Server._
 import Language._
@@ -71,12 +71,12 @@ class QuerySpec extends FlatSpec with ShouldMatchers {
 				p.problem_id = r.problem_id AND
 				r.run_id = 1;
 			""")
-		build("INSERT INTO Runs (user_id, problem_id, guid, language, veredict, ip) VALUES(?, ?, ?, ?, ?, ?);",
+		build("INSERT INTO Runs (user_id, problem_id, guid, language, verdict, ip) VALUES(?, ?, ?, ?, ?, ?);",
 			1,
 			1,
 			"123",
 			Language.Cpp,
-			Veredict.Accepted,
-			"127.0.0.1") should equal ("INSERT INTO Runs (user_id, problem_id, guid, language, veredict, ip) VALUES(1, 1, '123', 'cpp', 'AC', '127.0.0.1');" )
+			Verdict.Accepted,
+			"127.0.0.1") should equal ("INSERT INTO Runs (user_id, problem_id, guid, language, verdict, ip) VALUES(1, 1, '123', 'cpp', 'AC', '127.0.0.1');" )
 	}
 }

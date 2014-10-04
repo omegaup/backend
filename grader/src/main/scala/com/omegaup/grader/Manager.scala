@@ -12,7 +12,7 @@ import com.omegaup.data._
 import com.omegaup.runner._
 import com.omegaup.broadcaster.Broadcaster
 import Status._
-import Veredict._
+import Verdict._
 import Validator._
 import Server._
 
@@ -20,7 +20,7 @@ object EventCategory extends Enumeration {
 	type EventCategory = Value
 	val Task = Value(0)
 	val Queue = Value(1)
-	val UpdateVeredict = Value(2)
+	val UpdateVerdict = Value(2)
 	val Runner = Value(3)
 	val Compile = Value(4)
 	val Input = Value(5)
@@ -144,7 +144,7 @@ object Manager extends Object with Log {
 
 		if (ctx.run.problem.validator == Validator.Remote) {
 			ctx.run.status = Status.Ready
-			ctx.run.veredict = Veredict.JudgeError
+			ctx.run.verdict = Verdict.JudgeError
 			ctx.run.judged_by = Some("Grader")
 			GraderData.update(ctx.run)
 
@@ -152,9 +152,9 @@ object Manager extends Object with Log {
 		} else {
 			if (ctx.run.status != Status.Waiting) {
 				ctx.run.status = Status.Waiting
-				ctx.run.veredict = Veredict.JudgeError
+				ctx.run.verdict = Verdict.JudgeError
 				ctx.run.judged_by = None
-				ctx.trace(EventCategory.UpdateVeredict) {
+				ctx.trace(EventCategory.UpdateVerdict) {
 					GraderData.update(ctx.run)
 				}
 			}
@@ -173,15 +173,15 @@ object Manager extends Object with Log {
 		}
 	}
 
-	def updateVeredict(ctx: RunContext, run: Run): Run = {
+	def updateVerdict(ctx: RunContext, run: Run): Run = {
 		implicit val conn = connection
 	
-		ctx.trace(EventCategory.UpdateVeredict) {
+		ctx.trace(EventCategory.UpdateVerdict) {
 			GraderData.update(run)
 		}
 		if (run.status == Status.Ready) {
-			info("Veredict update: {} {} {} {} {} {} {}",
-				run.id, run.status, run.veredict, run.score, run.contest_score, run.runtime, run.memory)
+			info("Verdict update: {} {} {} {} {} {} {}",
+				run.id, run.status, run.verdict, run.score, run.contest_score, run.runtime, run.memory)
 			Broadcaster.update(ctx)
 			listeners foreach { listener => listener(run) }
 		}

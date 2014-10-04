@@ -31,8 +31,8 @@ case class RegisterInputMessage(hostname: String, port: Int)
 case class RegisterOutputMessage(status: String = "ok", error: Option[String] = None)
 
 // for serializing judgement details
-case class CaseVeredictMessage(name: String, veredict:String, score: Double)
-case class GroupVeredictMessage(group: String, cases: List[CaseVeredictMessage], score: Double)
+case class CaseVerdictMessage(name: String, verdict: String, score: Double)
+case class GroupVerdictMessage(group: String, cases: List[CaseVerdictMessage], score: Double)
 
 // Broadcaster
 case class ContestRoleResponse(status: String = "ok", admin: Boolean = false)

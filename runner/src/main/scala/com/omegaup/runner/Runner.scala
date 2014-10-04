@@ -42,15 +42,15 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
     var previousError: String = null
   
     // Workaround for fpc's weird rules regarding compilation order.
-    var pascalMain = runDirectory.getCanonicalPath + "/" + "Main.p"
+    var pascalMain = runDirectory.getCanonicalPath + "/" + "Main.pas"
     if (inputFiles.contains(pascalMain) && inputFiles.size > 1) {
-      // Exclude Main.p
+      // Exclude Main.pas
       inputFiles -= pascalMain
 
       // Files need to be compiled individually.
       for (inputFile <- inputFiles) {
         sandbox.compile(
-          "p",
+          "pas",
           List(inputFile),
           chdir = runDirectory.getCanonicalPath,
           metaFile = runDirectory.getCanonicalPath + "/compile.meta",
@@ -93,7 +93,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
         }
 
         val missingMainClass = lang match {
-          case "p" => !(new File(runDirectory, "Main").exists())
+          case "pas" => !(new File(runDirectory, "Main").exists())
           case "java" => !(new File(runDirectory, "Main.class").exists())
           case _ => false
         }
@@ -119,7 +119,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
               "Compilation time exceeded"
             else if (meta.contains("message") && meta("status") != "RE")
               meta("message")
-            else if (lang == "p")
+            else if (lang == "pas")
               FileUtil
                 .read(runDirectory.getCanonicalPath + "/compile.out")
                 .replace(runDirectory.getCanonicalPath + "/", "")

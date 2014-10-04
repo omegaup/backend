@@ -177,7 +177,7 @@ class DriverSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
       }
     """) { run => {
       run.status should equal (Status.Ready)
-      run.veredict should equal (Veredict.TimeLimitExceeded)
+      run.verdict should equal (Verdict.TimeLimitExceeded)
       run.score should equal (0)
       run.contest_score should equal (None)
     }}
@@ -200,7 +200,7 @@ class DriverSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     }
   """, 1, 1, "2000-01-01 00:10:00") { run => {
     run.status should equal (Status.Ready)
-    run.veredict should equal (Veredict.Accepted)
+    run.verdict should equal (Verdict.Accepted)
     run.score should equal (1)
     run.contest_score should equal (Some(100))
   }}
@@ -223,14 +223,14 @@ class DriverSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     }
   """) { run => {
     run.status should equal (Status.Ready)
-    run.veredict should equal (Veredict.PartialAccepted)
+    run.verdict should equal (Verdict.PartialAccepted)
     run.score should equal (0.5)
     run.contest_score should equal (None)
   }}
 
   omegaUpSubmit(1, Language.Literal, "") { run => {
     run.status should equal (Status.Ready)
-    run.veredict should equal (Veredict.WrongAnswer)
+    run.verdict should equal (Verdict.WrongAnswer)
     run.score should equal (0.0)
     run.contest_score should equal (None)
   }}
@@ -245,7 +245,7 @@ class DriverSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     ADAxLm91dFVUBQADfZT4UXV4CwABBOgDAAAE6AMAAFBLBQYAAAAAAgACAJgAAACkAAAAAAA=
   """) { run => {
     run.status should equal (Status.Ready)
-    run.veredict should equal (Veredict.Accepted)
+    run.verdict should equal (Verdict.Accepted)
     run.score should equal (1.0)
     run.contest_score should equal (None)
   }}
@@ -260,7 +260,7 @@ class DriverSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     b3V0VVQFAAO9wfhRdXgLAAEE6AMAAAToAwAAUEsFBgAAAAACAAIAmAAAAKAAAAAAAA==
   """) { run => {
     run.status should equal (Status.Ready)
-    run.veredict should equal (Veredict.PartialAccepted)
+    run.verdict should equal (Verdict.PartialAccepted)
     run.score should equal (0.5)
     run.contest_score should equal (None)
   }}
@@ -282,7 +282,7 @@ class DriverSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     }
   """) { run => {
     run.status should equal (Status.Ready)
-    run.veredict should equal (Veredict.Accepted)
+    run.verdict should equal (Verdict.Accepted)
     run.score should equal (1)
     run.contest_score should equal (None)
   }}
@@ -304,7 +304,7 @@ class DriverSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     }
   """) { run => {
     run.status should equal (Status.Ready)
-    run.veredict should equal (Veredict.PartialAccepted)
+    run.verdict should equal (Verdict.PartialAccepted)
     run.score should be (0.2 +- 0.001)
     run.contest_score should equal (None)
   }}
@@ -326,7 +326,7 @@ class DriverSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     }
   """) { run => {
     run.status should equal (Status.Ready)
-    run.veredict should equal (Veredict.Accepted)
+    run.verdict should equal (Verdict.Accepted)
     run.score should equal (1)
     run.contest_score should equal (None)
   }}
@@ -348,7 +348,7 @@ class DriverSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     }
   """) { run => {
     run.status should equal (Status.Ready)
-    run.veredict should equal (Veredict.PartialAccepted)
+    run.verdict should equal (Verdict.PartialAccepted)
     run.score should be (0.05 +- 0.001)
     run.contest_score should equal (None)
   }}
@@ -370,7 +370,7 @@ class DriverSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     }
   """) { run => {
     run.status should equal (Status.Ready)
-    run.veredict should equal (Veredict.PartialAccepted)
+    run.verdict should equal (Verdict.PartialAccepted)
     run.score should be (0.71 +- 0.01)
     run.contest_score should equal (None)
   }}
@@ -392,7 +392,7 @@ class DriverSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     }
     """) { run => {
     run.status should equal (Status.Ready)
-    run.veredict should equal (Veredict.Accepted)
+    run.verdict should equal (Verdict.Accepted)
     run.score should equal (1)
     run.contest_score should equal (None)
   }}
@@ -403,7 +403,7 @@ class DriverSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     long long solve(long long a, long long b) { return a + b; }
     """) { run => {
     run.status should equal (Status.Ready)
-    run.veredict should equal (Veredict.Accepted)
+    run.verdict should equal (Verdict.Accepted)
     run.score should equal (1)
     run.contest_score should equal (None)
   }}
@@ -412,7 +412,7 @@ class DriverSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     long long solve(long long a, long long b) { return 0; }
   """) { run => {
     run.status should equal (Status.Ready)
-    run.veredict should equal (Veredict.WrongAnswer)
+    run.verdict should equal (Verdict.WrongAnswer)
     run.score should equal (0)
     run.contest_score should equal (None)
   }}
@@ -422,7 +422,7 @@ class DriverSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     int main() { printf("Hello, World!\n3\n"); }
   """) { run => {
     run.status should equal (Status.Ready)
-    run.veredict should equal (Veredict.CompileError)
+    run.verdict should equal (Verdict.CompileError)
     run.score should equal (0)
     run.contest_score should equal (None)
   }}
@@ -573,7 +573,7 @@ class DriverSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     }
     """) { run => {
       run.status should equal (Status.Ready)
-      run.veredict should equal (Veredict.Accepted)
+      run.verdict should equal (Verdict.Accepted)
       run.score should equal (1)
       run.contest_score should equal (None)
     }}
