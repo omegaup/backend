@@ -142,26 +142,17 @@ object Manager extends Object with Log {
 
 		implicit val conn = connection
 
-		if (ctx.run.problem.validator == Validator.Remote) {
-			ctx.run.status = Status.Ready
+		if (ctx.run.status != Status.Waiting) {
+			ctx.run.status = Status.Waiting
 			ctx.run.verdict = Verdict.JudgeError
-			ctx.run.judged_by = Some("Grader")
-			GraderData.update(ctx.run)
-
-			new GradeOutputMessage(status = "error", error = Some("Remote validators not supported anymore"))
-		} else {
-			if (ctx.run.status != Status.Waiting) {
-				ctx.run.status = Status.Waiting
-				ctx.run.verdict = Verdict.JudgeError
-				ctx.run.judged_by = None
-				ctx.trace(EventCategory.UpdateVerdict) {
-					GraderData.update(ctx.run)
-				}
+			ctx.run.judged_by = None
+			ctx.trace(EventCategory.UpdateVerdict) {
+				GraderData.update(ctx.run)
 			}
-
-			RunnerDispatcher.addRun(ctx)
-			new GradeOutputMessage()
 		}
+
+		RunnerDispatcher.addRun(ctx)
+		new GradeOutputMessage()
 	}
 
 	def grade(message: GradeInputMessage): GradeOutputMessage = {

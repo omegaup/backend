@@ -232,62 +232,6 @@ object CustomGrader extends Grader {
 	}
 }
 
-object LiteralGrader extends Grader {
-	override def grade(ctx: RunContext, run: Run): Run = {
-		debug("Grading {}", run)
-		
-		run.status = Status.Ready
-		run.verdict = Verdict.WrongAnswer
-		run.score = try {
-			val inA = new BufferedReader(new FileReader(FileUtil.read(Config.get("problems.root", "problems") + "/" + run.problem.alias + "/output").trim))
-			val inB = new BufferedReader(new FileReader(FileUtil.read(Config.get("submissions.root", "submissions") + "/" + run.guid)))
-			
-			var lineA: String = null
-			var lineB: String = null
-			
-			var points:Double = 1
-			
-			while (inA.ready && inB.ready) {
-				lineA = inA.readLine
-				lineB = inB.readLine
-				
-				if (lineA != null && lineB != null) {
-					if (! lineA.trim.equals(lineB.trim)) {				
-						debug("Mismatched input")
-						points = 0
-					}
-				} else if ( lineA != null || lineB != null) {
-					debug("Unfinished input")
-					points = 0
-				}
-			}
-			
-			if (inA.ready || inB.ready) {
-				debug("Unfinished input")
-				points = 0
-			}
-			
-			inA.close
-			inB.close
-			
-			points
-		} catch {
-			case e: Exception => {
-				run.verdict = Verdict.JudgeError
-				error("", e)
-				
-				0
-			}
-		}
-		
-		if (run.score == 1) run.verdict = Verdict.Accepted
-
-		run
-	}
-	
-	def gradeCase(run: Run, caseName: String, runOut: File, problemOut: File, meta: scala.collection.Map[String,String]): Double = 0
-}
-
 class Token(var nextChar: Int, reader: Reader, containedInTokenClass: (Char) => Boolean) extends Iterator[Char] {
 	def hasNext(): Boolean = {
 		return !eof && containedInTokenClass(nextChar.asInstanceOf[Char])

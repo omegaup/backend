@@ -74,9 +74,6 @@ object OmegaUpDriver extends Driver with Log with Using {
   }
 
   override def run(ctx: RunContext, run: Run): Run = {
-    // If using the literal validator, we can skip the run.
-    if (run.problem.validator == Validator.Literal) return run
-
     val id = run.id
     val alias = run.problem.alias
     val lang = run.language
@@ -188,7 +185,6 @@ object OmegaUpDriver extends Driver with Log with Using {
     ctx.trace(EventCategory.Grade) {
       run.problem.validator match {
         case Validator.Custom => CustomGrader.grade(ctx, run)
-        case Validator.Literal => LiteralGrader.grade(ctx, run)
         case Validator.Token => TokenGrader.grade(ctx, run)
         case Validator.TokenCaseless => TokenCaselessGrader.grade(ctx, run)
         case Validator.TokenNumeric => TokenNumericGrader.grade(ctx, run)

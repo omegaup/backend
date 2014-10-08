@@ -4,13 +4,10 @@ import java.sql._
 
 object Validator extends Enumeration {
 	type Validator = Value
-	val  Remote = Value(1, "remote")
-	val  Literal = Value(2, "literal")
-	val  Token = Value(3, "token")
-	val  TokenCaseless = Value(4, "token-caseless")
-	val  TokenNumeric = Value(5, "token-numeric")
-	val  Custom = Value(6, "custom")
-	val  Karel = Value(7, "karel")
+	val  Token = Value(1, "token")
+	val  TokenCaseless = Value(2, "token-caseless")
+	val  TokenNumeric = Value(3, "token-numeric")
+	val  Custom = Value(4, "custom")
 }
 
 object Server extends Enumeration {
