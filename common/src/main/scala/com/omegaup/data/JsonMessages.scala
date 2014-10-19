@@ -1,15 +1,19 @@
 package com.omegaup.data
 
+import com.omegaup.libinteractive.idl.IDL
+import com.omegaup.libinteractive.target.Options
+
 case class NullMessage()
 
 // from Runner
 case class RunCaseResult(name: String, status: String, time: Int, memory: Int, output: Option[String] = None, context: Option[String] = None)
 case class CaseData(name: String, data: String)
 
-case class CompileInputMessage(lang: String, code: List[(String, String)], master_lang: Option[String] = None, master_code: Option[List[(String, String)]] = None)
+case class InteractiveDescription(idl: IDL, options: Options)
+case class CompileInputMessage(lang: String, code: List[(String, String)], master_lang: Option[String] = None, master_code: Option[List[(String, String)]] = None, interactive: Option[InteractiveDescription] = None)
 case class CompileOutputMessage(status: String = "ok", error: Option[String] = None, token: Option[String] = None)
 
-case class RunInputMessage(token: String, timeLimit: Float = 1, memoryLimit: Int = 65535, outputLimit: Long = 10240, stackLimit: Long = 10485760, debug: Boolean = false, input: Option[String] = None, cases: Option[List[CaseData]] = None)
+case class RunInputMessage(token: String, timeLimit: Float = 1, memoryLimit: Int = 65535, outputLimit: Long = 10240, stackLimit: Long = 10485760, debug: Boolean = false, input: Option[String] = None, cases: Option[List[CaseData]] = None, interactive: Option[InteractiveDescription] = None)
 case class RunOutputMessage(status: String = "ok", error: Option[String] = None, results: Option[List[RunCaseResult]] = None)
 
 case class InputOutputMessage(status: String = "ok", error: Option[String] = None)

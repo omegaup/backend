@@ -3,6 +3,9 @@ import java.io._
 import com.omegaup._
 import com.omegaup.data._
 import com.omegaup.runner._
+import com.omegaup.libinteractive.idl.Parser
+import com.omegaup.libinteractive.target.Options
+import com.omegaup.libinteractive.target.Command
 import org.slf4j._
 
 import org.scalatest.{FlatSpec, BeforeAndAfterAll}
@@ -489,5 +492,55 @@ print 1.0 / (1.0 + (answer - user)**2)
       new CaseData("two", "2 2\n"),
       new CaseData("half", "0.5 0.5\n")
     ))), NullRunCaseCallback)
+  }
+
+  "libinteractive" should "work" in {
+    val parser = new Parser
+    val runner = new Runner("test", Minijail)
+
+    val interactive = Some(InteractiveDescription(
+      parser.parse("""
+        interface Main {};
+        interface summer {
+          int summer(int a, int b);
+        };
+      """),
+      Options(
+        parentLang = "cpp",
+        childLang = "cpp",
+        command = Command.Generate,
+        moduleName = "summer",
+        pipeDirectories = true,
+        verbose = true
+      )
+    ))
+    val test1 = runner.compile(CompileInputMessage("cpp", List(("summer.cpp", """
+      #include "summer.h"
+      int summer(int a, int b) {
+        return a + b;
+      }
+    """), ("Main.cpp", """
+      #include <cstdio>
+      #include "summer.h"
+      using namespace std;
+      int main() {
+        int a, b;
+        scanf("%d %d\n", &a, &b);
+        printf("%d\n", summer(a, b));
+      }
+    """)), interactive = interactive))
+    test1.status should equal ("ok")
+    test1.token should not equal None
+
+    runner.run(
+      RunInputMessage(
+        token = test1.token.get,
+        cases= Some(List(
+          new CaseData("three", "1 2\n")
+        )),
+        interactive = interactive
+      ),
+      NullRunCaseCallback
+    )
   }
 }

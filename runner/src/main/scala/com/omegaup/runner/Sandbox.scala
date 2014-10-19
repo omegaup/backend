@@ -12,12 +12,26 @@ import com.omegaup._
 import com.omegaup.data._
 
 trait Sandbox {
+  def targetFileName(lang: String, target: String) = lang match {
+    case "c" => target
+    case "cpp" => target
+    case "cpp11" => target
+    case "pas" => target
+    case "hs" => target
+    case "py" => s"$target.pyc"
+    case "java" => s"$target.class"
+    case "kj" => s"$target.kx"
+    case "kp" => s"$target.kx"
+  }
+
   def compile[A](lang: String,
                  inputFiles: TraversableOnce[String],
                  chdir: String = "",
                  outputFile: String = "",
                  errorFile: String = "",
-                 metaFile: String = "") (callback: Int => A): A
+                 metaFile: String = "",
+                 target: String = "Main",
+                 extraFlags: TraversableOnce[String] = List()) (callback: Int => A): A
 
   def run(message: RunInputMessage,
           lang: String,
@@ -29,7 +43,9 @@ trait Sandbox {
           errorFile: String = "",
           metaFile: String = "",
           originalInputFile: Option[String] = None,
-          runMetaFile: Option[String] = None): Unit
+          runMetaFile: Option[String] = None,
+          target: String = "Main",
+          extraMountPoints: List[(String, String)] = List[(String, String)]()): Unit
 }
 
 object Minijail extends Object with Sandbox with Log with Using {
@@ -40,7 +56,9 @@ object Minijail extends Object with Sandbox with Log with Using {
                  chdir: String = "",
                  outputFile: String = "",
                  errorFile: String = "",
-                 metaFile: String = "") (callback: Int => A) = {
+                 metaFile: String = "",
+                 target: String = "Main",
+                 extraFlags: TraversableOnce[String] = List()) (callback: Int => A): A = {
     val minijail = Config.get("runner.minijail.path", ".") + "/bin/minijail0"
     val scripts = Config.get("runner.minijail.path", ".") + "/scripts"
     val runtime = Runtime.getRuntime
@@ -63,7 +81,7 @@ object Minijail extends Object with Sandbox with Log with Using {
       file.substring(chdir.length + 1)
     })
 
-    val params = lang match {
+    val params = (lang match {
       case "java" =>
         List("/usr/bin/sudo", minijail, "-S", scripts + "/javac") ++
         commonParams ++
@@ -77,17 +95,17 @@ object Minijail extends Object with Sandbox with Log with Using {
         List("/usr/bin/sudo", minijail, "-S", scripts + "/gcc") ++
         commonParams ++
         List("--", Config.get("c.compiler.path", "/usr/bin/gcc"), "-std=c99", "-O2") ++
-        chrootedInputFiles ++ List("-lm")
+        chrootedInputFiles ++ List("-lm", "-o", target)
       case "cpp" =>
         List("/usr/bin/sudo", minijail, "-S", scripts + "/gcc") ++
         commonParams ++
         List("--", Config.get("cpp.compiler.path", "/usr/bin/g++"), "-O2") ++
-        chrootedInputFiles ++ List("-lm")
+        chrootedInputFiles ++ List("-lm", "-o", target)
       case "cpp11" =>
         List("/usr/bin/sudo", minijail, "-S", scripts + "/gcc") ++
         commonParams ++
         List("--", Config.get("cpp.compiler.path", "/usr/bin/g++"), "-O2", "-std=c++11", "-xc++") ++
-        chrootedInputFiles ++ List("-lm")
+        chrootedInputFiles ++ List("-lm", "-o", target)
       case "pas" =>
         List("/usr/bin/sudo", minijail, "-S", scripts + "/fpc") ++
         commonParams ++
@@ -100,7 +118,7 @@ object Minijail extends Object with Sandbox with Log with Using {
           "-Sc",
           "-Sh"
         ) ++
-        chrootedInputFiles
+        chrootedInputFiles ++ List("-o" + target)
       case "py" =>
         List("/usr/bin/sudo", minijail, "-S", scripts + "/pyc") ++
         commonParams ++
@@ -115,7 +133,7 @@ object Minijail extends Object with Sandbox with Log with Using {
           "/usr/bin/ldwrapper", Config.get("kcl.compiler.path", "/usr/bin/kcl"),
           "-lj",
           "-o",
-          "Main.kx",
+          s"$target.kx",
           "-c"
         ) ++
         chrootedInputFiles
@@ -127,7 +145,7 @@ object Minijail extends Object with Sandbox with Log with Using {
           "/usr/bin/ldwrapper", Config.get("kcl.compiler.path", "/usr/bin/kcl"),
           "-lp",
           "-o",
-          "Main.kx",
+          s"$target.kx",
           "-c"
         ) ++
         chrootedInputFiles
@@ -140,11 +158,11 @@ object Minijail extends Object with Sandbox with Log with Using {
           Config.get("ghc.compiler.path", "/usr/lib/ghc/lib/ghc"), "-B/usr/lib/ghc",
           "-O2",
           "-o",
-          "Main"
+          target
         ) ++
         chrootedInputFiles
       case _ => null
-    }
+    }) ++ extraFlags
 
     debug("Compile {}", params.mkString(" "))
 
@@ -176,7 +194,9 @@ object Minijail extends Object with Sandbox with Log with Using {
           errorFile: String = "",
           metaFile: String = "",
           originalInputFile: Option[String] = None,
-          runMetaFile: Option[String] = None) = {
+          runMetaFile: Option[String] = None,
+          target: String = "Main",
+          extraMountPoints: List[(String, String)] = List[(String, String)]()) = {
     val minijail = Config.get("runner.minijail.path", ".") + "/bin/minijail0"
     val scripts = Config.get("runner.minijail.path", ".") + "/scripts"
     val runtime = Runtime.getRuntime
@@ -197,7 +217,9 @@ object Minijail extends Object with Sandbox with Log with Using {
       "-t", (timeLimit * 1000).toInt.toString,
       "-O", message.outputLimit.toString,
       "-k", message.stackLimit.toString
-    )
+    ) ++ extraMountPoints.flatMap { case (path, target) => {
+      List("-b", path + "," + target)
+    }}
 
     originalInputFile match {
       case Some(file) => FileUtil.copy(new File(file), new File(chdir, "data.in"))
@@ -225,28 +247,28 @@ object Minijail extends Object with Sandbox with Log with Using {
           "-b", Config.get("runner.minijail.path", ".") + "/root-openjdk,/usr/lib/jvm",
           "-b", "/sys/,/sys"
         ) ++
-        List("--", "/usr/bin/java", "-Xmx" + memoryLimit, "Main")
+        List("--", "/usr/bin/java", "-Xmx" + memoryLimit, target)
       case "c" =>
         List("/usr/bin/sudo", minijail, "-S", scripts + "/cpp") ++
         commonParams ++
-        List("-m", hardLimit, "--", "./a.out")
+        List("-m", hardLimit, "--", s"./$target")
       case "cpp" =>
         List("/usr/bin/sudo", minijail, "-S", scripts + "/cpp") ++
         commonParams ++
-        List("-m", hardLimit, "--", "./a.out")
+        List("-m", hardLimit, "--", s"./$target")
       case "cpp11" =>
         List("/usr/bin/sudo", minijail, "-S", scripts + "/cpp") ++
         commonParams ++
-        List("-m", hardLimit, "--", "./a.out")
+        List("-m", hardLimit, "--", s"./$target")
       case "pas" =>
         List("/usr/bin/sudo", minijail, "-S", scripts + "/pas") ++
         commonParams ++
-        List("-m", hardLimit, "--", "/usr/bin/ldwrapper", "./Main")
+        List("-m", hardLimit, "--", "/usr/bin/ldwrapper", s"./$target")
       case "py" =>
         List("/usr/bin/sudo", minijail, "-S", scripts + "/py") ++
         commonParams ++
         List("-b", Config.get("runner.minijail.path", ".") + "/root-python,/usr/lib/python2.7") ++
-        List("-m", hardLimit, "--", "/usr/bin/python", "Main.py")
+        List("-m", hardLimit, "--", "/usr/bin/python", s"$target.py")
       case "kp" =>
         List("/usr/bin/sudo", minijail, "-S", scripts + "/karel") ++
         commonParams ++
@@ -257,7 +279,7 @@ object Minijail extends Object with Sandbox with Log with Using {
           "-oi",
           "-q",
           "-p2",
-          "Main.kx"
+          s"$target.kx"
         )
       case "kj" =>
         List("/usr/bin/sudo", minijail, "-S", scripts + "/karel") ++
@@ -269,13 +291,13 @@ object Minijail extends Object with Sandbox with Log with Using {
           "-oi",
           "-q",
           "-p2",
-          "Main.kx"
+          s"$target.kx"
         )
       case "hs" =>
         List("/usr/bin/sudo", minijail, "-S", scripts + "/hs") ++
         commonParams ++
         List("-b", Config.get("runner.minijail.path", ".") + "/root-hs,/usr/lib/ghc") ++
-        List("-m", hardLimit, "--", "./Main")
+        List("-m", hardLimit, "--", s"./$target")
     }) ++ extraParams
 
     debug("{} {}", logTag, params.mkString(" "))

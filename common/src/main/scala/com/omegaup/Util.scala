@@ -432,7 +432,10 @@ object Https extends Object with Log with Using {
 
 object FileUtil extends Object with Using {
 	@throws(classOf[IOException])
-	def read(file: String): String = {
+	def read(filename: String): String = read(new File(filename))
+
+	@throws(classOf[IOException])
+	def read(file: File): String = {
 		val contents = new StringBuffer
 		var ch: Int = 0
 		
@@ -446,11 +449,7 @@ object FileUtil extends Object with Using {
 	}
 	
 	@throws(classOf[IOException])
-	def write(file: String, data: String): Unit = {
-		using (new FileWriter(file)) { fileWriter =>
-			fileWriter.write(data)
-		}
-	}
+	def write(filename: String, data: String): Unit = write(new File(filename), data)
 
 	@throws(classOf[IOException])
 	def write(file: File, data: String): Unit = {
@@ -503,9 +502,7 @@ object FileUtil extends Object with Using {
 	}
 		
 	@throws(classOf[IOException])
-	def deleteDirectory(dir: String): Boolean = {
-		FileUtil.deleteDirectory(new File(dir))
-	}
+	def deleteDirectory(dir: String): Boolean = FileUtil.deleteDirectory(new File(dir))
 	
 	@throws(classOf[IOException])
 	def deleteDirectory(dir: File): Boolean = {
@@ -517,14 +514,27 @@ object FileUtil extends Object with Using {
 		false
 	}
 
-	def removeExtension(name: String): String = {
-		val extension = name.lastIndexOf('.')
-		if (extension != -1) {
-			return name.substring(0, extension)
+	def extension(name: String): String = {
+		val pos = name.lastIndexOf('.')
+		if (pos != -1) {
+			name.substring(pos + 1)
 		} else {
-			return name
+			""
 		}
 	}
+
+	def extension(file: File): String = extension(file.getName)
+
+	def removeExtension(name: String): String = {
+		val pos = name.lastIndexOf('.')
+		if (pos != -1) {
+			name.substring(0, pos)
+		} else {
+			name
+		}
+	}
+
+	def removeExtension(file: File): String = removeExtension(file.getName)
 
 	def basename(path: String): String = {
 		val sep = path.lastIndexOf('/')

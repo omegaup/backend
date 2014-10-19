@@ -12,9 +12,9 @@ scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature")
 
 lazy val backend = project.in(file(".")).aggregate(runner, grader)
 
-lazy val common = project
-
 lazy val libinteractive = project
+
+lazy val common = project.dependsOn(libinteractive)
 
 lazy val runner = project.dependsOn(common, libinteractive)
 

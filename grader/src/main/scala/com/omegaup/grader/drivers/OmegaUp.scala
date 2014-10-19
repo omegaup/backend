@@ -3,6 +3,10 @@ package com.omegaup.grader.drivers
 import com.omegaup._
 import com.omegaup.data._
 import com.omegaup.grader._
+import com.omegaup.libinteractive.idl.IDL
+import com.omegaup.libinteractive.idl.Parser
+import com.omegaup.libinteractive.target.Options
+import com.omegaup.libinteractive.target.Command
 import java.io._
 import java.util.concurrent._
 import java.util.zip.DeflaterOutputStream
@@ -90,8 +94,9 @@ object OmegaUpDriver extends Driver with Log with Using {
     Manager.updateVerdict(ctx, run)
 
     val code = FileUtil.read(Config.get("submissions.root", "submissions") + "/" + run.guid)
+    val compileMessage = createCompileMessage(run, code)
     val output = ctx.trace(EventCategory.Compile) {
-      ctx.service.compile(createCompileMessage(run, code))
+      ctx.service.compile(compileMessage)
     }
   
     if(output.status != "ok") {
@@ -126,7 +131,8 @@ object OmegaUpDriver extends Driver with Log with Using {
         case Some(x) => x.toLong
         case _ => 10485760
       },
-      input = Some(input)
+      input = Some(input),
+      interactive = compileMessage.interactive
     )
   
     run.status = Status.Running
@@ -210,7 +216,7 @@ object OmegaUpDriver extends Driver with Log with Using {
                 validator.getCanonicalPath,
                 run.problem.alias)
           validatorLang = Some(lang)
-          validatorCode = Some(List(("Main." + lang, FileUtil.read(validator.getCanonicalPath))))
+          validatorCode = Some(List(("Main." + lang, FileUtil.read(validator))))
         }
 
         case _ => {
@@ -228,31 +234,63 @@ object OmegaUpDriver extends Driver with Log with Using {
       Config.get("problems.root", "problems"),
       run.problem.alias + "/interactive"
     )
+    var interactive: Option[InteractiveDescription] = None
 
     if (interactiveRoot.isDirectory) {
       debug("Using interactive mode problem {}", run.problem.alias)
 
-      val unitNameFile = new File(interactiveRoot, "unitname")
-      if (!unitNameFile.isFile) {
-        throw new FileNotFoundException(unitNameFile.getCanonicalPath)
-      }
-
-      val langDir = new File(interactiveRoot, run.language.toString)
-      if (!langDir.isDirectory) {
-        throw new FileNotFoundException(langDir.getCanonicalPath)
-      }
-
-      langDir
+      val interactiveFiles = interactiveRoot
         .list
-        .map(new File(langDir, _))
+        .map(new File(interactiveRoot, _))
         .filter(_.isFile)
-        .foreach(file => { codes += file.getName -> FileUtil.read(file.getCanonicalPath) })
 
-      val unitName = FileUtil.read(unitNameFile.getCanonicalPath)
-      codes += unitName + "." + run.language.toString -> code
-  
-      if (codes.size < 2) {
-        throw new FileNotFoundException(langDir.getCanonicalPath)
+      val idlFile = interactiveFiles.find(_.getName.endsWith(".idl"))
+
+      if (!idlFile.isEmpty) {
+        val parser = new Parser
+        val parsedIdl = parser.parse(FileUtil.read(idlFile.get))
+
+        val mainFile = interactiveFiles.find(
+            _.getName.startsWith(parsedIdl.main.name + "."))
+
+        if (!mainFile.isEmpty) {
+          interactive = Some(InteractiveDescription(
+            parsedIdl,
+            Options(
+              parentLang = FileUtil.extension(mainFile.get),
+              childLang = run.language.toString,
+              command = Command.Generate,
+              moduleName = FileUtil.removeExtension(idlFile.get),
+              pipeDirectories = true
+            )
+          ))
+        } else {
+          throw new FileNotFoundException(
+            new File(interactiveRoot, parsedIdl.main.name + ".*").getCanonicalPath)
+        }
+      } else {
+        val unitNameFile = new File(interactiveRoot, "unitname")
+        if (!unitNameFile.isFile) {
+          throw new FileNotFoundException(unitNameFile.getCanonicalPath)
+        }
+
+        val langDir = new File(interactiveRoot, run.language.toString)
+        if (!langDir.isDirectory) {
+          throw new FileNotFoundException(langDir.getCanonicalPath)
+        }
+
+        langDir
+          .list
+          .map(new File(langDir, _))
+          .filter(_.isFile)
+          .foreach(file => { codes += file.getName -> FileUtil.read(file) })
+
+        val unitName = FileUtil.read(unitNameFile)
+        codes += unitName + "." + run.language.toString -> code
+    
+        if (codes.size < 2) {
+          throw new FileNotFoundException(langDir.getCanonicalPath)
+        }
       }
     } else {
       codes += "Main." + run.language.toString -> code
@@ -261,6 +299,7 @@ object OmegaUpDriver extends Driver with Log with Using {
     new CompileInputMessage(run.language.toString,
                             codes.result,
                             validatorLang,
-                            validatorCode)
+                            validatorCode,
+                            interactive)
   }
 }
