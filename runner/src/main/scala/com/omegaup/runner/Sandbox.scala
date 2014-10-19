@@ -313,19 +313,29 @@ object Minijail extends Object with Sandbox with Log with Using {
     var syscallName = ""
 
     pusing (runtime.exec(helperParams.toArray)) { helper => {
-      pusing (runtime.exec(params.toArray)) { minijail =>
-        if (minijail != null) {
-          status = minijail.waitFor
-        }
-      }
       if (helper == null) {
         error("minijail_syscall_helper was null")
       } else {
+        val reader = new BufferedReader(new InputStreamReader(helper.getInputStream))
+
+        // Read one line before starting the actual minijail process
+        val initialStatus = reader.readLine
+        debug("minijail helper initial status {}", initialStatus)
+
+        pusing (runtime.exec(params.toArray)) { minijail =>
+          if (minijail == null) {
+            error("minijail process was null")
+          } else {
+            status = minijail.waitFor
+            debug("minijail returned {}", status)
+          }
+        }
+
         val future = executor.submit(new Callable[String]() {
           override def call(): String = {
             var result: String = null
-            using (new BufferedReader(new InputStreamReader(helper.getInputStream))) { stream =>
-              result = stream.readLine
+            using (reader) {
+              stream => result = stream.readLine
             }
             try {
               using (new BufferedReader(new InputStreamReader(helper.getErrorStream))) { stream =>
@@ -390,7 +400,10 @@ object Minijail extends Object with Sandbox with Log with Using {
         case "31" => "FO" // SIGSYS
         case "25" => "OL" // SIGFSZ
         case "35" => "OL" // SIGFSZ
-        case _ => "JE"
+        case other => {
+          error("Received odd signal: {}", other)
+          "JE"
+        }
       }
 
       if (meta("signal") == "31") { // SIGSYS
