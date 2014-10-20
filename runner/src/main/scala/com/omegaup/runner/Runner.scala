@@ -478,58 +478,64 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
               }}
 
               // Generate the final .meta file.
-              val meta = MetaFile.load(s"${casePath}.meta")
-              val newMeta = (if (meta("status") != "OK") {
-                error("libinteractive Main program did not complete successfully {}", meta)
-                meta ++ List("status" -> "JE")
-              } else {
-                val childrenMetaFiles = interactive.idl.interfaces.map {
-                  interface => new File(s"${casePath}_${interface.name}.meta")
-                }
-                val childrenMeta = childrenMetaFiles.map{
-                  file => MetaFile.load(file.getCanonicalPath)
-                }
-                childrenMetaFiles.foreach(_.delete)
-                var time = 0.0
-                var timeWall = 0.0
-                var mem = 0L
-                var chosenMeta: Option[scala.collection.Map[String, String]] = None
+              val parentMeta = MetaFile.load(s"${casePath}.meta")
 
-                for (child <- childrenMeta) {
-                  if (child("status") != "OK" && chosenMeta.isEmpty) {
-                    chosenMeta = Some(child)
-                  }
+              val childrenMetaFiles = interactive.idl.interfaces.map {
+                interface => new File(s"${casePath}_${interface.name}.meta")
+              }
+              val childrenMeta = childrenMetaFiles.map{
+                file => MetaFile.load(file.getCanonicalPath)
+              }
+              childrenMetaFiles.foreach(_.delete)
+              var time = 0.0
+              var timeWall = 0.0
+              var mem = 0L
+              var chosenMeta: Option[scala.collection.Map[String, String]] = None
 
-                  if (child.contains("time")) {
-                    time += child("time").toDouble
-                  }
-                  if (child.contains("time-wall")) {
-                    timeWall = Math.max(timeWall, child("time-wall").toDouble)
-                  }
-                  if (child.contains("mem")) {
-                    mem = Math.max(mem, child("mem").toLong)
-                  }
+              for (child <- childrenMeta) {
+                if (child("status") != "OK" && chosenMeta.isEmpty) {
+                  chosenMeta = Some(child)
                 }
 
+                if (child.contains("time")) {
+                  time += child("time").toDouble
+                }
+                if (child.contains("time-wall")) {
+                  timeWall = Math.max(timeWall, child("time-wall").toDouble)
+                }
+                if (child.contains("mem")) {
+                  mem = Math.max(mem, child("mem").toLong)
+                }
+              }
 
-                (chosenMeta match {
-                  case None => scala.collection.Map[String, String](
-                    "status" -> "OK",
-                    "return" -> "0"
-                  )
-                  case Some(meta) => meta
-                }) ++ List(
-                  "time" -> time.toString,
-                  "time-wall" -> timeWall.toString,
-                  "mem" -> mem.toString
+              val childMeta = (chosenMeta match {
+                case None => scala.collection.Map[String, String](
+                  "status" -> "OK",
+                  "return" -> "0"
                 )
-              })
+                case Some(chosen) => chosen
+              }) ++ List(
+                "time" -> time.toString,
+                "time-wall" -> timeWall.toString,
+                "mem" -> mem.toString
+              )
 
-              MetaFile.save(s"${casePath}.meta", newMeta)
+              val finalMeta = (
+                if (childMeta("status") == "OK" && parentMeta("status") != "OK") {
+                  error("Child processes finished correctly, but parent did not {}",
+                    parentMeta)
+                  parentMeta + ("status" -> "JE")
+                } else {
+                  childMeta
+                }
+              )
+
+              MetaFile.save(s"${casePath}.meta", finalMeta)
             }
           }
 
-          process(message, runDirectory, casesDirectory, lang, new File(casePath + ".meta"), callback)
+          process(message, runDirectory, casesDirectory, lang,
+            new File(casePath + ".meta"), callback)
         }
       }
     
