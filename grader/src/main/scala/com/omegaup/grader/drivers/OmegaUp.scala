@@ -264,6 +264,9 @@ object OmegaUpDriver extends Driver with Log with Using {
               pipeDirectories = true
             )
           ))
+
+          codes += "${interactive.options.moduleName}.${run.language.toString}" -> code
+          codes += mainFile.get.getName -> FileUtil.read(mainFile.get)
         } else {
           throw new FileNotFoundException(
             new File(interactiveRoot, parsedIdl.main.name + ".*").getCanonicalPath)
