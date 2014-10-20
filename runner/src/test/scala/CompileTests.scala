@@ -498,13 +498,13 @@ print 1.0 / (1.0 + (answer - user)**2)
     val parser = new Parser
     val runner = new Runner("test", Minijail)
 
-    val interactive = Some(InteractiveDescription(
-      parser.parse("""
+    val interactive = InteractiveDescription(
+      """
         interface Main {};
         interface summer {
           int summer(int a, int b);
         };
-      """),
+      """,
       Options(
         parentLang = "cpp",
         childLang = "cpp",
@@ -513,7 +513,8 @@ print 1.0 / (1.0 + (answer - user)**2)
         pipeDirectories = true,
         verbose = true
       )
-    ))
+    )
+    val idl = parser.parse(interactive.idlSource)
     val test1 = runner.compile(CompileInputMessage("cpp", List(("summer.cpp", """
       #include "summer.h"
       int summer(int a, int b) {
@@ -528,7 +529,7 @@ print 1.0 / (1.0 + (answer - user)**2)
         scanf("%d %d\n", &a, &b);
         printf("%d\n", summer(a, b));
       }
-    """)), interactive = interactive))
+    """)), interactive = Some(interactive)))
     test1.status should equal ("ok")
     test1.token should not equal None
 
@@ -538,7 +539,11 @@ print 1.0 / (1.0 + (answer - user)**2)
         cases= Some(List(
           new CaseData("three", "1 2\n")
         )),
-        interactive = interactive
+        interactive = Some(InteractiveRuntimeDescription(
+          main = idl.main.name,
+          interfaces = idl.interfaces.map(_.name),
+          options = interactive.options
+        ))
       ),
       NullRunCaseCallback
     )

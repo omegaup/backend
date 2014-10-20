@@ -10,7 +10,7 @@ import org.eclipse.jetty.websocket.servlet._
 import org.eclipse.jetty.websocket.server.WebSocketHandler
 import org.eclipse.jetty.server._
 import org.eclipse.jetty.servlet._
-import net.liftweb.json._
+import net.liftweb.json.Serialization
 import scala.collection.{mutable,immutable}
 import scala.collection.JavaConversions._
 import com.omegaup._
@@ -111,7 +111,7 @@ object Broadcaster extends Object with Runnable with Log with Using {
 			case m: QueuedRun => {
 				m.ctx.broadcastDequeued
 				val run = m.ctx.run
-				implicit val formats = Serialization.formats(NoTypeHints)
+				implicit val formats = OmegaUpSerialization.formats
 
 				if (Config.get("grader.scoreboard_refresh.enable", true)) {
 					m.ctx.trace(EventCategory.GraderRefresh) {

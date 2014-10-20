@@ -3,7 +3,7 @@ package com.omegaup.runner
 import java.io._
 import javax.servlet._
 import javax.servlet.http._
-import net.liftweb.json._
+import net.liftweb.json.Serialization
 import org.eclipse.jetty.server.Request
 import org.eclipse.jetty.server.handler._
 import com.omegaup._
@@ -34,7 +34,7 @@ class OmegaUpRunstreamWriter(outputStream: OutputStream) extends Closeable with 
     if (finalized) return
     debug("Finalizing runstream with {}", message)
     dos.writeBoolean(false)
-    implicit val formats = Serialization.formats(NoTypeHints)
+    implicit val formats = OmegaUpSerialization.formats
     Serialization.write(message, new OutputStreamWriter(dos))
     finalized = true
   }
@@ -175,7 +175,7 @@ object Service extends Object with Log with Using {
                           baseRequest: Request,
                           request: HttpServletRequest,
                           response: HttpServletResponse) = {
-        implicit val formats = Serialization.formats(NoTypeHints)
+        implicit val formats = OmegaUpSerialization.formats
         
         request.getPathInfo() match {
           case "/run/" => lock[Unit](registerThread) ({

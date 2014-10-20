@@ -1,5 +1,7 @@
 package com.omegaup
 
+import com.omegaup.data.OmegaUpSerialization
+
 import java.io._
 import java.net._
 import java.util._
@@ -7,7 +9,7 @@ import java.security.KeyStore
 import java.security.MessageDigest
 import java.security.cert.X509Certificate
 import javax.net.ssl._
-import net.liftweb.json._
+import net.liftweb.json.Serialization
 import org.slf4j.{Logger, LoggerFactory}
 import org.apache.commons.codec.binary.Base64InputStream
 import scala.collection.mutable
@@ -306,7 +308,7 @@ object Https extends Object with Log with Using {
 			URLEncoder.encode(key, "UTF-8") + "=" + URLEncoder.encode(value, "UTF-8")
 		}.mkString("&").getBytes("UTF-8")
 
-		implicit val formats = Serialization.formats(NoTypeHints)
+		implicit val formats = OmegaUpSerialization.formats
 
 		cusing (connect(url, runner)) { conn => {
 			conn.setDoOutput(true)
@@ -323,7 +325,7 @@ object Https extends Object with Log with Using {
   def send[T, W <: AnyRef](url:String, request:W, responseReader: InputStream=>T, runner: Boolean = true)(implicit mf: Manifest[T]):T = {
 		debug("Requesting {}", url)
 		
-		implicit val formats = Serialization.formats(NoTypeHints)
+		implicit val formats = OmegaUpSerialization.formats
 		
 		cusing (connect(url, runner)) { conn => {
 			conn.addRequestProperty("Content-Type", "text/json")
@@ -339,7 +341,7 @@ object Https extends Object with Log with Using {
 	def send[T, W <: AnyRef](url:String, request:W, runner: Boolean = true)(implicit mf: Manifest[T]):T = {
 		debug("Requesting {}", url)
 		
-		implicit val formats = Serialization.formats(NoTypeHints)
+		implicit val formats = OmegaUpSerialization.formats
 		
 		cusing (connect(url, runner)) { conn => {
 			conn.addRequestProperty("Content-Type", "text/json")
@@ -361,7 +363,7 @@ object Https extends Object with Log with Using {
 	def zip_send[T](url:String, inputStream:InputStream, zipSize:Int, zipname:String, runner: Boolean = true)(implicit mf: Manifest[T]): T = {
 		debug("Requesting {}", url)
 		
-		implicit val formats = Serialization.formats(NoTypeHints)
+		implicit val formats = OmegaUpSerialization.formats
 		
 		cusing (connect(url, runner)) { conn => {
 			conn.addRequestProperty("Content-Type", "application/zip")
@@ -381,7 +383,7 @@ object Https extends Object with Log with Using {
 	def stream_send[T](url:String, mimeType: String, filename: String, callback:OutputStream=>Unit, runner: Boolean = true)(implicit mf: Manifest[T]): T = {
 		debug("Requesting {}", url)
 		
-		implicit val formats = Serialization.formats(NoTypeHints)
+		implicit val formats = OmegaUpSerialization.formats
 
 		cusing (connect(url, runner)) { conn => {
 			conn.addRequestProperty("Content-Type", mimeType)
@@ -400,7 +402,7 @@ object Https extends Object with Log with Using {
 	def receive_zip[T, W <: AnyRef](url:String, request:W, file:String, runner: Boolean = true)(implicit mf: Manifest[T]): Option[T] = {
 		debug("Requesting {}", url)
 		
-		implicit val formats = Serialization.formats(NoTypeHints)
+		implicit val formats = OmegaUpSerialization.formats
 
 		cusing (connect(url, runner)) { conn => {
 			conn.addRequestProperty("Content-Type", "text/json")

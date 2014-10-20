@@ -6,7 +6,7 @@ import javax.servlet._
 import javax.servlet.http._
 import org.eclipse.jetty.server.Request
 import org.eclipse.jetty.server.handler._
-import net.liftweb.json._
+import net.liftweb.json.Serialization
 import com.omegaup._
 import com.omegaup.data._
 import com.omegaup.runner._
@@ -222,7 +222,7 @@ object Manager extends Object with Log {
 				request: HttpServletRequest,
 				response: HttpServletResponse
 			): Unit = {
-				implicit val formats = Serialization.formats(NoTypeHints)
+				implicit val formats = OmegaUpSerialization.formats
 				
 				response.setContentType("text/json")
 				

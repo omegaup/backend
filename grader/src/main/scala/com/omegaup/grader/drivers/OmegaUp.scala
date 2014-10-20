@@ -132,7 +132,19 @@ object OmegaUpDriver extends Driver with Log with Using {
         case _ => 10485760
       },
       input = Some(input),
-      interactive = compileMessage.interactive
+      interactive = compileMessage.interactive match {
+        case None => None
+        case Some(interactive) => {
+          val parser = new Parser
+          val idl = parser.parse(interactive.idlSource)
+
+          Some(InteractiveRuntimeDescription(
+            main = idl.main.name,
+            interfaces = idl.interfaces.map(_.name),
+            options = interactive.options
+          ))
+        }
+      }
     )
   
     run.status = Status.Running
@@ -247,25 +259,24 @@ object OmegaUpDriver extends Driver with Log with Using {
       val idlFile = interactiveFiles.find(_.getName.endsWith(".idl"))
 
       if (!idlFile.isEmpty) {
+        val idlSource = FileUtil.read(idlFile.get)
         val parser = new Parser
-        val parsedIdl = parser.parse(FileUtil.read(idlFile.get))
-
+        val parsedIdl = parser.parse(idlSource)
         val mainFile = interactiveFiles.find(
             _.getName.startsWith(parsedIdl.main.name + "."))
 
         if (!mainFile.isEmpty) {
           interactive = Some(InteractiveDescription(
-            parsedIdl,
+            FileUtil.read(idlFile.get),
             Options(
               parentLang = FileUtil.extension(mainFile.get),
               childLang = run.language.toString,
-              command = Command.Generate,
               moduleName = FileUtil.removeExtension(idlFile.get),
               pipeDirectories = true
             )
           ))
 
-          codes += "${interactive.options.moduleName}.${run.language.toString}" -> code
+          codes += s"${interactive.get.options.moduleName}.${run.language.toString}" -> code
           codes += mainFile.get.getName -> FileUtil.read(mainFile.get)
         } else {
           throw new FileNotFoundException(

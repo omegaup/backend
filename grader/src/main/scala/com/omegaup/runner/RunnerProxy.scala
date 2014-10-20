@@ -20,7 +20,7 @@ class OmegaUpRunstreamReader(callback: RunCaseCallback) extends Object with Usin
 				}
 			}
 
-			implicit val formats = Serialization.formats(NoTypeHints)
+			implicit val formats = OmegaUpSerialization.formats
 			Serialization.read[RunOutputMessage](new InputStreamReader(dis))
 		}}
 	}

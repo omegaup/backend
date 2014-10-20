@@ -4,6 +4,7 @@ import com.omegaup.libinteractive.target.Generator
 import com.omegaup.libinteractive.target.OutputFile
 import com.omegaup.libinteractive.target.OutputLink
 import com.omegaup.libinteractive.target.OutputPath
+import com.omegaup.libinteractive.idl.Parser
 
 import java.io._
 import java.nio.file.Files
@@ -168,8 +169,10 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
               child: (String, String),
               interactive: InteractiveDescription): CompileOutputMessage = {
     runDirectory.mkdirs
+    val parser = new Parser
 
-    Generator.generate(interactive.idl, interactive.options,
+    val idl = parser.parse(interactive.idlSource)
+    Generator.generate(idl, interactive.options,
       Paths.get("$parent"), Paths.get("$child")).map(_ match {
         case link: OutputLink => {
           if (link.target.getFileName.toString == "$parent") {
@@ -187,7 +190,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
     )
 
     for ((lang, path, parent) <- targets) {
-      var target = Generator.target(lang, interactive.idl,
+      var target = Generator.target(lang, idl,
           interactive.options, path, parent)
       for (makefile <- target.generateMakefileRules) {
         val runRoot = Paths.get(runDirectory.getCanonicalPath)
@@ -369,17 +372,17 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
             case Some(interactive) => {
               // libinteractive run.
               val runtime = Runtime.getRuntime
-              val main = interactive.idl.main
+              val main = interactive.main
 
               // Create all pipes and mount points
-              for (interface <- interactive.idl.allInterfaces) {
-                new File(binDirectory, s"${interface.name}/${interface.name}_pipes")
+              for (interface <- interactive.interfaces :+ main) {
+                new File(binDirectory, s"${interface}/${interface}_pipes")
                     .mkdir
-                if (interface.name != main.name) {
-                  new File(binDirectory, s"${interface.name}/${main.name}_pipes")
+                if (interface != main) {
+                  new File(binDirectory, s"${interface}/${main}_pipes")
                       .mkdir
                 }
-                val pipeDir = new File(binDirectory, s"${interface.name}_pipes")
+                val pipeDir = new File(binDirectory, s"${interface}_pipes")
                 pipeDir.mkdir
                 pusing (runtime.exec(Array[String](
                     "/usr/bin/mkfifo",
@@ -388,67 +391,67 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
                   _.waitFor
                 }
               }
-              for (interface <- interactive.idl.interfaces) {
-                new File(binDirectory, s"${main.name}/${interface.name}_pipes").mkdir
+              for (interface <- interactive.interfaces) {
+                new File(binDirectory, s"${main}/${interface}_pipes").mkdir
               }
 
               // Simultaneously run all executables.
               val threads = Executors.newFixedThreadPool(
-                  interactive.idl.allInterfaces.length)
+                  interactive.interfaces.length + 1)
               threads.submit(new Runnable() {
                 override def run(): Unit = {
                   sandbox.run(
                     message,
                     interactive.options.parentLang,
-                    chdir = new File(binDirectory, main.name)
+                    chdir = new File(binDirectory, main)
                         .getCanonicalPath,
                     metaFile = s"${casePath}.meta",
                     inputFile = s"${casePath}.in",
                     outputFile = s"${casePath}.out",
-                    errorFile = s"${casePath}_${main.name}.err",
+                    errorFile = s"${casePath}_${main}.err",
                     target = interactive.options.parentLang match {
-                      case "java" => s"${main.name}_entry"
-                      case "py" => main.name  // Parent Python does not need entry
-                      case _ => main.name
+                      case "java" => s"${main}_entry"
+                      case "py" => main  // Parent Python does not need entry
+                      case _ => main
                     },
                     extraMountPoints = List(
-                      (new File(binDirectory, s"${main.name}_pipes")
+                      (new File(binDirectory, s"${main}_pipes")
                           .getCanonicalPath,
-                      s"/home/${main.name}_pipes")
-                    ) ++ interactive.idl.interfaces.map { interface => {
-                      (new File(binDirectory, s"${interface.name}_pipes")
+                      s"/home/${main}_pipes")
+                    ) ++ interactive.interfaces.map { interface => {
+                      (new File(binDirectory, s"${interface}_pipes")
                           .getCanonicalPath,
-                      s"/home/${interface.name}_pipes")
+                      s"/home/${interface}_pipes")
                     }}
                   )
                 }
               })
-              for (interface <- interactive.idl.interfaces) {
+              for (interface <- interactive.interfaces) {
                 threads.submit(new Runnable() {
                   override def run(): Unit = {
                     sandbox.run(
                       message,
                       lang,
-                      chdir = new File(binDirectory, interface.name).getCanonicalPath,
-                      metaFile = s"${casePath}_${interface.name}.meta",
+                      chdir = new File(binDirectory, interface).getCanonicalPath,
+                      metaFile = s"${casePath}_${interface}.meta",
                       inputFile = "/dev/null",
-                      outputFile = s"${casePath}_${interface.name}.out",
-                      errorFile = s"${casePath}_${interface.name}.err",
+                      outputFile = s"${casePath}_${interface}.out",
+                      errorFile = s"${casePath}_${interface}.err",
                       target = lang match {
-                        case "java" => s"${interface.name}_entry"
-                        case "py" => s"${interface.name}_entry"
-                        case _ => interface.name
+                        case "java" => s"${interface}_entry"
+                        case "py" => s"${interface}_entry"
+                        case _ => interface
                       },
                       extraMountPoints = List(
                         (
-                          new File(binDirectory, s"${interface.name}_pipes")
+                          new File(binDirectory, s"${interface}_pipes")
                             .getCanonicalPath,
-                          s"/home/${interface.name}_pipes"
+                          s"/home/${interface}_pipes"
                         ),
                         (
-                          new File(binDirectory, s"${interactive.idl.main.name}_pipes")
+                          new File(binDirectory, s"${main}_pipes")
                             .getCanonicalPath,
-                          s"/home/${interactive.idl.main.name}_pipes"
+                          s"/home/${main}_pipes"
                         )
                       )
                     )
@@ -459,11 +462,11 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
               threads.awaitTermination(Long.MaxValue, TimeUnit.SECONDS)
 
               // Concatenate all output and error files into the one error file.
-              val errorSources = List(new File(s"${casePath}_${main.name}.err")) ++
-                interactive.idl.interfaces.flatMap{ interface => {
+              val errorSources = List(new File(s"${casePath}_${main}.err")) ++
+                interactive.interfaces.flatMap{ interface => {
                   List(
-                    new File(s"${casePath}_${interface.name}.out"),
-                    new File(s"${casePath}_${interface.name}.err")
+                    new File(s"${casePath}_${interface}.out"),
+                    new File(s"${casePath}_${interface}.err")
                   )
                 }}
 
@@ -480,8 +483,8 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
               // Generate the final .meta file.
               val parentMeta = MetaFile.load(s"${casePath}.meta")
 
-              val childrenMetaFiles = interactive.idl.interfaces.map {
-                interface => new File(s"${casePath}_${interface.name}.meta")
+              val childrenMetaFiles = interactive.interfaces.map {
+                interface => new File(s"${casePath}_${interface}.meta")
               }
               val childrenMeta = childrenMetaFiles.map{
                 file => MetaFile.load(file.getCanonicalPath)

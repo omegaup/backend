@@ -6,7 +6,7 @@ import java.util.regex.Pattern
 import scala.collection.Iterator
 import scala.collection.mutable
 import scala.collection.immutable.Map
-import net.liftweb.json._
+import net.liftweb.json.Serialization
 import com.omegaup._
 import com.omegaup.data._
 import Verdict._
@@ -180,7 +180,7 @@ trait Grader extends Object with Log with Using {
 				)
 			}}
 
-			implicit val formats = Serialization.formats(NoTypeHints)
+			implicit val formats = OmegaUpSerialization.formats
 
 			val details = new File(Config.get("grader.root", "./grader") + "/" + run.id + "/details.json")
 			debug("Writing details into {}.", details.getCanonicalPath)
