@@ -5,8 +5,6 @@ import com.omegaup.data._
 import com.omegaup.grader._
 import com.omegaup.libinteractive.idl.IDL
 import com.omegaup.libinteractive.idl.Parser
-import com.omegaup.libinteractive.target.Options
-import com.omegaup.libinteractive.target.Command
 import java.io._
 import java.util.concurrent._
 import java.util.zip.DeflaterOutputStream
@@ -141,7 +139,7 @@ object OmegaUpDriver extends Driver with Log with Using {
           Some(InteractiveRuntimeDescription(
             main = idl.main.name,
             interfaces = idl.interfaces.map(_.name),
-            options = interactive.options
+            parentLang = interactive.parentLang
           ))
         }
       }
@@ -268,15 +266,12 @@ object OmegaUpDriver extends Driver with Log with Using {
         if (!mainFile.isEmpty) {
           interactive = Some(InteractiveDescription(
             FileUtil.read(idlFile.get),
-            Options(
-              parentLang = FileUtil.extension(mainFile.get),
-              childLang = run.language.toString,
-              moduleName = FileUtil.removeExtension(idlFile.get),
-              pipeDirectories = true
-            )
+            parentLang = FileUtil.extension(mainFile.get),
+            childLang = run.language.toString,
+            moduleName = FileUtil.removeExtension(idlFile.get)
           ))
 
-          codes += s"${interactive.get.options.moduleName}.${run.language.toString}" -> code
+          codes += s"${interactive.get.moduleName}.${run.language.toString}" -> code
           codes += mainFile.get.getName -> FileUtil.read(mainFile.get)
         } else {
           throw new FileNotFoundException(

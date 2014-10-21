@@ -46,8 +46,10 @@ class JsonSpec extends FlatSpec with Matchers {
       seed = 0,
       verbose = true
     )
+    val idl = InteractiveDescription(idlSource = "Hello", options = options)
 
-    Serialization.read[Options](Serialization.write(options)) should equal (options)
+    Serialization.read[InteractiveDescription](Serialization.write(idl)) should
+        equal (idl)
   }
 	
 }

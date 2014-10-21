@@ -81,7 +81,8 @@ object OmegaUpSerialization {
 case class RunCaseResult(name: String, status: String, time: Int, memory: Int, output: Option[String] = None, context: Option[String] = None)
 case class CaseData(name: String, data: String)
 
-case class InteractiveDescription(idlSource: String, options: Options)
+case class InteractiveDescription(idlSource: String, parentLang: String,
+    childLang: String, moduleName: String)
 case class CompileInputMessage(lang: String, code: List[(String, String)],
     master_lang: Option[String] = None,
     master_code: Option[List[(String, String)]] = None,
@@ -89,7 +90,7 @@ case class CompileInputMessage(lang: String, code: List[(String, String)],
 case class CompileOutputMessage(status: String = "ok", error: Option[String] = None, token: Option[String] = None)
 
 case class InteractiveRuntimeDescription(main: String, interfaces: List[String],
-    options: Options)
+    parentLang: String)
 case class RunInputMessage(token: String, timeLimit: Float = 1,
   memoryLimit: Int = 65535, outputLimit: Long = 10240, stackLimit: Long = 10485760,
   debug: Boolean = false, input: Option[String] = None,

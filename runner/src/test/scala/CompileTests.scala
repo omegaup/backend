@@ -505,14 +505,9 @@ print 1.0 / (1.0 + (answer - user)**2)
           int summer(int a, int b);
         };
       """,
-      Options(
-        parentLang = "cpp",
-        childLang = "cpp",
-        command = Command.Generate,
-        moduleName = "summer",
-        pipeDirectories = true,
-        verbose = true
-      )
+      parentLang = "cpp",
+      childLang = "cpp",
+      moduleName = "summer"
     )
     val idl = parser.parse(interactive.idlSource)
     val test1 = runner.compile(CompileInputMessage("cpp", List(("summer.cpp", """
@@ -542,7 +537,7 @@ print 1.0 / (1.0 + (answer - user)**2)
         interactive = Some(InteractiveRuntimeDescription(
           main = idl.main.name,
           interfaces = idl.interfaces.map(_.name),
-          options = interactive.options
+          parentLang = interactive.parentLang
         ))
       ),
       NullRunCaseCallback

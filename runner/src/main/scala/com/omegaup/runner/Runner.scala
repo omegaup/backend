@@ -4,6 +4,7 @@ import com.omegaup.libinteractive.target.Generator
 import com.omegaup.libinteractive.target.OutputFile
 import com.omegaup.libinteractive.target.OutputLink
 import com.omegaup.libinteractive.target.OutputPath
+import com.omegaup.libinteractive.target.Options
 import com.omegaup.libinteractive.idl.Parser
 
 import java.io._
@@ -172,7 +173,13 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
     val parser = new Parser
 
     val idl = parser.parse(interactive.idlSource)
-    Generator.generate(idl, interactive.options,
+    val options = Options(
+      parentLang = interactive.parentLang,
+      childLang = interactive.childLang,
+      moduleName = interactive.moduleName,
+      pipeDirectories = true
+    )
+    Generator.generate(idl, options,
       Paths.get("$parent"), Paths.get("$child")).map(_ match {
         case link: OutputLink => {
           if (link.target.getFileName.toString == "$parent") {
@@ -185,13 +192,13 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
       }).foreach(_.install(runDirectory.toPath))
 
     var targets = List(
-      (interactive.options.parentLang, Paths.get("$parent"), true),
-      (interactive.options.childLang, Paths.get("$child"), false)
+      (interactive.parentLang, Paths.get("$parent"), true),
+      (interactive.childLang, Paths.get("$child"), false)
     )
 
     for ((lang, path, parent) <- targets) {
       var target = Generator.target(lang, idl,
-          interactive.options, path, parent)
+          options, path, parent)
       for (makefile <- target.generateMakefileRules) {
         val runRoot = Paths.get(runDirectory.getCanonicalPath)
         val targetRoot = runRoot.resolve(makefile.target.getParent)
@@ -402,14 +409,14 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
                 override def run(): Unit = {
                   sandbox.run(
                     message,
-                    interactive.options.parentLang,
+                    interactive.parentLang,
                     chdir = new File(binDirectory, main)
                         .getCanonicalPath,
                     metaFile = s"${casePath}.meta",
                     inputFile = s"${casePath}.in",
                     outputFile = s"${casePath}.out",
                     errorFile = s"${casePath}_${main}.err",
-                    target = interactive.options.parentLang match {
+                    target = interactive.parentLang match {
                       case "java" => s"${main}_entry"
                       case "py" => main  // Parent Python does not need entry
                       case _ => main
