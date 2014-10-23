@@ -10,7 +10,7 @@ scalaVersion := "2.10.3"
 
 scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature")
 
-lazy val backend = project.in(file(".")).aggregate(runner, grader)
+lazy val backend = project.in(file(".")).aggregate(libinteractive, runner, grader)
 
 lazy val libinteractive = project
 

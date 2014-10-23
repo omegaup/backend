@@ -1,6 +1,7 @@
 package com.omegaup.runner
 
 import com.omegaup.libinteractive.target.Generator
+import com.omegaup.libinteractive.target.InstallVisitor
 import com.omegaup.libinteractive.target.OutputFile
 import com.omegaup.libinteractive.target.OutputLink
 import com.omegaup.libinteractive.target.OutputPath
@@ -179,6 +180,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
       moduleName = interactive.moduleName,
       pipeDirectories = true
     )
+    val installer = new InstallVisitor(runDirectory.toPath, Paths.get(""))
     Generator.generate(idl, options,
       Paths.get("$parent"), Paths.get("$child")).map(_ match {
         case link: OutputLink => {
@@ -189,7 +191,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
           }
         }
         case path: OutputPath => path
-      }).foreach(_.install(runDirectory.toPath))
+      }).foreach(installer.apply)
 
     var targets = List(
       (interactive.parentLang, Paths.get("$parent"), true),
