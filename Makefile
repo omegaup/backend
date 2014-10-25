@@ -4,10 +4,11 @@ RUNNER_SOURCES := $(shell /usr/bin/find runner/src/main -name *.scala)
 GRADER_SOURCES := $(shell /usr/bin/find grader/src/main -name *.scala)
 
 SCALA_VERSION := 2.10
-OMEGAUP_VERSION := 1.1
+OMEGAUP_VERSION :=  $(shell grep '^version' build.sbt | sed -e 's/.*"\(.*\)".*/\1/')
+LIBINTERACTIVE_VERSION := $(shell grep '^version' libinteractive/build.sbt | sed -e 's/.*"\(.*\)".*/\1/')
 RUNNER_JAR := runner/target/scala-$(SCALA_VERSION)/proguard/runner_$(SCALA_VERSION)-$(OMEGAUP_VERSION).jar
 GRADER_JAR := grader/target/scala-$(SCALA_VERSION)/proguard/grader_$(SCALA_VERSION)-$(OMEGAUP_VERSION).jar
-LIBINTERACTIVE_JAR := libinteractive/target/scala-$(SCALA_VERSION)/proguard/libinteractive_$(SCALA_VERSION)-$(OMEGAUP_VERSION).jar
+LIBINTERACTIVE_JAR := libinteractive/target/scala-$(SCALA_VERSION)/proguard/libinteractive_$(SCALA_VERSION)-$(LIBINTERACTIVE_VERSION).jar
 
 all: ../bin/grader.jar ../bin/runner.jar ../bin/libinteractive.jar
 
