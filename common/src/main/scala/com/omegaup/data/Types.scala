@@ -8,6 +8,7 @@ object Validator extends Enumeration {
 	val  TokenCaseless = Value(2, "token-caseless")
 	val  TokenNumeric = Value(3, "token-numeric")
 	val  Custom = Value(4, "custom")
+	val  Literal = Value(5, "literal")
 }
 
 object Server extends Enumeration {

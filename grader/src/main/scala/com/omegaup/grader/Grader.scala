@@ -143,8 +143,8 @@ trait Grader extends Object with Log with Using {
 							val rawScore = gradeCase(
 								run,
 								name,
-								new File(Config.get("problems.root", "./problems"), alias + "/cases/out/" + f.getName.replace(".meta", ".out")),
 								new File(f.getCanonicalPath.replace(".meta", ".out")),
+								new File(Config.get("problems.root", "./problems"), alias + "/cases/out/" + f.getName.replace(".meta", ".out")),
 								metas(name)._2
 							)
 
@@ -226,6 +226,21 @@ object CustomGrader extends Grader {
 	override def gradeCase(run: Run, caseName: String, runOut: File, problemOut: File, meta: scala.collection.Map[String,String]): Double = {
 		if (meta.contains("score")) {
 			meta("score").toDouble
+		} else {
+			0.0
+		}
+	}
+}
+
+object LiteralGrader extends Grader {
+	override def gradeCase(run: Run, caseName: String, runOut: File, problemOut: File, meta: scala.collection.Map[String,String]): Double = {
+		val score = (if (runOut.exists) {
+			FileUtil.read(runOut).trim
+		} else {
+			""
+		})
+		if (score != "") {
+			Math.max(0.0, Math.min(1.0, score.toDouble))
 		} else {
 			0.0
 		}

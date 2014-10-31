@@ -201,6 +201,7 @@ object OmegaUpDriver extends Driver with Log with Using {
     ctx.trace(EventCategory.Grade) {
       run.problem.validator match {
         case Validator.Custom => CustomGrader.grade(ctx, run)
+        case Validator.Literal => LiteralGrader.grade(ctx, run)
         case Validator.Token => TokenGrader.grade(ctx, run)
         case Validator.TokenCaseless => TokenCaselessGrader.grade(ctx, run)
         case Validator.TokenNumeric => TokenNumericGrader.grade(ctx, run)
@@ -260,8 +261,10 @@ object OmegaUpDriver extends Driver with Log with Using {
         val idlSource = FileUtil.read(idlFile.get)
         val parser = new Parser
         val parsedIdl = parser.parse(idlSource)
-        val mainFile = interactiveFiles.find(
-            _.getName.startsWith(parsedIdl.main.name + "."))
+        val mainFile = interactiveFiles.find(file => {
+          file.getName.startsWith(parsedIdl.main.name + ".") &&
+          !file.getName.contains(".distrib.")
+        })
 
         if (!mainFile.isEmpty) {
           interactive = Some(InteractiveDescription(
