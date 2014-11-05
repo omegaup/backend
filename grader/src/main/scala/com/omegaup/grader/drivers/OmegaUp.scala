@@ -92,7 +92,7 @@ object OmegaUpDriver extends Driver with Log with Using {
     Manager.updateVerdict(ctx, run)
 
     val code = FileUtil.read(Config.get("submissions.root", "submissions") + "/" + run.guid)
-    val compileMessage = createCompileMessage(run, code)
+    val compileMessage = createCompileMessage(ctx, run, code)
     val output = ctx.trace(EventCategory.Compile) {
       ctx.service.compile(compileMessage)
     }
@@ -211,7 +211,8 @@ object OmegaUpDriver extends Driver with Log with Using {
   }
 
   @throws(classOf[FileNotFoundException])
-  private def createCompileMessage(run: Run, code: String): CompileInputMessage = {
+  private def createCompileMessage(ctx: RunContext, run: Run, code: String):
+      CompileInputMessage = {
     var validatorLang: Option[String] = None
     var validatorCode: Option[List[(String, String)]] = None
 
@@ -312,6 +313,7 @@ object OmegaUpDriver extends Driver with Log with Using {
                             codes.result,
                             validatorLang,
                             validatorCode,
-                            interactive)
+                            interactive,
+                            ctx.debug)
   }
 }

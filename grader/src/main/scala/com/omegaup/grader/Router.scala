@@ -438,16 +438,19 @@ object RunnerDispatcher extends ServiceInterface with Log {
 		while (!runnerQueue.isEmpty) {
 			debug("But there's enough to run something!")
 			val queue = selectRunQueueLocked
-			if (queue.isEmpty) return
-			runLocked(runnerQueue.dequeue, runQueue(queue.get).dequeue)
+			if (queue.isEmpty) {
+				debug("But there is nothing to run it on")
+				return
+			}
+			runLocked(runnerQueue.dequeue, queue.get.dequeue)
 		}
 	}
 
-	private def selectRunQueueLocked(): Option[Integer] = {
-		val canScheduleSlowRun = 100 * slowRuns < slowThreshold * registeredEndpoints.size
+	private def selectRunQueueLocked(): Option[scala.collection.mutable.Queue[RunContext]] = {
+		val canScheduleSlowRun = slowRuns == 0 || 100 * slowRuns < slowThreshold * registeredEndpoints.size
 		for (i <- 0 until runQueue.length) {
 			if (!runQueue(i).isEmpty && (i % 2 == 0 || canScheduleSlowRun)) {
-				return Some(i)
+				return Some(runQueue(i))
 			}
 		}
 		return None

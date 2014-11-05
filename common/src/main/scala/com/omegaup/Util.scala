@@ -129,42 +129,47 @@ object Logging extends Object with Log {
 
 		val rootLogger = LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME).asInstanceOf[Logger]
 
+		val logLevel = Config.get("logging.level", "info") match {
+			case "all" => TRACE
+			case "finest" => TRACE
+			case "finer" => TRACE
+			case "trace" => TRACE
+			case "fine" => DEBUG
+			case "config" => DEBUG
+			case "debug" => DEBUG
+			case "info" => INFO
+			case "warn" => WARN
+			case "warning" => WARN
+			case "error" => ERROR
+			case "severe" => ERROR
+		}
+
 		createAppender(rootLogger, Config.get("logging.file", ""), new Filter[ILoggingEvent]() {
-				override def decide(event: ILoggingEvent): FilterReply = {
-					val throwable = event.getThrowableProxy()
+			override def decide(event: ILoggingEvent): FilterReply = {
+				val throwable = event.getThrowableProxy()
 
-					if (throwable == null) {
-						FilterReply.ACCEPT
-					} else {
-						val message = throwable.getClassName
+				// Jetty is too verbose in DEBUG.
+				if (event.getLoggerName.startsWith("org.eclipse.jetty") &&
+						event.getLevel == DEBUG && logLevel.isGreaterOrEqual(TRACE)) {
+					return FilterReply.DENY
+				}
 
-						if (message.contains("java.nio.channels.ClosedChannelException") ||
-							message.contains("org.mortbay.jetty.EofException")
-						) {
-						FilterReply.DENY
-					} else {
-						FilterReply.ACCEPT
+				// These exceptions seem benign and clutter up the logs as well.
+				if (throwable != null) {
+					val message = throwable.getClassName
+
+					if (message.contains("java.nio.channels.ClosedChannelException") ||
+						message.contains("org.mortbay.jetty.EofException")
+					) {
+						return FilterReply.DENY
 					}
 				}
+
+				FilterReply.NEUTRAL
 			}
 		})
 
-		rootLogger.setLevel(
-			Config.get("logging.level", "info") match {
-				case "all" => TRACE
-				case "finest" => TRACE
-				case "finer" => TRACE
-				case "trace" => TRACE
-				case "fine" => DEBUG
-				case "config" => DEBUG
-				case "debug" => DEBUG
-				case "info" => INFO
-				case "warn" => WARN
-				case "warning" => WARN
-				case "error" => ERROR
-				case "severe" => ERROR
-			}
-		)
+		rootLogger.setLevel(logLevel)
 
 		val perfLog = Config.get("logging.perf.file", "")
 		if (perfLog != "") {

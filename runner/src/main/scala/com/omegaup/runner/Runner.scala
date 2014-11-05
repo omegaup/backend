@@ -169,7 +169,8 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
   def compile(runDirectory: File,
               parent: (String, String),
               child: (String, String),
-              interactive: InteractiveDescription): CompileOutputMessage = {
+              interactive: InteractiveDescription,
+              debug: Boolean): CompileOutputMessage = {
     runDirectory.mkdirs
     val parser = new Parser
 
@@ -277,7 +278,13 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
       case None =>
         compile(new File(runRoot, "bin"), message.lang, message.code, "compile error")
       case Some(interactive) =>
-        compile(new File(runRoot, "bin"), message.code(1), message.code(0), interactive)
+        compile(
+          new File(runRoot, "bin"),
+          message.code(1),
+          message.code(0),
+          interactive,
+          message.debug
+        )
     }
   }
 
@@ -423,6 +430,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
                       case "py" => main  // Parent Python does not need entry
                       case _ => main
                     },
+                    // Mount all the named pipe directories.
                     extraMountPoints = List(
                       (new File(binDirectory, s"${main}_pipes")
                           .getCanonicalPath,
@@ -431,7 +439,11 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
                       (new File(binDirectory, s"${interface}_pipes")
                           .getCanonicalPath,
                       s"/home/${interface}_pipes")
-                    }}
+                    }},
+                    // Pass in the name of the case (without extension) as the first
+                    // parameter in case the problemsetter program is also acting as
+                    // validator.
+                    extraParams = List(new File(casePath).getName)
                   )
                 }
               })
@@ -451,6 +463,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
                         case "py" => s"${interface}_entry"
                         case _ => interface
                       },
+                      // Mount all the named pipe directories.
                       extraMountPoints = List(
                         (
                           new File(binDirectory, s"${interface}_pipes")

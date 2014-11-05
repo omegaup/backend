@@ -86,7 +86,8 @@ case class InteractiveDescription(idlSource: String, parentLang: String,
 case class CompileInputMessage(lang: String, code: List[(String, String)],
     master_lang: Option[String] = None,
     master_code: Option[List[(String, String)]] = None,
-    interactive: Option[InteractiveDescription] = None)
+    interactive: Option[InteractiveDescription] = None,
+    debug: Boolean = false)
 case class CompileOutputMessage(status: String = "ok", error: Option[String] = None, token: Option[String] = None)
 
 case class InteractiveRuntimeDescription(main: String, interfaces: List[String],
