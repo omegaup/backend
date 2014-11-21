@@ -372,190 +372,32 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
           }
         })
 
+        val timeLimiter = new OverallRunTimeLimiter(
+          message.overallWallTimeLimit)
         for (casePath <- casePaths) {
-          message.interactive match {
-            case None => {
-              // Do a normal run.
-              sandbox.run(message,
-                          lang,
-                          chdir = binDirectory.getCanonicalPath,
-                          metaFile = casePath + ".meta",
-                          inputFile = casePath + ".in",
-                          outputFile = casePath + ".out",
-                          errorFile = casePath + ".err"
-              )
-            }
-            case Some(interactive) => {
-              // libinteractive run.
-              val runtime = Runtime.getRuntime
-              val main = interactive.main
-
-              // Create all pipes and mount points
-              for (interface <- interactive.interfaces :+ main) {
-                new File(binDirectory, s"${interface}/${interface}_pipes")
-                    .mkdir
-                if (interface != main) {
-                  new File(binDirectory, s"${interface}/${main}_pipes")
-                      .mkdir
-                }
-                val pipeDir = new File(binDirectory, s"${interface}_pipes")
-                pipeDir.mkdir
-                pusing (runtime.exec(Array[String](
-                    "/usr/bin/mkfifo",
-                    new File(pipeDir, "pipe").getCanonicalPath))
-                ) {
-                  _.waitFor
-                }
-              }
-              for (interface <- interactive.interfaces) {
-                new File(binDirectory, s"${main}/${interface}_pipes").mkdir
-              }
-
-              // Simultaneously run all executables.
-              val threads = Executors.newFixedThreadPool(
-                  interactive.interfaces.length + 1)
-              threads.submit(new Runnable() {
-                override def run(): Unit = {
-                  sandbox.run(
-                    message,
-                    interactive.parentLang,
-                    chdir = new File(binDirectory, main)
-                        .getCanonicalPath,
-                    metaFile = s"${casePath}.meta",
-                    inputFile = s"${casePath}.in",
-                    outputFile = s"${casePath}.out",
-                    errorFile = s"${casePath}_${main}.err",
-                    target = interactive.parentLang match {
-                      case "java" => s"${main}_entry"
-                      case "py" => main  // Parent Python does not need entry
-                      case _ => main
-                    },
-                    // Mount all the named pipe directories.
-                    extraMountPoints = List(
-                      (new File(binDirectory, s"${main}_pipes")
-                          .getCanonicalPath,
-                      s"/home/${main}_pipes")
-                    ) ++ interactive.interfaces.map { interface => {
-                      (new File(binDirectory, s"${interface}_pipes")
-                          .getCanonicalPath,
-                      s"/home/${interface}_pipes")
-                    }},
-                    // Pass in the name of the case (without extension) as the first
-                    // parameter in case the problemsetter program is also acting as
-                    // validator.
-                    extraParams = List(new File(casePath).getName)
-                  )
-                }
-              })
-              for (interface <- interactive.interfaces) {
-                threads.submit(new Runnable() {
-                  override def run(): Unit = {
-                    sandbox.run(
-                      message,
-                      lang,
-                      chdir = new File(binDirectory, interface).getCanonicalPath,
-                      metaFile = s"${casePath}_${interface}.meta",
-                      inputFile = "/dev/null",
-                      outputFile = s"${casePath}_${interface}.out",
-                      errorFile = s"${casePath}_${interface}.err",
-                      target = lang match {
-                        case "java" => s"${interface}_entry"
-                        case "py" => s"${interface}_entry"
-                        case _ => interface
-                      },
-                      // Mount all the named pipe directories.
-                      extraMountPoints = List(
-                        (
-                          new File(binDirectory, s"${interface}_pipes")
-                            .getCanonicalPath,
-                          s"/home/${interface}_pipes"
-                        ),
-                        (
-                          new File(binDirectory, s"${main}_pipes")
-                            .getCanonicalPath,
-                          s"/home/${main}_pipes"
-                        )
-                      )
-                    )
-                  }
-                })
-              }
-              threads.shutdown
-              threads.awaitTermination(Long.MaxValue, TimeUnit.SECONDS)
-
-              // Concatenate all output and error files into the one error file.
-              val errorSources = List(new File(s"${casePath}_${main}.err")) ++
-                interactive.interfaces.flatMap{ interface => {
-                  List(
-                    new File(s"${casePath}_${interface}.out"),
-                    new File(s"${casePath}_${interface}.err")
-                  )
-                }}
-
-              using (new PrintWriter(new FileWriter(s"${casePath}.err"))) { err => {
-                for (src <- errorSources) {
-                  err.println(src.getName)
-                  err.println("=" * src.getName.length)
-                  err.println(FileUtil.read(src))
-                  err.println
-                  src.delete
-                }
-              }}
-
-              // Generate the final .meta file.
-              val parentMeta = MetaFile.load(s"${casePath}.meta")
-
-              val childrenMetaFiles = interactive.interfaces.map {
-                interface => new File(s"${casePath}_${interface}.meta")
-              }
-              val childrenMeta = childrenMetaFiles.map{
-                file => MetaFile.load(file.getCanonicalPath)
-              }
-              childrenMetaFiles.foreach(_.delete)
-              var time = 0.0
-              var timeWall = 0.0
-              var mem = 0L
-              var chosenMeta: Option[scala.collection.Map[String, String]] = None
-
-              for (child <- childrenMeta) {
-                if (child("status") != "OK" && chosenMeta.isEmpty) {
-                  chosenMeta = Some(child)
-                }
-
-                if (child.contains("time")) {
-                  time += child("time").toDouble
-                }
-                if (child.contains("time-wall")) {
-                  timeWall = Math.max(timeWall, child("time-wall").toDouble)
-                }
-                if (child.contains("mem")) {
-                  mem = Math.max(mem, child("mem").toLong)
-                }
-              }
-
-              val childMeta = (chosenMeta match {
-                case None => scala.collection.Map[String, String](
-                  "status" -> "OK",
-                  "return" -> "0"
+          timeLimiter.run(casePath) {
+            message.interactive match {
+              case None => {
+                // Do a normal run.
+                sandbox.run(
+                  message,
+                  lang,
+                  chdir = binDirectory.getCanonicalPath,
+                  metaFile = casePath + ".meta",
+                  inputFile = casePath + ".in",
+                  outputFile = casePath + ".out",
+                  errorFile = casePath + ".err"
                 )
-                case Some(chosen) => chosen
-              }) ++ List(
-                "time" -> time.toString,
-                "time-wall" -> timeWall.toString,
-                "mem" -> mem.toString
-              )
-
-              val finalMeta = (
-                if (childMeta("status") == "OK" && parentMeta("status") != "OK") {
-                  error("Child processes finished correctly, but parent did not {}",
-                    parentMeta)
-                  parentMeta + ("status" -> "JE")
-                } else {
-                  childMeta
-                }
-              )
-
-              MetaFile.save(s"${casePath}.meta", finalMeta)
+              }
+              case Some(interactive) => {
+                interactiveRun(
+                  message,
+                  interactive,
+                  lang,
+                  binDirectory,
+                  casePath
+                )
+              }
             }
           }
 
@@ -568,6 +410,178 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
       
       new RunOutputMessage()
     }
+  }
+
+  def interactiveRun(message: RunInputMessage, interactive: InteractiveRuntimeDescription, lang: String, binDirectory: File, casePath: String) = {
+    val runtime = Runtime.getRuntime
+    val main = interactive.main
+
+    // Create all pipes and mount points
+    for (interface <- interactive.interfaces :+ main) {
+      new File(binDirectory, s"${interface}/${interface}_pipes")
+          .mkdir
+      if (interface != main) {
+        new File(binDirectory, s"${interface}/${main}_pipes")
+            .mkdir
+      }
+      val pipeDir = new File(binDirectory, s"${interface}_pipes")
+      pipeDir.mkdir
+      pusing (runtime.exec(Array[String](
+          "/usr/bin/mkfifo",
+          new File(pipeDir, "pipe").getCanonicalPath))
+      ) {
+        _.waitFor
+      }
+    }
+    for (interface <- interactive.interfaces) {
+      new File(binDirectory, s"${main}/${interface}_pipes").mkdir
+    }
+
+    // Simultaneously run all executables.
+    val threads = Executors.newFixedThreadPool(
+        interactive.interfaces.length + 1)
+    threads.submit(new Runnable() {
+      override def run(): Unit = {
+        sandbox.run(
+          message,
+          interactive.parentLang,
+          chdir = new File(binDirectory, main)
+              .getCanonicalPath,
+          metaFile = s"${casePath}.meta",
+          inputFile = s"${casePath}.in",
+          outputFile = s"${casePath}.out",
+          errorFile = s"${casePath}_${main}.err",
+          target = interactive.parentLang match {
+            case "java" => s"${main}_entry"
+            case "py" => main  // Parent Python does not need entry
+            case _ => main
+          },
+          // Mount all the named pipe directories.
+          extraMountPoints = List(
+            (new File(binDirectory, s"${main}_pipes")
+                .getCanonicalPath,
+            s"/home/${main}_pipes")
+          ) ++ interactive.interfaces.map { interface => {
+            (new File(binDirectory, s"${interface}_pipes")
+                .getCanonicalPath,
+            s"/home/${interface}_pipes")
+          }},
+          // Pass in the name of the case (without extension) as the first
+          // parameter in case the problemsetter program is also acting as
+          // validator.
+          extraParams = List(new File(casePath).getName)
+        )
+      }
+    })
+    for (interface <- interactive.interfaces) {
+      threads.submit(new Runnable() {
+        override def run(): Unit = {
+          sandbox.run(
+            message,
+            lang,
+            chdir = new File(binDirectory, interface).getCanonicalPath,
+            metaFile = s"${casePath}_${interface}.meta",
+            inputFile = "/dev/null",
+            outputFile = s"${casePath}_${interface}.out",
+            errorFile = s"${casePath}_${interface}.err",
+            target = lang match {
+              case "java" => s"${interface}_entry"
+              case "py" => s"${interface}_entry"
+              case _ => interface
+            },
+            // Mount all the named pipe directories.
+            extraMountPoints = List(
+              (
+                new File(binDirectory, s"${interface}_pipes")
+                  .getCanonicalPath,
+                s"/home/${interface}_pipes"
+              ),
+              (
+                new File(binDirectory, s"${main}_pipes")
+                  .getCanonicalPath,
+                s"/home/${main}_pipes"
+              )
+            )
+          )
+        }
+      })
+    }
+    threads.shutdown
+    threads.awaitTermination(Long.MaxValue, TimeUnit.SECONDS)
+
+    // Concatenate all output and error files into the one error file.
+    val errorSources = List(new File(s"${casePath}_${main}.err")) ++
+      interactive.interfaces.flatMap{ interface => {
+        List(
+          new File(s"${casePath}_${interface}.out"),
+          new File(s"${casePath}_${interface}.err")
+        )
+      }}
+
+    using (new PrintWriter(new FileWriter(s"${casePath}.err"))) { err => {
+      for (src <- errorSources) {
+        err.println(src.getName)
+        err.println("=" * src.getName.length)
+        err.println(FileUtil.read(src))
+        err.println
+        src.delete
+      }
+    }}
+
+    // Generate the final .meta file.
+    val parentMeta = MetaFile.load(s"${casePath}.meta")
+
+    val childrenMetaFiles = interactive.interfaces.map {
+      interface => new File(s"${casePath}_${interface}.meta")
+    }
+    val childrenMeta = childrenMetaFiles.map{
+      file => MetaFile.load(file.getCanonicalPath)
+    }
+    childrenMetaFiles.foreach(_.delete)
+    var time = 0.0
+    var timeWall = 0.0
+    var mem = 0L
+    var chosenMeta: Option[scala.collection.Map[String, String]] = None
+
+    for (child <- childrenMeta) {
+      if (child("status") != "OK" && chosenMeta.isEmpty) {
+        chosenMeta = Some(child)
+      }
+
+      if (child.contains("time")) {
+        time += child("time").toDouble
+      }
+      if (child.contains("time-wall")) {
+        timeWall = Math.max(timeWall, child("time-wall").toDouble)
+      }
+      if (child.contains("mem")) {
+        mem = Math.max(mem, child("mem").toLong)
+      }
+    }
+
+    val childMeta = (chosenMeta match {
+      case None => scala.collection.Map[String, String](
+        "status" -> "OK",
+        "return" -> "0"
+      )
+      case Some(chosen) => chosen
+    }) ++ List(
+      "time" -> time.toString,
+      "time-wall" -> timeWall.toString,
+      "mem" -> mem.toString
+    )
+
+    val finalMeta = (
+      if (childMeta("status") == "OK" && parentMeta("status") != "OK") {
+        error("Child processes finished correctly, but parent did not {}",
+          parentMeta)
+        parentMeta + ("status" -> "JE")
+      } else {
+        childMeta
+      }
+    )
+
+    MetaFile.save(s"${casePath}.meta", finalMeta)
   }
 
   def process(message: RunInputMessage, runDirectory: File, casesDirectory: File, lang: String,
@@ -695,6 +709,34 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
         FileUtil.deleteDirectory(inputDirectory)
         throw e
       }
+    }
+  }
+}
+
+class OverallRunTimeLimiter(limit: Option[Long]) {
+  var wall_msecs: Long = 0
+
+  def run(casePath: String) (f: => Unit) = {
+    if (wall_msecs < limit.getOrElse(Long.MaxValue)) {
+      val t0 = System.currentTimeMillis
+      try {
+        f
+      } finally {
+        val t1 = System.currentTimeMillis
+        wall_msecs += Math.max(0, t1 - t0)
+      }
+    }
+
+    if (wall_msecs >= limit.getOrElse(Long.MaxValue)) {
+      val meta = scala.collection.Map[String, String](
+        "status" -> "TO",
+        "time" -> "0.0",
+        "time-wall" -> "0.0",
+        "mem" -> "0",
+        "overall-wall-time-exceeded" -> "true"
+      )
+
+      MetaFile.save(casePath + ".meta", meta)
     }
   }
 }

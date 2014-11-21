@@ -127,6 +127,22 @@ class CompileSpec extends FlatSpec with Matchers with CaseMatchers
     ))
   }
 
+  def runTestWithCustomMessage(message: CompileInputMessage,
+      runInputMessage: RunInputMessage,
+      cases: ((String, String), CaseResult => Unit)*) (implicit runner: Runner) = {
+    val compileOutput = runner.compile(message)
+
+    compileOutput.status should equal ("ok")
+    compileOutput.token should not equal None
+
+    runner.run(runInputMessage.copy(
+      token = compileOutput.token.get,
+      cases = Some(cases.map(c => new CaseData(c._1._1, c._1._2)).toList)
+    ), new CallbackListener(
+      cases.map(c => c._1._1 -> c._2).toMap
+    ))
+  }
+
   "Compile error" should "be correctly handled" in {
     implicit val runner = new Runner("test", Minijail)
 
@@ -328,6 +344,22 @@ class CompileSpec extends FlatSpec with Matchers with CaseMatchers
       // ("ole", "4") -> { _ should be (OutputLimitExceeded) },
       ("segfault", "5") -> { _ should be (RuntimeError) },
       ("zerodiv", "6") -> { _ should be (RuntimeError) }
+    )
+
+    runTestWithCustomMessage(
+      CompileInputMessage("java", List(("Main.java", """
+        import java.io.*;
+        import java.util.*;
+        class Main {
+          public static void main(String[] args) throws Exception {
+            Thread.sleep(700);
+            System.out.println("OK");
+          }
+        }
+      """))),
+      RunInputMessage(null, overallWallTimeLimit = Some(1000)),
+      ("ok", "") -> { _ should be (OK("OK")) },
+      ("tle", "") -> { _ should be (TimeLimitExceeded) }
     )
   }
 

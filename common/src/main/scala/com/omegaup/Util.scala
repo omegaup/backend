@@ -445,12 +445,26 @@ object FileUtil extends Object with Using {
 	def read(file: File): String = {
 		val contents = new StringBuffer
 		var ch: Int = 0
-		
+
 		using (new FileReader(file)) { fileReader => {
 			while( {ch = fileReader.read(); ch != -1} ) {
 				contents.appendCodePoint(ch)
 			}
-		
+
+			contents.toString.trim
+		}}
+	}
+
+	@throws(classOf[IOException])
+	def read(stream: InputStream) = {
+		val contents = new StringBuffer
+		var ch: Int = 0
+
+		using (new InputStreamReader(stream)) { reader => {
+			while( {ch = reader.read(); ch != -1} ) {
+				contents.appendCodePoint(ch)
+			}
+
 			contents.toString.trim
 		}}
 	}

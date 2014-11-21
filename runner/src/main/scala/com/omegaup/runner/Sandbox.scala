@@ -201,10 +201,10 @@ object Minijail extends Object with Sandbox with Log with Using {
     val scripts = Config.get("runner.minijail.path", ".") + "/scripts"
     val runtime = Runtime.getRuntime
 
-    var timeLimit = message.timeLimit
-    if (lang == "java") {
-      timeLimit += 1
-    }
+    val timeLimit = message.timeLimit + (lang match {
+      case "java" => 1000
+      case _ => 0
+    })
 
     val commonParams = List(
       "-C", Config.get("runner.minijail.path", ".") + "/root",
@@ -214,7 +214,7 @@ object Minijail extends Object with Sandbox with Log with Using {
       "-1", outputFile,
       "-2", errorFile,
       "-M", metaFile,
-      "-t", (timeLimit * 1000).toInt.toString,
+      "-t", timeLimit.toString,
       "-O", message.outputLimit.toString,
       "-k", message.stackLimit.toString
     ) ++ extraMountPoints.flatMap { case (path, target) => {

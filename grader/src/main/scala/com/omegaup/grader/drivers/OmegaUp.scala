@@ -114,9 +114,10 @@ object OmegaUpDriver extends Driver with Log with Using {
       output.token.get,
       debug = ctx.debug,
       timeLimit = run.problem.time_limit match {
-        case Some(x) => x / 1000.0f
-        case _ => 1.0f
+        case Some(x) => x
+        case _ => 1000
       },
+      overallWallTimeLimit = run.problem.overall_wall_time_limit,
       memoryLimit = run.problem.memory_limit match {
         case Some(x) => x.toInt
         case _ => 65535

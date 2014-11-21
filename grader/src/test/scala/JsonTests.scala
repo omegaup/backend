@@ -33,23 +33,4 @@ class JsonSpec extends FlatSpec with Matchers {
       Serialization.read[RandomObject]("""/""")
     }
 	}
-
-  "libinteractive objects" should "be serializable" in {
-		implicit val formats = OmegaUpSerialization.formats
-    val parser = new Parser
-
-    val options = Options(
-      parentLang = "cpp",
-      childLang = "cpp",
-      moduleName = "summer",
-      pipeDirectories = true,
-      seed = 0,
-      verbose = true
-    )
-    val idl = InteractiveDescription(idlSource = "Hello", options = options)
-
-    Serialization.read[InteractiveDescription](Serialization.write(idl)) should
-        equal (idl)
-  }
-	
 }

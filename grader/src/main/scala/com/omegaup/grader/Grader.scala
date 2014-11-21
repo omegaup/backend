@@ -92,6 +92,10 @@ trait Grader extends Object with Log with Using {
 		}
 
 		metas.values.foreach { case (f, meta) => {
+			if (meta.contains("overall-wall-time-exceeded") &&
+			    !run.problem.overall_wall_time_limit.isEmpty) {
+				run.runtime = run.problem.overall_wall_time_limit.get
+			}
 			if (meta.contains("time")) {
 				run.runtime += math.round(1000 * meta("time").toDouble)
 			}
@@ -123,6 +127,11 @@ trait Grader extends Object with Log with Using {
 				} else if(run.verdict < v) run.verdict = v
 			} else if(run.verdict < v) run.verdict = v
 		}}
+
+		if (!run.problem.overall_wall_time_limit.isEmpty &&
+		    run.runtime > run.problem.overall_wall_time_limit.get) {
+			run.runtime = run.problem.overall_wall_time_limit.get
+		}
 		
 		if (run.verdict == Verdict.JudgeError) {
 			run.runtime = 0
