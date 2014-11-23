@@ -354,7 +354,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
           }
         }
       } else {
-        val casePaths = (if(casesDirectory != null) {
+        val casePaths = ((if(casesDirectory != null) {
           casesDirectory.listFiles.toList.filter {_.getName.endsWith(".in")} .map { x => {
             new File(casesDirectory, FileUtil.removeExtension(x.getName))
               .getCanonicalPath
@@ -370,7 +370,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
               casePath
             }}
           }
-        })
+        })).sortWith(numericSort)
 
         val timeLimiter = new OverallRunTimeLimiter(
           message.overallWallTimeLimit)
@@ -710,6 +710,37 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
         throw e
       }
     }
+  }
+
+  private def numericSort(a: String, b: String): Boolean = {
+    var i = 0
+    var j = 0
+
+    while (i < a.length && j < b.length) {
+      if (Character.isDigit(a(i)) && Character.isDigit(b(j))) {
+        var x = 0L
+        while (i < a.length && Character.isDigit(a(i))) {
+          x = x * 10 + Character.getNumericValue(a(i))
+          i += 1
+        }
+        var y = 0L
+        while (j < b.length && Character.isDigit(b(j))) {
+          y = y * 10 + Character.getNumericValue(b(j))
+          j += 1
+        }
+        if (x != y) {
+          return x < y;
+        }
+      } else {
+        if (a(i) != b(j)) {
+          return a(i) < b(j);
+        }
+        i += 1
+        j += 1
+      }
+    }
+
+    return j < b.length
   }
 }
 
