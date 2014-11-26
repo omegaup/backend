@@ -591,7 +591,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
     var addedOut = false
   
     if(meta("status") == "OK") {
-      val validatorDirectory = new File(runDirectory.getCanonicalPath + "/validator")
+      val validatorDirectory = new File(runDirectory, "validator")
       if (validatorDirectory.exists) {
         val caseName = FileUtil.removeExtension(metaFile.getName)
         val caseFile = new File(validatorDirectory, caseName).getCanonicalPath;
@@ -600,10 +600,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
           inputFile = new File(casesDirectory, caseName + ".in")
         }
         
-        val validator_lang =
-          using (new BufferedReader(new FileReader(new File(validatorDirectory, "lang")))) {
-            reader => reader.readLine
-          }
+        val validator_lang = FileUtil.read(new File(validatorDirectory, "lang"))
 
         sandbox.run(message,
                     validator_lang,
