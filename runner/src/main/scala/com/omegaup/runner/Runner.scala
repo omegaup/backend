@@ -575,7 +575,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
       if (childMeta("status") == "OK" && parentMeta("status") != "OK") {
         error("Child processes finished correctly, but parent did not {}",
           parentMeta)
-        parentMeta + ("status" -> "JE")
+        parentMeta + ("status" -> "JE") + ("error" -> "Child process finished correctly, but parent did not")
       } else {
         childMeta
       }
@@ -629,8 +629,8 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
           }}
         } catch {
           case e: Exception => {
-            error("validador", caseFile + ".out", e)
-            List(("status", "JE"))
+            error("validador " + caseFile + ".out", e)
+            List(("status", "JE"), ("error", "file `validator/" + caseName + ".out' missing or empty"))
           }
         }
         
