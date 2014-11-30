@@ -93,7 +93,7 @@ case class CompileOutputMessage(status: String = "ok", error: Option[String] = N
 case class InteractiveRuntimeDescription(main: String, interfaces: List[String],
     parentLang: String)
 case class RunInputMessage(token: String, timeLimit: Long = 1000,
-  overallWallTimeLimit: Option[Long] = None, memoryLimit: Int = 65535,
+  overallWallTimeLimit: Long = 60000, memoryLimit: Int = 65535,
   outputLimit: Long = 10240, stackLimit: Long = 10485760,
   debug: Boolean = false, input: Option[String] = None,
   cases: Option[List[CaseData]] = None,

@@ -117,7 +117,10 @@ object OmegaUpDriver extends Driver with Log with Using {
         case Some(x) => x
         case _ => 1000
       },
-      overallWallTimeLimit = run.problem.overall_wall_time_limit,
+      overallWallTimeLimit = run.problem.overall_wall_time_limit match {
+        case Some(x) => x
+        case _ => 60000
+      },
       memoryLimit = run.problem.memory_limit match {
         case Some(x) => x.toInt
         case _ => 65535

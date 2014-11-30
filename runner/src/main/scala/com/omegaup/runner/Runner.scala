@@ -741,11 +741,11 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
   }
 }
 
-class OverallRunTimeLimiter(limit: Option[Long]) {
+class OverallRunTimeLimiter(limit: Long) {
   var wall_msecs: Long = 0
 
   def run(casePath: String) (f: => Unit) = {
-    if (wall_msecs < limit.getOrElse(Long.MaxValue)) {
+    if (wall_msecs < limit) {
       val t0 = System.currentTimeMillis
       try {
         f
@@ -755,7 +755,7 @@ class OverallRunTimeLimiter(limit: Option[Long]) {
       }
     }
 
-    if (wall_msecs >= limit.getOrElse(Long.MaxValue)) {
+    if (wall_msecs >= limit) {
       val meta = scala.collection.Map[String, String](
         "status" -> "TO",
         "time" -> "0.0",
