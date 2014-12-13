@@ -357,7 +357,7 @@ class CompileSpec extends FlatSpec with Matchers with CaseMatchers
           }
         }
       """))),
-      RunInputMessage(null, overallWallTimeLimit = Some(1000)),
+      RunInputMessage(null, overallWallTimeLimit = 1000L),
       ("ok", "") -> { _ should be (OK("OK")) },
       ("tle", "") -> { _ should be (TimeLimitExceeded) }
     )
