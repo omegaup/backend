@@ -18,6 +18,7 @@ trait Sandbox {
     case "cpp11" => target
     case "pas" => target
     case "hs" => target
+    case "rb" => s"$target.rb"
     case "py" => s"$target.pyc"
     case "java" => s"$target.class"
     case "kj" => s"$target.kx"
@@ -124,6 +125,12 @@ object Minijail extends Object with Sandbox with Log with Using {
         commonParams ++
         List("-b", Config.get("runner.minijail.path", ".") + "/root-python,/usr/lib/python2.7") ++
         List("--", Config.get("py.compiler.path", "/usr/bin/python"), "-m", "py_compile") ++
+        chrootedInputFiles
+      case "rb" =>
+        List("/usr/bin/sudo", minijail, "-S", scripts + "/ruby") ++
+        commonParams ++
+        List("-b", Config.get("runner.minijail.path", ".") + "/root-ruby,/usr/lib/ruby") ++
+        List("--", Config.get("rb.compiler.path", "/usr/bin/ruby"), "-wc") ++
         chrootedInputFiles
       case "kj" =>
         List("/usr/bin/sudo", minijail, "-S", scripts + "/kcl") ++
@@ -269,6 +276,11 @@ object Minijail extends Object with Sandbox with Log with Using {
         commonParams ++
         List("-b", Config.get("runner.minijail.path", ".") + "/root-python,/usr/lib/python2.7") ++
         List("-m", hardLimit, "--", "/usr/bin/python", s"$target.py")
+      case "rb" =>
+        List("/usr/bin/sudo", minijail, "-S", scripts + "/ruby") ++
+        commonParams ++
+        List("-b", Config.get("runner.minijail.path", ".") + "/root-ruby,/usr/lib/ruby") ++
+        List("--", Config.get("rb.compiler.path", "/usr/bin/ruby"), s"$target.rb")
       case "kp" =>
         List("/usr/bin/sudo", minijail, "-S", scripts + "/karel") ++
         commonParams ++
@@ -360,6 +372,9 @@ object Minijail extends Object with Sandbox with Log with Using {
         // Wait up to 1 second for the output. Otherwise kill the process.
         try {
           syscallName = future.get(1, TimeUnit.SECONDS)
+          if (syscallName != null) {
+            debug("syscall: {}", syscallName)
+          }
         } catch {
           case e: TimeoutException => {
             info("Timeout reading syscall name")
