@@ -375,6 +375,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
         val timeLimiter = new OverallRunTimeLimiter(
           message.overallWallTimeLimit)
         for (casePath <- casePaths) {
+          val outputPath = new File(binDirectory.getParentFile, new File(casePath).getName).getCanonicalPath
           timeLimiter.run(casePath) {
             message.interactive match {
               case None => {
@@ -383,10 +384,10 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
                   message,
                   lang,
                   chdir = binDirectory.getCanonicalPath,
-                  metaFile = casePath + ".meta",
+                  metaFile = outputPath + ".meta",
                   inputFile = casePath + ".in",
-                  outputFile = casePath + ".out",
-                  errorFile = casePath + ".err"
+                  outputFile = outputPath + ".out",
+                  errorFile = outputPath + ".err"
                 )
               }
               case Some(interactive) => {
@@ -402,7 +403,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
           }
 
           process(message, runDirectory, casesDirectory, lang,
-            new File(casePath + ".meta"), callback)
+            new File(outputPath + ".meta"), callback)
         }
       }
     
@@ -440,6 +441,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
     // Simultaneously run all executables.
     val threads = Executors.newFixedThreadPool(
         interactive.interfaces.length + 1)
+    val outputPath = new File(binDirectory.getParentFile, new File(casePath).getName).getCanonicalPath
     threads.submit(new Runnable() {
       override def run(): Unit = {
         sandbox.run(
@@ -447,10 +449,10 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
           interactive.parentLang,
           chdir = new File(binDirectory, main)
               .getCanonicalPath,
-          metaFile = s"${casePath}.meta",
+          metaFile = s"${outputPath}.meta",
           inputFile = s"${casePath}.in",
-          outputFile = s"${casePath}.out",
-          errorFile = s"${casePath}_${main}.err",
+          outputFile = s"${outputPath}.out",
+          errorFile = s"${outputPath}_${main}.err",
           target = interactive.parentLang match {
             case "java" => s"${main}_entry"
             case "py" => main  // Parent Python does not need entry
@@ -480,10 +482,10 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
             message,
             lang,
             chdir = new File(binDirectory, interface).getCanonicalPath,
-            metaFile = s"${casePath}_${interface}.meta",
+            metaFile = s"${outputPath}_${interface}.meta",
             inputFile = "/dev/null",
-            outputFile = s"${casePath}_${interface}.out",
-            errorFile = s"${casePath}_${interface}.err",
+            outputFile = s"${outputPath}_${interface}.out",
+            errorFile = s"${outputPath}_${interface}.err",
             target = lang match {
               case "java" => s"${interface}_entry"
               case "py" => s"${interface}_entry"
@@ -510,15 +512,15 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
     threads.awaitTermination(Long.MaxValue, TimeUnit.SECONDS)
 
     // Concatenate all output and error files into the one error file.
-    val errorSources = List(new File(s"${casePath}_${main}.err")) ++
+    val errorSources = List(new File(s"${outputPath}_${main}.err")) ++
       interactive.interfaces.flatMap{ interface => {
         List(
-          new File(s"${casePath}_${interface}.out"),
-          new File(s"${casePath}_${interface}.err")
+          new File(s"${outputPath}_${interface}.out"),
+          new File(s"${outputPath}_${interface}.err")
         )
       }}
 
-    using (new PrintWriter(new FileWriter(s"${casePath}.err"))) { err => {
+    using (new PrintWriter(new FileWriter(s"${outputPath}.err"))) { err => {
       for (src <- errorSources) {
         err.println(src.getName)
         err.println("=" * src.getName.length)
@@ -529,10 +531,10 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
     }}
 
     // Generate the final .meta file.
-    val parentMeta = MetaFile.load(s"${casePath}.meta")
+    val parentMeta = MetaFile.load(s"${outputPath}.meta")
 
     val childrenMetaFiles = interactive.interfaces.map {
-      interface => new File(s"${casePath}_${interface}.meta")
+      interface => new File(s"${outputPath}_${interface}.meta")
     }
     val childrenMeta = childrenMetaFiles.map{
       file => MetaFile.load(file.getCanonicalPath)
@@ -581,7 +583,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
       }
     )
 
-    MetaFile.save(s"${casePath}.meta", finalMeta)
+    MetaFile.save(s"${outputPath}.meta", finalMeta)
   }
 
   def process(message: RunInputMessage, runDirectory: File, casesDirectory: File, lang: String,
