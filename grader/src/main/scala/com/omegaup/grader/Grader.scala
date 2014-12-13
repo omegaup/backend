@@ -133,91 +133,91 @@ trait Grader extends Object with Log with Using {
 			run.runtime = run.problem.overall_wall_time_limit.get
 		}
 		
-		if (run.verdict == Verdict.JudgeError) {
-			run.runtime = 0
-			run.memory = 0
-			run.score = 0
-		} else {
-			val caseScores = weights.map { case (group, data) => {
-				val scores = data.map { case (name, weight) => {
-						var verdict = if (metas.contains(name)) {
-							metas(name)._2("status")
-						} else {
-							"OK"
-						}
-
-						val score = if (metas.contains(name) && metas(name)._2("status") == "OK") {
-							val f = metas(name)._1
-
-							val rawScore = gradeCase(
-								run,
-								name,
-								new File(f.getCanonicalPath.replace(".meta", ".out")),
-								new File(Config.get("problems.root", "./problems"), alias + "/cases/out/" + f.getName.replace(".meta", ".out")),
-								metas(name)._2
-							)
-
-							verdict = if (rawScore == 1.0) {
-								"AC"
-							} else if (rawScore > 0) {
-								"PA"
-							} else {
-								"WA"
-							}
-
-							rawScore
-						} else {
-							0.0
-						}
-
-						new CaseVerdictMessage(
-							name,
-							verdict,
-							score * weight
-						)
-					}
+		val caseScores = weights.map { case (group, data) => {
+			val scores = data.map { case (name, weight) => {
+				var verdict = if (metas.contains(name)) {
+					metas(name)._2("status")
+				} else {
+					"OK"
 				}
 
-				new GroupVerdictMessage(
-					group,
-					scores.toList,
-					if (scores.forall(caseVerdict => caseVerdict.verdict == "AC" || caseVerdict.verdict == "PA")) {
-						scores.foldLeft(0.0)(_+_.score)
+				val score = if (metas.contains(name) && metas(name)._2("status") == "OK") {
+					val f = metas(name)._1
+
+					val rawScore = gradeCase(
+						run,
+						name,
+						new File(f.getCanonicalPath.replace(".meta", ".out")),
+						new File(Config.get("problems.root", "./problems"),
+							alias + "/cases/out/" + f.getName.replace(".meta", ".out")),
+						metas(name)._2
+					)
+
+					verdict = if (rawScore == 1.0) {
+						"AC"
+					} else if (rawScore > 0) {
+						"PA"
 					} else {
-						0.0
+						"WA"
 					}
+
+					rawScore
+				} else {
+					0.0
+				}
+
+				new CaseVerdictMessage(
+					name,
+					verdict,
+					score * weight
 				)
 			}}
 
-			implicit val formats = OmegaUpSerialization.formats
-
-			val details = new File(Config.get("grader.root", "./grader") + "/" + run.id + "/details.json")
-			debug("Writing details into {}.", details.getCanonicalPath)
-			Serialization.write(caseScores, new FileWriter(details))
-
-			val normalizedWeights = weights.foldLeft(0.0)(_+_._2.foldLeft(0.0)(_+_._2))
-			run.score = caseScores.foldLeft(0.0)(_+_.score) / normalizedWeights * (run.contest match {
-				case None => 1.0
-				case Some(contest) => {
-					if (contest.points_decay_factor <= 0.0 || run.submit_delay == 0.0) {
-						1.0
-					} else {
-						var TT = (contest.finish_time.getTime() - contest.start_time.getTime()) / 60000.0
-						var PT = run.submit_delay / 60.0
-
-						if (contest.points_decay_factor >= 1.0) {
-							contest.points_decay_factor = 1.0
-						}
-
-						(1 - contest.points_decay_factor) + contest.points_decay_factor * TT*TT / (10 * PT*PT + TT*TT)
-					}
+			new GroupVerdictMessage(
+				group,
+				scores.toList,
+				if (scores.forall(caseVerdict => caseVerdict.verdict == "AC" || caseVerdict.verdict == "PA")) {
+					scores.foldLeft(0.0)(_+_.score)
+				} else {
+					0.0
 				}
-			})
+			)
+		}}
 
-			run.score = scala.math.round(run.score * 1024 * 1024) / (1024.0 * 1024.0)
-			
-			if(run.score == 0 && run.verdict < Verdict.WrongAnswer) run.verdict = Verdict.WrongAnswer
-			else if(run.score < (1-1e-9) && run.verdict < Verdict.PartialAccepted) run.verdict = Verdict.PartialAccepted
+		implicit val formats = OmegaUpSerialization.formats
+
+		val details = new File(Config.get("grader.root", "./grader") + "/" + run.id + "/details.json")
+		debug("Writing details into {}.", details.getCanonicalPath)
+		Serialization.write(caseScores, new FileWriter(details))
+
+		val normalizedWeights = weights.foldLeft(0.0)(_+_._2.foldLeft(0.0)(_+_._2))
+		run.score = caseScores.foldLeft(0.0)(_+_.score) / normalizedWeights * (run.contest match {
+			case None => 1.0
+			case Some(contest) => {
+				if (contest.points_decay_factor <= 0.0 || run.submit_delay == 0.0) {
+					1.0
+				} else {
+					var TT = (contest.finish_time.getTime() - contest.start_time.getTime()) / 60000.0
+					var PT = run.submit_delay / 60.0
+
+					if (contest.points_decay_factor >= 1.0) {
+						contest.points_decay_factor = 1.0
+					}
+
+					(1 - contest.points_decay_factor) + contest.points_decay_factor * TT*TT / (10 * PT*PT + TT*TT)
+				}
+			}
+		})
+
+		run.score = scala.math.round(run.score * 1024 * 1024) / (1024.0 * 1024.0)
+
+		if(run.score == 0 && run.verdict < Verdict.WrongAnswer) run.verdict = Verdict.WrongAnswer
+		else if(run.score < (1-1e-9) && run.verdict < Verdict.PartialAccepted) run.verdict = Verdict.PartialAccepted
+
+		if (run.verdict == Verdict.JudgeError) {
+			run.score = 0
+			run.memory = 0
+			run.runtime = 0
 		}
 		
 		run.contest_score = run.problem.points match {
