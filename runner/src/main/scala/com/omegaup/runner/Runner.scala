@@ -23,7 +23,7 @@ import com.omegaup.data._
 class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with Using {
   def name() = name
 
-  def isInterpreted(lang: String) = lang == "py"
+  def isInterpreted(lang: String) = lang == "py" || lang == "rb"
 
   private def compileStatus(
       lang: String, runDirectory: File, target: String, sourceFiles: Iterable[String],
