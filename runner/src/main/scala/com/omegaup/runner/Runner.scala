@@ -376,7 +376,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
           message.overallWallTimeLimit)
         for (casePath <- casePaths) {
           val outputPath = new File(binDirectory.getParentFile, new File(casePath).getName).getCanonicalPath
-          timeLimiter.run(casePath) {
+          timeLimiter.run(outputPath) {
             message.interactive match {
               case None => {
                 // Do a normal run.
