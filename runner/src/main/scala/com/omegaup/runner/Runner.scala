@@ -348,6 +348,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
             warn("Literal submission: {}", e)
             val caseName = runDirectory.getCanonicalPath + "/Main"
             FileUtil.copy(new File(binDirectory, "Main.cat"), new File(caseName + ".out"))
+            FileUtil.write(caseName + ".err", "")
             FileUtil.write(caseName + ".meta",
                            "time:0\ntime-wall:0\nmem:0\nstatus:OK")
             process(message, runDirectory, casesDirectory, lang, new File(caseName + ".meta"), callback)
