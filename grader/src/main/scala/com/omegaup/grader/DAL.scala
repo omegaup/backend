@@ -52,6 +52,7 @@ object GraderData {
 					case null => None
 					case x: String => Some(x.toLong)
 				},
+				extra_wall_time = rs.getInt("extra_wall_time").toLong,
 				memory_limit = rs.getString("memory_limit") match {
 					case null => None
 					case x: String => Some(x.toLong)

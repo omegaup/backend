@@ -212,6 +212,7 @@ object Minijail extends Object with Sandbox with Log with Using {
       case "java" => 1000
       case _ => 0
     })
+    val extraWallTime = message.extraWallTime
 
     val commonParams = List(
       "-C", Config.get("runner.minijail.path", ".") + "/root",
@@ -222,6 +223,7 @@ object Minijail extends Object with Sandbox with Log with Using {
       "-2", errorFile,
       "-M", metaFile,
       "-t", timeLimit.toString,
+      "-w", extraWallTime.toString,
       "-O", message.outputLimit.toString,
       "-k", message.stackLimit.toString
     ) ++ extraMountPoints.flatMap { case (path, target) => {
