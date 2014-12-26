@@ -411,6 +411,7 @@ object Minijail extends Object with Sandbox with Log with Using {
         case "8" => "RE"  // SIGFPE
         case "9" => "FO"  // SIGKILL
         case "11" => "SG" // SIGSEGV
+        case "13" => "RE" // SIGPIPE
         case "14" => "TO" // SIGALRM
         case "24" => "TO" // SIGXCPU
         case "30" => "TO" // SIGXCPU
