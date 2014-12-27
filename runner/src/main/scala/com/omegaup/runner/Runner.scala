@@ -578,7 +578,12 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
       if (childMeta("status") == "OK" && parentMeta("status") != "OK") {
         error("Child processes finished correctly, but parent did not {}",
           parentMeta)
-        parentMeta + ("status" -> "JE") + ("error" -> "Child process finished correctly, but parent did not")
+        if (parentMeta("status") == "OL") {
+          // Special case for OLE
+          childMeta + ("status" -> "OL")
+        } else {
+          parentMeta + ("status" -> "JE") + ("error" -> ("Child process finished correctly, but parent did not: " + parentMeta("status")))
+        }
       } else {
         childMeta
       }
