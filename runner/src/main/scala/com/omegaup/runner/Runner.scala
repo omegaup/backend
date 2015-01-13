@@ -419,24 +419,20 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
     val main = interactive.main
 
     // Create all pipes and mount points
-    for (interface <- interactive.interfaces :+ main) {
+    for (interface <- interactive.interfaces) {
+      new File(binDirectory, s"${main}/${interface}_pipes")
+          .mkdir
       new File(binDirectory, s"${interface}/${interface}_pipes")
           .mkdir
-      if (interface != main) {
-        new File(binDirectory, s"${interface}/${main}_pipes")
-            .mkdir
-      }
       val pipeDir = new File(binDirectory, s"${interface}_pipes")
       pipeDir.mkdir
       pusing (runtime.exec(Array[String](
           "/usr/bin/mkfifo",
-          new File(pipeDir, "pipe").getCanonicalPath))
+          new File(pipeDir, "in").getCanonicalPath,
+          new File(pipeDir, "out").getCanonicalPath))
       ) {
         _.waitFor
       }
-    }
-    for (interface <- interactive.interfaces) {
-      new File(binDirectory, s"${main}/${interface}_pipes").mkdir
     }
 
     // Simultaneously run all executables.
@@ -460,11 +456,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
             case _ => main
           },
           // Mount all the named pipe directories.
-          extraMountPoints = List(
-            (new File(binDirectory, s"${main}_pipes")
-                .getCanonicalPath,
-            s"/home/${main}_pipes")
-          ) ++ interactive.interfaces.map { interface => {
+          extraMountPoints = interactive.interfaces.map { interface => {
             (new File(binDirectory, s"${interface}_pipes")
                 .getCanonicalPath,
             s"/home/${interface}_pipes")
@@ -498,11 +490,6 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
                 new File(binDirectory, s"${interface}_pipes")
                   .getCanonicalPath,
                 s"/home/${interface}_pipes"
-              ),
-              (
-                new File(binDirectory, s"${main}_pipes")
-                  .getCanonicalPath,
-                s"/home/${main}_pipes"
               )
             )
           )

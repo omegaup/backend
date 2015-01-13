@@ -1,32 +1,14 @@
-name := "Grader"
-
-version := "1.1"
-
-organization := "omegaup"
-
-scalaVersion := "2.10.3"
-
-scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature")
-
-exportJars := true
-
 packageOptions in (Compile, packageBin) +=
     Package.ManifestAttributes( java.util.jar.Attributes.Name.MAIN_CLASS -> "com.omegaup.Service" )
 
 libraryDependencies ++= Seq(
-  "org.eclipse.jetty" % "jetty-server" % "9.1.5.v20140505",
+  "com.h2database" % "h2" % "1.3.175" % "runtime",
+  "mysql" % "mysql-connector-java" % "5.1.29" % "runtime",
+  "org.apache.commons" % "commons-compress" % "1.8.1",
   "org.eclipse.jetty" % "jetty-client" % "9.1.5.v20140505",
   "org.eclipse.jetty" % "jetty-security" % "9.1.5.v20140505",
-  "org.eclipse.jetty.websocket" % "websocket-server" % "9.1.5.v20140505",
-  "net.liftweb" %% "lift-json" % "2.5.1",
-  "org.slf4j" % "log4j-over-slf4j" % "1.7.6",
-  "ch.qos.logback" % "logback-core" % "1.1.1",
-  "ch.qos.logback" % "logback-classic" % "1.1.1",
-  "commons-codec" % "commons-codec" % "1.9",
-  "org.apache.commons" % "commons-compress" % "1.8.1",
-  "org.scalatest" %% "scalatest" % "2.1.2" % "test",
-  "com.h2database" % "h2" % "1.3.175" % "runtime",
-  "mysql" % "mysql-connector-java" % "5.1.29" % "runtime"
+  "org.eclipse.jetty" % "jetty-server" % "9.1.5.v20140505",
+  "org.eclipse.jetty.websocket" % "websocket-server" % "9.1.5.v20140505"
 )
 
 proguardSettings 
