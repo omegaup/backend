@@ -1,9 +1,9 @@
 import com.omegaup._
 
 import org.scalatest.FlatSpec
-import org.scalatest.matchers.ShouldMatchers
+import org.scalatest.Matchers
 
-class KarelSpec extends FlatSpec with ShouldMatchers {
+class KarelSpec extends FlatSpec with Matchers {
 	"XmlWalker" should "match stuff" in {
 		val walker = new XmlWalker("""<resultados><mundos><mundo nombre="divisores"><linea fila="3" compresionDeCeros="true">(4) 5 </linea><linea fila="2" compresionDeCeros="true">(5) 6 </linea></mundo></mundos><programas><programa nombre="divisores" resultadoEjecucion="FIN PROGRAMA"><karel x="1" y="1" direccion="NORTE"/></programa></programas></resultados>""")
 		

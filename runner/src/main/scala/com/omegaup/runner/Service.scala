@@ -340,3 +340,5 @@ object Service extends Object with Log with Using {
     info("Shut down cleanly")
   }
 }
+
+/* vim: set noexpandtab: */

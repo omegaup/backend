@@ -7,9 +7,9 @@ import Server._
 import Language._
 
 import org.scalatest.FlatSpec
-import org.scalatest.matchers.ShouldMatchers
+import org.scalatest.Matchers
 
-class QuerySpec extends FlatSpec with ShouldMatchers {
+class QuerySpec extends FlatSpec with Matchers {
 	"The database wrapper" should "escape properly" in {
 		build("?", 5) should equal ("5")
 		build("?", 5.0) should equal ("5.0")

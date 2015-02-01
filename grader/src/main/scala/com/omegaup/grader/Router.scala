@@ -160,7 +160,7 @@ object RoutingDescription extends StandardTokenParsers with Log {
 	}
 }
 
-object RunnerDispatcher extends ServiceInterface with Log {
+class RunnerDispatcher extends ServiceInterface with Log {
 	private val registeredEndpoints = scala.collection.mutable.HashMap.empty[RunnerEndpoint, Long]
 	private val runnerQueue = scala.collection.mutable.Queue.empty[RunnerService]
 	private val runQueue = new Array[scala.collection.mutable.Queue[RunContext]](8)
@@ -276,7 +276,7 @@ object RunnerDispatcher extends ServiceInterface with Log {
 		}
 
 		private def gradeTask() = {
-			val future = RunnerDispatcher.executor.submit(new Callable[Run]() {
+			val future = executor.submit(new Callable[Run]() {
 					override def call(): Run = ctx.trace(EventCategory.Runner, "runner" -> ctx.service.name) {
 						driver.run(ctx, ctx.run.copy)
 					}
@@ -297,12 +297,12 @@ object RunnerDispatcher extends ServiceInterface with Log {
 						case inner: java.net.SocketException => {
 							// Probably a network error of some sort. No use in re-queueing the runner.
 							ctx.service match {
-								case proxy: com.omegaup.runner.RunnerProxy => RunnerDispatcher.deregister(proxy.hostname, proxy.port)
+								case proxy: com.omegaup.runner.RunnerProxy => deregister(proxy.hostname, proxy.port)
 								case _ => {}
 							}
 
 							// But do re-queue the run
-							RunnerDispatcher.addRun(ctx)
+							addRun(ctx)
 
 							// And commit suicide
 							throw e
@@ -329,22 +329,22 @@ object RunnerDispatcher extends ServiceInterface with Log {
 
 					// Probably a network error of some sort. No use in re-queueing the runner.
 					ctx.service match {
-						case proxy: com.omegaup.runner.RunnerProxy => RunnerDispatcher.deregister(proxy.hostname, proxy.port)
+						case proxy: com.omegaup.runner.RunnerProxy => deregister(proxy.hostname, proxy.port)
 						case _ => {}
 					}
 
 					ctx.run
 				}
 			} finally {
-				RunnerDispatcher.flightFinished(flightIndex)
+				flightFinished(flightIndex)
 			}
 
 			if (ctx.run.status != Status.Ready) {
 				ctx.run = try {
-					driver.grade(ctx, ctx.run.copy)
+					driver.validateOutput(ctx, ctx.run.copy)
 				} catch {
 					case e: Exception => {
-						error("Error while grading {}", e)
+						error("Error while validating {}", e)
 						ctx.run.score = 0
 						ctx.run.contest_score = ctx.run.contest match {
 							case None => None
@@ -358,7 +358,7 @@ object RunnerDispatcher extends ServiceInterface with Log {
 				}
 			}
 
-			Manager.updateVerdict(ctx, ctx.run)
+			ctx.updateVerdict(ctx.run)
 		}
 	}
 

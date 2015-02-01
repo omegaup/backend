@@ -21,7 +21,7 @@ import com.omegaup._
 import com.omegaup.data._
 
 class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with Using {
-  def name() = name
+  override def name() = name
 
   def isInterpreted(lang: String) = lang == "py" || lang == "rb"
 

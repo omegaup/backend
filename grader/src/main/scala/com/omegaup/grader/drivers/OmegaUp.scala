@@ -89,7 +89,7 @@ object OmegaUpDriver extends Driver with Log with Using {
 
     run.status = Status.Compiling
     run.judged_by = Some(ctx.service.name)
-    Manager.updateVerdict(ctx, run)
+    ctx.updateVerdict(run)
 
     val code = FileUtil.read(Config.get("submissions.root", "submissions") + "/" + run.guid)
     val compileMessage = createCompileMessage(ctx, run, code)
@@ -151,7 +151,7 @@ object OmegaUpDriver extends Driver with Log with Using {
     )
   
     run.status = Status.Running
-    Manager.updateVerdict(ctx, run)
+    ctx.updateVerdict(run)
 
     val target = new File(Config.get("grader.root", "grader"), id.toString)
     FileUtil.deleteDirectory(target)
@@ -202,14 +202,14 @@ object OmegaUpDriver extends Driver with Log with Using {
     }
   }
 
-  override def grade(ctx: RunContext, run: Run): Run = {
-    ctx.trace(EventCategory.Grade) {
+  override def validateOutput(ctx: RunContext, run: Run): Run = {
+    ctx.trace(EventCategory.Validate) {
       run.problem.validator match {
-        case Validator.Custom => CustomGrader.grade(ctx, run)
-        case Validator.Literal => LiteralGrader.grade(ctx, run)
-        case Validator.Token => TokenGrader.grade(ctx, run)
-        case Validator.TokenCaseless => TokenCaselessGrader.grade(ctx, run)
-        case Validator.TokenNumeric => TokenNumericGrader.grade(ctx, run)
+        case Validator.Custom => CustomValidator.validateRun(ctx, run)
+        case Validator.Literal => LiteralValidator.validateRun(ctx, run)
+        case Validator.Token => TokenValidator.validateRun(ctx, run)
+        case Validator.TokenCaseless => TokenCaselessValidator.validateRun(ctx, run)
+        case Validator.TokenNumeric => TokenNumericValidator.validateRun(ctx, run)
         case _ => throw new IllegalArgumentException("Validator " + run.problem.validator + " not found")
       }
     }

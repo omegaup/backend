@@ -40,13 +40,42 @@ class QueuedRun(contest: String, broadcast: Boolean, targetUser: Long, userOnly:
 class QueuedMessage(contest: String, broadcast: Boolean, targetUser: Long, userOnly: Boolean, val message: String)
 	extends QueuedElement(contest, broadcast, targetUser, userOnly) {}
 
-object Broadcaster extends Object with Runnable with Log with Using {
+class Broadcaster extends Object with ServiceInterface with Runnable with Log with Using {
 	private val PathRE = """^/([a-zA-Z0-9_-]+)/?""".r
 	// A collection of subscribers.
 	private val subscribers = new mutable.HashMap[String, mutable.ArrayBuffer[BroadcasterSession]]
 	private val subscriberLock = new Object
 	private val PoisonPill = new QueuedElement(null, true, -1, false)
 	private val queue = new LinkedBlockingQueue[QueuedElement]
+	private val server = new org.eclipse.jetty.server.Server()
+	private val broadcastThread = new Thread(this, "BroadcastThread")
+
+	{
+		val broadcasterConnector = new org.eclipse.jetty.server.ServerConnector(server)
+		broadcasterConnector.setPort(Config.get("broadcaster.port", 39613))
+		server.addConnector(broadcasterConnector)
+
+		val creator = new WebSocketCreator() {
+			override def createWebSocket(req: ServletUpgradeRequest, resp: ServletUpgradeResponse): Object = {
+				resp.setAcceptedSubProtocol("com.omegaup.events")
+				new BroadcasterSocket
+			}
+		}
+
+		server.setHandler(new WebSocketHandler() {
+			override def configure(factory: WebSocketServletFactory): Unit = {
+				factory.setCreator(creator)
+			}
+		})
+
+		server.start()
+
+		info("Registering port {}", broadcasterConnector.getLocalPort)
+
+		broadcastThread.start
+
+		info("Broadcaster started")
+	}
 
 	def subscribe(session: BroadcasterSession) = {
 		subscriberLock.synchronized {
@@ -68,7 +97,7 @@ object Broadcaster extends Object with Runnable with Log with Using {
 			}
 		}
 	}
-		
+
 	def hashdigest(algorithm: String, s: String): String = {
 		val hexdigest = new StringBuffer
 
@@ -82,7 +111,7 @@ object Broadcaster extends Object with Runnable with Log with Using {
 
 		return hexdigest.toString
 	}
-	
+
 	def update(ctx: RunContext): Unit = {
 		ctx.run.contest match {
 			case Some(contest) => {
@@ -340,55 +369,26 @@ object Broadcaster extends Object with Runnable with Log with Using {
 		}
 	}
 
-	def init() = {
-		val server = new org.eclipse.jetty.server.Server()
-		
-		val broadcasterConnector = new org.eclipse.jetty.server.ServerConnector(server)
-		broadcasterConnector.setPort(Config.get("broadcaster.port", 39613))
-		server.addConnector(broadcasterConnector)
-
-		val creator = new WebSocketCreator() {
-			override def createWebSocket(req: ServletUpgradeRequest, resp: ServletUpgradeResponse): Object = {
-				resp.setAcceptedSubProtocol("com.omegaup.events")
-				new BroadcasterSocket
-			}
-		}
-
-		server.setHandler(new WebSocketHandler() {
-			override def configure(factory: WebSocketServletFactory): Unit = {
-				factory.setCreator(creator)
-			}
-		})
-
-		server.start()
-		
-		info("Registering port {}", broadcasterConnector.getLocalPort)
-
-		val thread = new Thread(this, "BroadcastThread")
-		thread.start
-
-		info("Broadcaster started")
-
-		new ServiceInterface {
-			override def stop(): Unit = {
-				info("Broadcaster stopping")
-				server.stop
-				queue.put(PoisonPill)
-			}
-			override def join(): Unit = {
-				server.join
-				thread.join
-				info("Broadcaster stopped")
-			}
-		}
+	override def stop(): Unit = {
+		info("Broadcaster stopping")
+		server.stop
+		queue.put(PoisonPill)
 	}
 
+	override def join(): Unit = {
+		server.join
+		broadcastThread.join
+		info("Broadcaster stopped")
+	}
+}
+
+object Manager extends Object with Log {
 	def main(args: Array[String]) = {
 		// logger
 		Logging.init()
 
-		val server = init()
-		
+		val server = new Broadcaster
+
 		Runtime.getRuntime.addShutdownHook(new Thread() {
 			override def run() = {
 				info("Shutting down")
@@ -396,7 +396,7 @@ object Broadcaster extends Object with Runnable with Log with Using {
 				server.stop()
 			}
 		})
-		
+
 		server.join()
 	}
 }
