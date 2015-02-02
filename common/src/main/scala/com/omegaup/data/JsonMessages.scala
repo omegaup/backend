@@ -113,10 +113,12 @@ case class QueueStatus(
   runners: List[String],
   running: List[Running]
 )
-case class GradeInputMessage(id: Int, debug: Boolean = false, rejudge: Boolean = false)
-case class GradeOutputMessage(status: String = "ok", error: Option[String] = None)
-case class RegisterInputMessage(hostname: String, port: Int)
-case class RegisterOutputMessage(status: String = "ok", error: Option[String] = None)
+case class RunNewInputMessage(problem_id: Int, language: String, code: String, ip: String = "", contest: Option[Int] = None)
+case class RunNewOutputMessage(id: Int)
+case class RunGradeInputMessage(id: Int, debug: Boolean = false, rejudge: Boolean = false)
+case class RunGradeOutputMessage(status: String = "ok", error: Option[String] = None)
+case class EndpointRegisterInputMessage(hostname: String, port: Int)
+case class EndpointRegisterOutputMessage(status: String = "ok", error: Option[String] = None)
 
 // for serializing judgement details
 case class CaseVerdictMessage(name: String, verdict: String, score: Double)

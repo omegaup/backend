@@ -1,7 +1,11 @@
-import com.omegaup._
+import com.omegaup.Config
+import com.omegaup.Database
+import com.omegaup.FileUtil
+import com.omegaup.Logging
+import com.omegaup.Service
 import com.omegaup.data._
-import com.omegaup.grader._
-import com.omegaup.grader.drivers._
+import com.omegaup.grader.Grader
+import com.omegaup.grader.GraderOptions
 
 import Language._
 
@@ -26,12 +30,13 @@ class GraderSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     Config.set("db.driver", "org.h2.Driver")
     Config.set(
       "db.url",
-      "jdbc:h2:file:" + root.getCanonicalPath + "/omegaup;DB_CLOSE_ON_EXIT=FALSE"
+      "jdbc:h2:file:" + root.getCanonicalPath + "/omegaup"
     )
     Config.set("db.user", "sa")
     Config.set("db.password", "")
 
     Config.set("ssl.keystore", "grader/omegaup.jks")
+    Config.set("grader.standalone", "true")
     Config.set("grader.runner.timeout", "10")
     Config.set("grader.port", "21681")
     Config.set("grader.embedded_runner.enable", "true")
@@ -88,7 +93,7 @@ class GraderSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     FileUtil.read("grader/src/test/resources/h2.sql").split("\n\n").foreach { Database.execute(_) }
     conn.close
 
-    grader = new Grader(new GraderOptions, None)
+    grader = new Grader(new GraderOptions)
   }
 
   override def afterAll() {
@@ -106,7 +111,7 @@ class GraderSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     var exception: Exception = null
 
     grader.addListener {
-      run => {
+      (ctx, run) => {
         try {
           tests(run.id.toInt)(run)
         } catch {
@@ -119,46 +124,17 @@ class GraderSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
       }
     }
 
-    def omegaUpSubmitContest(
-      id: Long,
-      language: Language,
-      code: String,
-      user: Int,
-      contest: Int,
-      date: String
-    )(test: Run=>Unit) = {
-      import java.util.Date
-      import java.sql.Timestamp
-      import java.text.SimpleDateFormat
-
-      val file = java.io.File.createTempFile(
-        System.currentTimeMillis.toString,
-        "",
-        new java.io.File(Config.get("submissions.root", "."))
-      )
-
-      implicit val conn = grader.conn
-
-      FileUtil.write(file.getCanonicalPath, code)
-
-      val submit_id = GraderData.insert(new Run(
-        guid = file.getName,
-        user = new User(id = user),
-        language = language,
-        problem = new Problem(id = id),
-        contest = contest match {
-          case 0 => None
-          case x: Int => Some(new Contest(id = x))
-        },
-        time = new Timestamp(date match {
-            case null => new Date().getTime()
-            case x: String => new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").parse(x).getTime()
-          })
+    def omegaUpSubmit(problem_id: Long, language: Language, code: String, contest: Option[Int] = None)(test: (Run) => Unit) = {
+      val submit_id = Service.newRun(RunNewInputMessage(
+        problem_id = problem_id.toInt,
+        language = language.toString,
+        code = code,
+        contest = contest
       )).id
 
       ready = false
       tests += test
-      grader.grade(new GradeInputMessage(id = submit_id.toInt))
+      grader.grade(new RunGradeInputMessage(id = submit_id.toInt))
 
       lock.synchronized {
         if (!ready) {
@@ -172,10 +148,6 @@ class GraderSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
       if (exception != null) throw exception
     }
 
-    def omegaUpSubmit (problem_id: Long, language: Language, code: String)(test: (Run) => Unit) = {
-      omegaUpSubmitContest(problem_id, language, code, 1, 0, null) { test }
-    }
-
     omegaUpSubmit(1, Language.Cpp, """
       int main() {
         while(true);
@@ -187,7 +159,7 @@ class GraderSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
       run.contest_score should equal (None)
     }}
 
-  omegaUpSubmitContest(1, Language.Cpp, """
+  omegaUpSubmit(1, Language.Cpp, """
     #include <cstdlib>
     #include <iostream>
     #include <map>
@@ -203,7 +175,7 @@ class GraderSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
 
       return EXIT_SUCCESS;
     }
-  """, 1, 1, "2000-01-01 00:10:00") { run => {
+  """, contest = Some(1)) { run => {
     run.status should equal (Status.Ready)
     run.verdict should equal (Verdict.Accepted)
     run.score should equal (1)

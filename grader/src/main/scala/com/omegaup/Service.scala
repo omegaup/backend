@@ -2,9 +2,11 @@ package com.omegaup
 
 import com.omegaup.data._
 import com.omegaup.grader.Grader
+import com.omegaup.grader.GraderData
 import com.omegaup.broadcaster.Broadcaster
 
 import java.io.IOException
+import java.sql.Connection
 import javax.servlet.ServletException
 import javax.servlet.http.HttpServlet
 import javax.servlet.http.HttpServletRequest
@@ -27,7 +29,7 @@ class HttpHandler(grader: Grader, broadcaster: Broadcaster) extends AbstractHand
 		response.setContentType("text/json")
 
 		Serialization.write(request.getPathInfo() match {
-			case "/reload-config/" => {
+			case "/grader/reload-config/" => {
 				try {
 					val req = Serialization.read[ReloadConfigInputMessage](request.getReader())
 					val embeddedRunner = Config.get("grader.embedded_runner.enable", false)
@@ -55,53 +57,75 @@ class HttpHandler(grader: Grader, broadcaster: Broadcaster) extends AbstractHand
 					}
 				}
 			}
-			case "/status/" => {
+			case "/grader/status/" => {
 				response.setStatus(HttpServletResponse.SC_OK)
 				new StatusOutputMessage(
 					embedded_runner = Config.get("grader.embedded_runner.enable", false),
 					queue = Some(grader.runnerDispatcher.status)
 				)
 			}
-			case "/grade/" => {
+			case "/run/new/" => {
+				if (Config.get("grader.standalone", false)) {
+					try {
+						var req = Serialization.read[RunNewInputMessage](request.getReader())
+						response.setStatus(HttpServletResponse.SC_OK)
+						implicit val connection: Connection = grader.conn
+						req = req.copy(ip = request.getRemoteAddr)
+						val outputMessage = Service.newRun(req)
+						grader.grade(RunGradeInputMessage(id = outputMessage.id))
+						outputMessage
+					} catch {
+						case e: Exception => {
+							error("Submitting new run failed: {}", e)
+							response.setStatus(HttpServletResponse.SC_BAD_REQUEST)
+							new EndpointRegisterOutputMessage(status = "error", error = Some(e.getMessage))
+						}
+					}
+				} else {
+					response.setStatus(HttpServletResponse.SC_NOT_FOUND)
+					new NullMessage()
+				}
+			}
+			case "/run/grade/" => {
 				try {
-					val req = Serialization.read[GradeInputMessage](request.getReader())
+					val req = Serialization.read[RunGradeInputMessage](request.getReader())
 					response.setStatus(HttpServletResponse.SC_OK)
 					grader.grade(req)
 				} catch {
 					case e: IllegalArgumentException => {
 						error("Grade failed: {}", e)
 						response.setStatus(HttpServletResponse.SC_NOT_FOUND)
-						new GradeOutputMessage(status = "error", error = Some(e.getMessage))
+						new RunGradeOutputMessage(status = "error", error = Some(e.getMessage))
 					}
 					case e: Exception => {
 						error("Grade failed: {}", e)
 						response.setStatus(HttpServletResponse.SC_BAD_REQUEST)
-						new GradeOutputMessage(status = "error", error = Some(e.getMessage))
+						new RunGradeOutputMessage(status = "error", error = Some(e.getMessage))
 					}
 				}
 			}
-			case "/register/" => {
+			case "/endpoint/register/" => {
 				try {
-					val req = Serialization.read[RegisterInputMessage](request.getReader())
+					val req = Serialization.read[EndpointRegisterInputMessage](request.getReader())
 					response.setStatus(HttpServletResponse.SC_OK)
 					grader.runnerDispatcher.register(req.hostname, req.port)
 				} catch {
 					case e: Exception => {
 						error("Register failed: {}", e)
 						response.setStatus(HttpServletResponse.SC_BAD_REQUEST)
-						new RegisterOutputMessage(status = "error", error = Some(e.getMessage))
+						new EndpointRegisterOutputMessage(status = "error", error = Some(e.getMessage))
 					}
 				}
 			}
-			case "/deregister/" => {
+			case "/endpoint/deregister/" => {
 				try {
-					val req = Serialization.read[RegisterInputMessage](request.getReader())
+					val req = Serialization.read[EndpointRegisterInputMessage](request.getReader())
 					response.setStatus(HttpServletResponse.SC_OK)
 					grader.runnerDispatcher.deregister(req.hostname, req.port)
 				} catch {
 					case e: Exception => {
 						response.setStatus(HttpServletResponse.SC_BAD_REQUEST)
-						new RegisterOutputMessage(status = "error", error = Some(e.getMessage))
+						new EndpointRegisterOutputMessage(status = "error", error = Some(e.getMessage))
 					}
 				}
 			}
@@ -171,14 +195,43 @@ class HttpService(grader: Grader, broadcaster: Broadcaster) extends ServiceInter
 }
 
 object Service extends Object with Log with Using {
+	def newRun(req: RunNewInputMessage)(implicit connection: Connection): RunNewOutputMessage = {
+		import java.util.Date
+		import java.sql.Timestamp
+		import java.text.SimpleDateFormat
+
+		val file = java.io.File.createTempFile(
+			System.currentTimeMillis.toString,
+			"",
+			new java.io.File(Config.get("submissions.root", "."))
+		)
+		FileUtil.write(file, req.code)
+
+		val run = GraderData.insert(new Run(
+			problem = new Problem(id = req.problem_id),
+			contest = req.contest match {
+				case None => None
+				case Some(id) => Some(new Contest(id = id))
+			},
+			guid = file.getName,
+			language = Language.withName(req.language),
+			status = Status.New,
+			time = new Timestamp(new Date().getTime),
+			ip = req.ip
+		))
+
+		RunNewOutputMessage(run.id.toInt)
+	}
+
 	def main(args: Array[String]) = {
 		val graderOptions = com.omegaup.grader.Service.parseOptions(args)
 
 		// logger
 		Logging.init
 
+		val grader = new Grader(graderOptions)
 		val broadcaster = new Broadcaster
-		val grader = new Grader(graderOptions, Some(broadcaster))
+		grader.addListener((ctx, run) => broadcaster.update(ctx))
 		val servers = List[ServiceInterface](
 			broadcaster,
 			grader,

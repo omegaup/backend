@@ -193,7 +193,7 @@ CREATE TABLE IF NOT EXISTS `Roles_Permissions` (
 
 CREATE TABLE IF NOT EXISTS `Runs` (
   `run_id` int(11) NOT NULL AUTO_INCREMENT,
-  `user_id` int(11) NOT NULL,
+  `user_id` int(11) NULL DEFAULT NULL,
   `problem_id` int(11) NOT NULL,
   `contest_id` int(11) DEFAULT NULL,
   `guid` char(32) NOT NULL,

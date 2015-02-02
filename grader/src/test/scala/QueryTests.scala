@@ -3,7 +3,6 @@ import com.omegaup.Database._
 
 import Verdict._
 import Validator._
-import Server._
 import Language._
 
 import org.scalatest.FlatSpec

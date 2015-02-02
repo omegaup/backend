@@ -25,7 +25,7 @@ trait RunnerService {
 }
 
 trait GraderService {
-	def grade(message: GradeInputMessage): GradeOutputMessage
+	def grade(message: RunGradeInputMessage): RunGradeOutputMessage
 }
 
 /* vim: set noexpandtab: */

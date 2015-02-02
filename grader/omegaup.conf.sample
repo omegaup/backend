@@ -33,11 +33,12 @@ ssl.truststore.password=omegaup
 ssl.truststore=/opt/omegaup/bin/omegaup.jks
 
 # Grader
-grader.deregister.url=https://localhost:21680/deregister/
+grader.deregister.url=https://localhost:21680/endpoint/deregister/
 grader.embedded_runner.enable=true
 grader.memory_limit=2048
 grader.port=21680
-grader.register.url=https://localhost:21680/register/
+grader.register.url=https://localhost:21680/endpoint/register/
+grader.standalone=false
 
 # Runner
 runner.port=0

@@ -60,9 +60,10 @@ class RegisterThread(hostname: String, port: Int) extends Thread("RegisterThread
     info("Shutting down")
     try {
       // well, at least try to de-register
-      Https.send[RegisterOutputMessage, RegisterInputMessage](
-        Config.get("grader.deregister.url", "https://localhost:21680/deregister/"),
-        new RegisterInputMessage(hostname, port)
+      Https.send[EndpointRegisterOutputMessage, EndpointRegisterInputMessage](
+				Config.get("grader.deregister.url",
+					"https://localhost:21680/endpoint/deregister/"),
+        new EndpointRegisterInputMessage(hostname, port)
       )
     } catch {
       case _: Throwable => {
@@ -107,9 +108,10 @@ class RegisterThread(hostname: String, port: Int) extends Thread("RegisterThread
       if (!alive) return
       if (active) {
         try {
-          Https.send[RegisterOutputMessage, RegisterInputMessage](
-            Config.get("grader.register.url", "https://localhost:21680/register/"),
-            new RegisterInputMessage(hostname, port)
+          Https.send[EndpointRegisterOutputMessage, EndpointRegisterInputMessage](
+						Config.get("grader.register.url",
+							"https://localhost:21680/endpoint/register/"),
+            new EndpointRegisterInputMessage(hostname, port)
           )
         } catch {
           case e: IOException => {

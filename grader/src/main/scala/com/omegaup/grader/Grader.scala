@@ -4,18 +4,17 @@ import java.text.ParseException
 import com.omegaup._
 import com.omegaup.data._
 import com.omegaup.runner._
-import com.omegaup.broadcaster.Broadcaster
 import Status._
 import Verdict._
 import Validator._
-import Server._
 
 case class GraderOptions(
 	configPath: String = "omegaup.conf"
 )
 
-class Grader(val options: GraderOptions, broadcaster: Option[Broadcaster] = None) extends Object with GraderService with ServiceInterface with Log {
-	private val listeners = scala.collection.mutable.ListBuffer.empty[Run => Unit]
+class Grader(val options: GraderOptions) extends Object with GraderService with ServiceInterface with Log {
+	type Listener = (RunContext, Run) => Unit
+	private val listeners = scala.collection.mutable.ListBuffer.empty[Listener]
 	val runnerDispatcher = new RunnerDispatcher
 
 	// Loading SQL connector driver
@@ -34,9 +33,9 @@ class Grader(val options: GraderOptions, broadcaster: Option[Broadcaster] = None
 		recoverQueue
 	}
 
-	def addListener(listener: Run => Unit) = listeners += listener
+	def addListener(listener: Listener) = listeners += listener
 
-	def removeListener(listener: Run => Unit) = listeners -= listener
+	def removeListener(listener: Listener) = listeners -= listener
 
 	def recoverQueue() = {
 		val pendingRuns = GraderData.pendingRuns
@@ -46,7 +45,7 @@ class Grader(val options: GraderOptions, broadcaster: Option[Broadcaster] = None
 		pendingRuns foreach(run => grade(new RunContext(Some(this), run, false, false)))
 	}
 
-	def grade(ctx: RunContext): GradeOutputMessage = {
+	def grade(ctx: RunContext): RunGradeOutputMessage = {
 		info("Judging {}", ctx.run.id)
 
 		if (ctx.run.status != Status.Waiting) {
@@ -59,11 +58,11 @@ class Grader(val options: GraderOptions, broadcaster: Option[Broadcaster] = None
 		}
 
 		runnerDispatcher.addRun(ctx)
-		new GradeOutputMessage()
+		new RunGradeOutputMessage()
 	}
 
-	def grade(message: GradeInputMessage): GradeOutputMessage = {
-		GraderData.run(message.id) match {
+	def grade(message: RunGradeInputMessage): RunGradeOutputMessage = {
+		GraderData.getRun(message.id) match {
 			case None => throw new IllegalArgumentException("Id " + message.id + " not found")
 			case Some(run) => grade(new RunContext(Some(this), run, message.debug, message.rejudge))
 		}
@@ -76,8 +75,7 @@ class Grader(val options: GraderOptions, broadcaster: Option[Broadcaster] = None
 		if (run.status == Status.Ready) {
 			info("Verdict update: {} {} {} {} {} {} {}",
 				run.id, run.status, run.verdict, run.score, run.contest_score, run.runtime, run.memory)
-			broadcaster.map(_.update(ctx))
-			listeners foreach { listener => listener(run) }
+			listeners foreach { listener => listener(ctx, run) }
 		}
 
 		run

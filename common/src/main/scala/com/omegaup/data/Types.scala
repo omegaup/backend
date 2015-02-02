@@ -11,15 +11,6 @@ object Validator extends Enumeration {
 	val  Literal = Value(5, "literal")
 }
 
-object Server extends Enumeration {
-	type Server = Value
-	val  UVa = Value(1, "uva")
-	val  LiveArchive = Value(2, "livearchive")
-	val  PKU = Value(3, "pku")
-	val  TJU = Value(4, "tju")
-	val  SPOJ = Value(5, "spoj")
-}
-
 object Language extends Enumeration {
 	type Language = Value
 	val  C = Value(1, "c")
@@ -61,54 +52,18 @@ object Verdict extends Enumeration {
 	val  JudgeError = Value(11, "JE")
 }
 
-object Order extends Enumeration {
-	type Order = Value
-	val Normal = Value(1, "normal")
-	val Inverse = Value(2, "inverse")
-}
-
-object Feedback extends Enumeration {
-	type Feedback = Value
-	val Yes = Value(1, "yes")
-	val No = Value(2, "no")
-	val Partial = Value(3, "partial")
-}
-
-object PenaltyTimeStart extends Enumeration {
-	type PenaltyTimeStart = Value
-	val Contest = Value(1, "contest")
-	val Problem = Value(2, "problem")
-	val NoPenalty = Value(3, "none")
-}
-
 import Validator._
 import Verdict._
 import Status._
-import Server._
 import Language._
-import Order._
-import Feedback._
-import PenaltyTimeStart._
 
 class Contest(
 	var id: Long = 0,
 	var title: String = "",
 	var alias: String = "",
-	var description: String = "",
 	var start_time: Timestamp = new Timestamp(0),
 	var finish_time: Timestamp = new Timestamp(0),
-	var window_length: Option[Int] = None,
-	var director_id: Long = 0,
-	var rerun_id: Int = 0,
-	var public: Boolean = true,
-	var token: String = "",
 	var points_decay_factor: Double = 0,
-	var scoreboard: Int = 80,
-	var partial_score: Boolean = true,
-	var submissions_gap: Int = 0,
-	var feedback: Feedback = Feedback.Yes,
-	var penalty: Int = 20,
-	var penalty_time_start: PenaltyTimeStart = PenaltyTimeStart.Contest,
 	var urgent: Boolean = false
 ) {
   def copy() =
@@ -116,48 +71,24 @@ class Contest(
       id = this.id,
       title = this.title,
       alias = this.alias,
-      description = this.description,
       start_time = this.start_time,
       finish_time = this.finish_time,
-      window_length = this.window_length,
-      director_id = this.director_id,
-      rerun_id = this.rerun_id,
-      public = this.public,
-      token = this.token,
       points_decay_factor = this.points_decay_factor,
-      scoreboard = this.scoreboard,
-      partial_score = this.partial_score,
-      submissions_gap = this.submissions_gap,
-      feedback = this.feedback,
-      penalty = this.penalty,
-      penalty_time_start = this.penalty_time_start,
       urgent = this.urgent
     )
 }
 
 class Problem(
 	var id: Long = 0,
-	var public: Long = 1,
-	var author: Long = 0,
 	var title: String = "",
 	var alias: String = "",
 	var validator: Validator = Validator.TokenNumeric,
-	var server: Option[Server] = None,
-	var remote_id: Option[String] = None,
 	var time_limit: Option[Long] = Some(3000),
 	var overall_wall_time_limit: Option[Long] = None,
 	var extra_wall_time: Long = 0,
 	var memory_limit: Option[Long] = Some(64),
 	var output_limit: Option[Long] = Some(10240),
 	var stack_limit: Option[Long] = Some(10485760),
-	var visits: Long = 0,
-	var submissions: Long = 0,
-	var accepted: Long = 0,
-	var difficulty: Double = 0,
-	var creation_date: Timestamp = new Timestamp(0),
-	var source: String = "",
-	var order: Order = Order.Normal,
-	var open_time: Option[Timestamp] = None,
 	var points: Option[Double] = None,
 	var tolerance: Double = 1e-6,
 	var slow: Boolean = false
@@ -165,27 +96,15 @@ class Problem(
   def copy() =
     new Problem(
       id = this.id,
-      public = this.public,
-      author = this.author,
       title = this.title,
       alias = this.alias,
       validator = this.validator,
-      server = this.server,
-      remote_id = this.remote_id,
       time_limit = this.time_limit,
       overall_wall_time_limit = this.overall_wall_time_limit,
       extra_wall_time = this.extra_wall_time,
       memory_limit = this.memory_limit,
       output_limit = this.output_limit,
       stack_limit = this.stack_limit,
-      visits = this.visits,
-      submissions = this.submissions,
-      accepted = this.accepted,
-      difficulty = this.difficulty,
-      creation_date = this.creation_date,
-      source = this.source,
-      order = this.order,
-      open_time = this.open_time,
       points = this.points,
       tolerance = this.tolerance,
       slow = this.slow
@@ -205,7 +124,7 @@ class User(
 
 class Run(
 	var id: Long = 0,
-	var user: User = null,
+	var user: Option[User] = None,
 	var problem: Problem = null,
 	var contest: Option[Contest] = None,
 	var guid: String = "",
@@ -224,7 +143,7 @@ class Run(
   def copy() =
     new Run(
       id = this.id,
-      user = this.user.copy,
+      user = this.user map(_.copy),
       problem = this.problem.copy,
       contest = this.contest map(_.copy),
       guid = this.guid,

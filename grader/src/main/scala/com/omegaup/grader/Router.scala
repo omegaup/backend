@@ -109,7 +109,10 @@ object RoutingDescription extends StandardTokenParsers with Log {
 				}
 			}
 			case "problem" => ctx.run.problem.alias
-			case "user" => ctx.run.user.username
+			case "user" => ctx.run.user match {
+				case None => ""
+				case Some(user) => user.username
+			}
 		}
 	}
 
@@ -208,7 +211,7 @@ class RunnerDispatcher extends ServiceInterface with Log {
 		}}
 	}
 
-	def register(hostname: String, port: Int): RegisterOutputMessage = {
+	def register(hostname: String, port: Int): EndpointRegisterOutputMessage = {
 		val endpoint = new RunnerEndpoint(hostname, port)
 
 		lock.synchronized {
@@ -223,7 +226,7 @@ class RunnerDispatcher extends ServiceInterface with Log {
 
 		debug("Runner queue register length {} known endpoints {}", runnerQueue.size, registeredEndpoints.size)
 
-		new RegisterOutputMessage()
+		new EndpointRegisterOutputMessage()
 	}
 
 	private def deregisterLocked(endpoint: RunnerEndpoint) = {
@@ -233,7 +236,7 @@ class RunnerDispatcher extends ServiceInterface with Log {
 		}
 	}
 
-	def deregister(hostname: String, port: Int): RegisterOutputMessage = {
+	def deregister(hostname: String, port: Int): EndpointRegisterOutputMessage = {
 		val endpoint = new RunnerEndpoint(hostname, port)
 
 		lock.synchronized {
@@ -242,7 +245,7 @@ class RunnerDispatcher extends ServiceInterface with Log {
 
 		debug("Runner queue deregister length {} known endpoints {}", runnerQueue.size, registeredEndpoints.size)
 
-		new RegisterOutputMessage()
+		new EndpointRegisterOutputMessage()
 	}
 
 	def addRun(ctx: RunContext) = {

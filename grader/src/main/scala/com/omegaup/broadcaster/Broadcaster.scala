@@ -18,7 +18,7 @@ import com.omegaup.data._
 import com.omegaup.grader._
 
 case class RunDetails(
-	username: String,
+	username: Option[String],
 	contest_alias: Option[String],
 	alias: String,
 	guid: String,
@@ -116,7 +116,11 @@ class Broadcaster extends Object with ServiceInterface with Runnable with Log wi
 		ctx.run.contest match {
 			case Some(contest) => {
 				ctx.broadcastQueued
-				queue.put(new QueuedRun(contest.alias, false, ctx.run.user.id, false, ctx))
+				queue.put(new QueuedRun(contest.alias, false,
+					ctx.run.user match {
+						case Some(user) => user.id
+						case None => -1
+					}, false, ctx))
 			}
 			case None => {
 				ctx.finish
@@ -170,7 +174,7 @@ class Broadcaster extends Object with ServiceInterface with Runnable with Log wi
 				Serialization.write(
 					UpdateRunMessage("/run/update/",
 						RunDetails(
-							username = run.user.username,
+							username = run.user.map(_.username),
 							contest_alias = Some(elm.contest),
 							alias = run.problem.alias,
 							guid = run.guid,
