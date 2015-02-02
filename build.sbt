@@ -9,7 +9,7 @@ lazy val commonSettings = Seq(
 	libraryDependencies ++= Seq(
 		"ch.qos.logback" % "logback-classic" % "1.1.1",
 		"ch.qos.logback" % "logback-core" % "1.1.1",
-		"com.omegaup" %% "libinteractive" % "1.5.2",
+		"com.omegaup" %% "libinteractive" % "latest.integration",
 		"commons-codec" % "commons-codec" % "1.9",
 		"net.liftweb" %% "lift-json" % "2.5.1",
 		"org.scalatest" %% "scalatest" % "2.1.2" % "test",
