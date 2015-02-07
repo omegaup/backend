@@ -327,7 +327,7 @@ object Https extends Object with Log with Using {
 		}}
 	}
 	
-  def send[T, W <: AnyRef](url:String, request:W, responseReader: InputStream=>T, runner: Boolean = true)(implicit mf: Manifest[T]):T = {
+  def send[T, W <: AnyRef](url:String, request:W, responseReader: InputStream=>T, runner: Boolean)(implicit mf: Manifest[T]):T = {
 		debug("Requesting {}", url)
 		
 		implicit val formats = OmegaUpSerialization.formats
@@ -343,7 +343,7 @@ object Https extends Object with Log with Using {
 		}}
 	}
 
-	def send[T, W <: AnyRef](url:String, request:W, runner: Boolean = true)(implicit mf: Manifest[T]):T = {
+	def send[T, W <: AnyRef](url:String, request:W, runner: Boolean)(implicit mf: Manifest[T]):T = {
 		debug("Requesting {}", url)
 		
 		implicit val formats = OmegaUpSerialization.formats
@@ -359,13 +359,13 @@ object Https extends Object with Log with Using {
 		}}
 	}
 	
-	def zip_send[T](url:String, zipfile:String, zipname:String, runner: Boolean = true)(implicit mf: Manifest[T]): T = {
+	def zip_send[T](url:String, zipfile:String, zipname:String, runner: Boolean)(implicit mf: Manifest[T]): T = {
 		val file = new File(zipfile)
 		
 		zip_send(url, new FileInputStream(zipfile), file.length.toInt, zipname, runner)
 	}
 	
-	def zip_send[T](url:String, inputStream:InputStream, zipSize:Int, zipname:String, runner: Boolean = true)(implicit mf: Manifest[T]): T = {
+	def zip_send[T](url:String, inputStream:InputStream, zipSize:Int, zipname:String, runner: Boolean)(implicit mf: Manifest[T]): T = {
 		debug("Requesting {}", url)
 		
 		implicit val formats = OmegaUpSerialization.formats

@@ -8,14 +8,13 @@ libraryDependencies ++= Seq(
   "org.eclipse.jetty" % "jetty-server" % "9.1.5.v20140505"
 )
 
-proguardSettings 
+proguardSettings
 
 ProguardKeys.options in Proguard ++= Seq(
   "-dontskipnonpubliclibraryclasses",
   "-dontskipnonpubliclibraryclassmembers",
   "-dontoptimize",
   "-dontobfuscate",
-  "-dontpreverify",
   "-dontnote",
   "-dontwarn",
   "-keep interface scala.ScalaObject",
@@ -40,5 +39,7 @@ ProguardKeys.inputFilter in Proguard := { file =>
     case _ => Some("!**/ECLIPSEF.RSA,!**/ECLIPSEF.SF,!about.html,!META-INF/MANIFEST.MF,!rootdoc.txt,!META-INF/LICENSE.txt,!META-INF/NOTICE.txt")
   }
 }
+
+ProguardKeys.proguardVersion in Proguard := "5.2"
 
 javaOptions in (Proguard, ProguardKeys.proguard) := Seq("-Xmx2G")

@@ -37,13 +37,18 @@ class RunnerProxy(val hostname: String, port: Int) extends RunnerService with Us
 
 	def compile(message: CompileInputMessage): CompileOutputMessage = {
 		Https.send[CompileOutputMessage, CompileInputMessage](url + "/compile/",
-			message
+			message,
+			true
 		)
 	}
 
 	def run(message: RunInputMessage, callback: RunCaseCallback) : RunOutputMessage = {
 		val reader = new OmegaUpRunstreamReader(callback)
-		Https.send[RunOutputMessage, RunInputMessage](url + "/run/", message, reader.apply _)
+		Https.send[RunOutputMessage, RunInputMessage](url + "/run/",
+			message,
+			reader.apply _,
+			true
+		)
 	}
 	
 	def input(inputName: String, entries: Iterable[InputEntry]): InputOutputMessage = {

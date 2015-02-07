@@ -3,7 +3,7 @@ parallelExecution in Global := false
 lazy val commonSettings = Seq(
 	version := "1.1",
 	organization := "com.omegaup",
-	scalaVersion := "2.10.4",
+	scalaVersion := "2.11.5",
 	scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature"),
 	exportJars := true,
 	libraryDependencies ++= Seq(
@@ -11,10 +11,11 @@ lazy val commonSettings = Seq(
 		"ch.qos.logback" % "logback-core" % "1.1.1",
 		"com.omegaup" %% "libinteractive" % "latest.integration",
 		"commons-codec" % "commons-codec" % "1.9",
-		"net.liftweb" %% "lift-json" % "2.5.1",
-		"org.scalatest" %% "scalatest" % "2.1.2" % "test",
+		"net.liftweb" %% "lift-json" % "2.6",
+		"org.scalatest" %% "scalatest" % "2.2.4" % "test",
 		"org.slf4j" % "log4j-over-slf4j" % "1.7.6"
-	)
+	),
+	ProguardKeys.proguardVersion in Proguard := "5.2"
 )
 
 lazy val backend = project.in(file("."))
@@ -43,3 +44,5 @@ lazy val grader = project
 	.settings(
 		name := "grader"
 	)
+
+mainClass in (Compile, run) := Some("com.omegaup.Service")

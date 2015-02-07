@@ -63,7 +63,8 @@ class RegisterThread(hostname: String, port: Int) extends Thread("RegisterThread
       Https.send[EndpointRegisterOutputMessage, EndpointRegisterInputMessage](
 				Config.get("grader.deregister.url",
 					"https://localhost:21680/endpoint/deregister/"),
-        new EndpointRegisterInputMessage(hostname, port)
+        new EndpointRegisterInputMessage(hostname, port),
+        true
       )
     } catch {
       case _: Throwable => {
@@ -111,7 +112,8 @@ class RegisterThread(hostname: String, port: Int) extends Thread("RegisterThread
           Https.send[EndpointRegisterOutputMessage, EndpointRegisterInputMessage](
 						Config.get("grader.register.url",
 							"https://localhost:21680/endpoint/register/"),
-            new EndpointRegisterInputMessage(hostname, port)
+            new EndpointRegisterInputMessage(hostname, port),
+            true
           )
         } catch {
           case e: IOException => {

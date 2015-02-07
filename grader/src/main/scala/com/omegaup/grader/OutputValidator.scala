@@ -53,9 +53,7 @@ trait OutputValidator extends Object with Log with Using {
 						weights += (group -> new mutable.ListMap[String,Double])
 					}
 
-					try {
-						weights(group) += (tokens(0) -> tokens(1).toDouble)
-					}
+					weights(group) += (tokens(0) -> tokens(1).toDouble)
 				}
 			}
 		
@@ -83,9 +81,7 @@ trait OutputValidator extends Object with Log with Using {
 					weights += (group -> new mutable.ListMap[String,Double])
 				}
 
-				try {
-					weights(group) += (caseName -> 1.0)
-				}
+				weights(group) += (caseName -> 1.0)
 			}
 
 			weights

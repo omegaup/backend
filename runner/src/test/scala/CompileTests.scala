@@ -19,9 +19,9 @@ case class CaseResult(name: String, status: String, output: Option[String],
 class OKMatcher(output: String) extends BeMatcher[CaseResult] with Matchers {
   def apply(result: CaseResult) =
     MatchResult(
-      result.status == "OK" && !result.output.isEmpty && result.output.get == output,
-      "for case `" + result.name + "', " + output + " was " + result.output.get,
-      "for case `" + result.name + "' expecting `" + output + "', got `" + result.output.get + "'"
+      result.status == "OK" && result.output.getOrElse("") == output,
+      "for case `" + result.name + "', status was " + result.status + " and " + output + " was " + result.output.getOrElse("(None)"),
+      "for case `" + result.name + "' status was " + result.status + " and expecting `" + output + "', got `" + result.output.getOrElse("(None)") + "'"
     )
 }
 
