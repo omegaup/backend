@@ -28,9 +28,9 @@ class Grader(val options: GraderOptions) extends Object with GraderService with 
 	{
 		updateConfiguration(false)
 
-		info("omegaUp manager started")
-
 		recoverQueue
+
+		info("omegaUp Grader service started")
 	}
 
 	def addListener(listener: Listener) = listeners += listener
@@ -45,7 +45,7 @@ class Grader(val options: GraderOptions) extends Object with GraderService with 
 		pendingRuns foreach(run => grade(new RunContext(Some(this), run, false, false)))
 	}
 
-	def grade(ctx: RunContext): RunGradeOutputMessage = {
+	def grade(ctx: RunContext): Unit = {
 		info("Judging {}", ctx.run.id)
 
 		if (ctx.run.status != Status.Waiting) {
@@ -58,14 +58,16 @@ class Grader(val options: GraderOptions) extends Object with GraderService with 
 		}
 
 		runnerDispatcher.addRun(ctx)
-		new RunGradeOutputMessage()
 	}
 
 	def grade(message: RunGradeInputMessage): RunGradeOutputMessage = {
-		GraderData.getRun(message.id) match {
-			case None => throw new IllegalArgumentException("Id " + message.id + " not found")
-			case Some(run) => grade(new RunContext(Some(this), run, message.debug, message.rejudge))
+		for (id <- message.id) {
+			GraderData.getRun(id) match {
+				case None => throw new IllegalArgumentException("Id " + id + " not found")
+				case Some(run) => grade(new RunContext(Some(this), run, message.debug, message.rejudge))
+			}
 		}
+		RunGradeOutputMessage()
 	}
 
 	def updateVerdict(ctx: RunContext, run: Run): Run = {

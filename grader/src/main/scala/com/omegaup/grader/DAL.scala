@@ -24,6 +24,8 @@ object GraderData {
 			status = Status.withName(rs.getString("status")),
 			verdict = Verdict.withName(rs.getString("verdict")),
 			time = rs.getTimestamp("time"),
+			runtime = rs.getLong("runtime"),
+			memory = rs.getLong("memory"),
 			submit_delay = rs.getInt("submit_delay"),
 			score = rs.getDouble("score"),
 			contest_score = rs.getString("contest_score") match {
@@ -34,37 +36,7 @@ object GraderData {
 				case null => None
 				case x: String => Some(x)
 			},
-			problem = new Problem(
-				id = rs.getLong("problem_id"),
-				validator = Validator.withName(rs.getString("validator")),
-				alias = rs.getString("alias"),
-				time_limit = rs.getString("time_limit") match {
-					case null => None
-					case x: String => Some(x.toLong)
-				},
-				overall_wall_time_limit = rs.getString("overall_wall_time_limit") match {
-					case null => None
-					case x: String => Some(x.toLong)
-				},
-				extra_wall_time = rs.getInt("extra_wall_time").toLong,
-				memory_limit = rs.getString("memory_limit") match {
-					case null => None
-					case x: String => Some(x.toLong)
-				},
-				output_limit = rs.getString("output_limit") match {
-					case null => None
-					case x: String => Some(x.toLong)
-				},
-				stack_limit = rs.getString("stack_limit") match {
-					case null => None
-					case x: String => Some(x.toLong)
-				},
-				points = rs.getString("points") match {
-					case null => None
-					case x: String => Some(x.toDouble)
-				},
-				slow = rs.getInt("slow") == 1
-			),
+			problem = hydrateProblem(rs),
 			contest = rs.getLong("contest_id") match {
 				case 0 => None
 				case x: Long => Some(new Contest(
@@ -78,7 +50,40 @@ object GraderData {
 			}
 		)
 
-	def getRun(id: Long)(implicit connection: Connection): Option[Run] =
+	private def hydrateProblem(rs: ResultSet) =
+		new Problem(
+			id = rs.getLong("problem_id"),
+			validator = Validator.withName(rs.getString("validator")),
+			alias = rs.getString("alias"),
+			time_limit = rs.getString("time_limit") match {
+				case null => None
+				case x: String => Some(x.toLong)
+			},
+			overall_wall_time_limit = rs.getString("overall_wall_time_limit") match {
+				case null => None
+				case x: String => Some(x.toLong)
+			},
+			extra_wall_time = rs.getInt("extra_wall_time").toLong,
+			memory_limit = rs.getString("memory_limit") match {
+				case null => None
+				case x: String => Some(x.toLong)
+			},
+			output_limit = rs.getString("output_limit") match {
+				case null => None
+				case x: String => Some(x.toLong)
+			},
+			stack_limit = rs.getString("stack_limit") match {
+				case null => None
+				case x: String => Some(x.toLong)
+			},
+			points = rs.getString("points") match {
+				case null => None
+				case x: String => Some(x.toDouble)
+			},
+			slow = rs.getInt("slow") == 1
+		)
+
+	def getRun(id: String)(implicit connection: Connection): Option[Run] =
 		query("""
 			SELECT
 				r.*, p.*, u.username, cp.points, c.alias AS contest_alias,
@@ -100,11 +105,47 @@ object GraderData {
 					cp.contest_id = r.contest_id AND
 					cp.problem_id = r.problem_id
 			WHERE
-				r.run_id = ?;
+				r.guid = ?;
 			""",
 			id
 		) { hydrateRun }
-		
+
+	def getProblem(id: String)(implicit connection: Connection): Option[Problem] =
+		query("""
+			SELECT
+				p.*, NULL as points
+			FROM
+				Problems AS p
+			WHERE
+				p.alias = ?;
+			""",
+			id
+		) { hydrateProblem }
+
+	def getRuns()(implicit connection: Connection): Iterable[Run] =
+		queryEach("""
+			SELECT
+				r.*, p.*, u.username, cp.points, c.alias AS contest_alias,
+				c.start_time, c.finish_time, c.points_decay_factor, r.submit_delay,
+				c.penalty, c.urgent
+			FROM
+				Runs AS r
+			INNER JOIN
+				Problems AS p ON
+					p.problem_id = r.problem_id
+			LEFT JOIN
+				Users AS u ON
+					u.user_id = r.user_id
+			LEFT JOIN
+				Contests AS c ON
+					c.contest_id = r.contest_id
+			LEFT JOIN
+				Contest_Problems AS cp ON
+					cp.contest_id = r.contest_id AND
+					cp.problem_id = r.problem_id
+			"""
+		) { hydrateRun }
+
 	def pendingRuns()(implicit connection: Connection): Iterable[Run] =
 		queryEach("""
 			SELECT
@@ -130,7 +171,7 @@ object GraderData {
 				r.status != 'ready';
 			"""
 		) { hydrateRun }
-		
+
 	def update(run: Run)(implicit connection: Connection): Run = {
 		execute("""
 			UPDATE

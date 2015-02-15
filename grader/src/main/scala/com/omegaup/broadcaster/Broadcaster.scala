@@ -47,8 +47,8 @@ class Broadcaster extends Object with ServiceInterface with Runnable with Log wi
 	private val subscriberLock = new Object
 	private val PoisonPill = new QueuedElement(null, true, -1, false)
 	private val queue = new LinkedBlockingQueue[QueuedElement]
-	private val server = new org.eclipse.jetty.server.Server()
 	private val broadcastThread = new Thread(this, "BroadcastThread")
+	private val server = new org.eclipse.jetty.server.Server
 
 	{
 		val broadcasterConnector = new org.eclipse.jetty.server.ServerConnector(server)
@@ -68,7 +68,7 @@ class Broadcaster extends Object with ServiceInterface with Runnable with Log wi
 			}
 		})
 
-		server.start()
+		server.start
 
 		info("Registering port {}", broadcasterConnector.getLocalPort)
 

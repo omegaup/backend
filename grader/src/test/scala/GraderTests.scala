@@ -124,9 +124,9 @@ class GraderSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
       }
     }
 
-    def omegaUpSubmit(problem_id: Long, language: Language, code: String, contest: Option[Int] = None)(test: (Run) => Unit) = {
-      val submit_id = Service.newRun(RunNewInputMessage(
-        problem_id = problem_id.toInt,
+    def omegaUpSubmit(problem: String, language: Language, code: String, contest: Option[Long] = None)(test: (Run) => Unit) = {
+      val submit_id = Service.runNew(RunNewInputMessage(
+        problem = problem,
         language = language.toString,
         code = code,
         contest = contest
@@ -134,7 +134,7 @@ class GraderSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
 
       ready = false
       tests += test
-      grader.grade(new RunGradeInputMessage(id = submit_id.toInt))
+      grader.grade(new RunGradeInputMessage(id = submit_id))
 
       lock.synchronized {
         if (!ready) {
@@ -148,7 +148,7 @@ class GraderSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
       if (exception != null) throw exception
     }
 
-    omegaUpSubmit(1, Language.Cpp, """
+    omegaUpSubmit("HELLO", Language.Cpp, """
       int main() {
         while(true);
       }
@@ -159,7 +159,7 @@ class GraderSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
       run.contest_score should equal (None)
     }}
 
-  omegaUpSubmit(1, Language.Cpp, """
+  omegaUpSubmit("HELLO", Language.Cpp, """
     #include <cstdlib>
     #include <iostream>
     #include <map>
@@ -182,7 +182,7 @@ class GraderSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     run.contest_score should equal (Some(100))
   }}
 
-  omegaUpSubmit(1, Language.Cpp, """
+  omegaUpSubmit("HELLO", Language.Cpp, """
     #include <cstdlib>
     #include <iostream>
     #include <map>
@@ -205,14 +205,14 @@ class GraderSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     run.contest_score should equal (None)
   }}
 
-  omegaUpSubmit(1, Language.Literal, "") { run => {
+  omegaUpSubmit("HELLO", Language.Literal, "") { run => {
     run.status should equal (Status.Ready)
     run.verdict should equal (Verdict.WrongAnswer)
     run.score should equal (0.0)
     run.contest_score should equal (None)
   }}
 
-  omegaUpSubmit(1, Language.Literal,
+  omegaUpSubmit("HELLO", Language.Literal,
     """data:application/x-zip;base64,
     UEsDBAoAAAAAAKis/kI1yT8dEAAAABAAAAAGABwAMDAub3V0VVQJAAN7lPhRe5T4UXV4CwABBOgD
     AAAE6AMAAEhlbGxvLCBXb3JsZCEKMwpQSwMEFAAAAAgAqaz+Qrbi9zMUAAAAFgAAAAYAHAAwMS5v
@@ -227,7 +227,7 @@ class GraderSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     run.contest_score should equal (None)
   }}
 
-  omegaUpSubmit(1, Language.Literal,
+  omegaUpSubmit("HELLO", Language.Literal,
     """data:application/x-zip;base64,
     UEsDBAoAAAAAAKis/kI1yT8dEAAAABAAAAAGABwAMDAub3V0VVQJAAN7lPhRe5T4UXV4CwABBOgD
     AAAE6AMAAEhlbGxvLCBXb3JsZCEKMwpQSwMECgAAAAAASwb/QvaaEjYQAAAAEAAAAAYAHAAwMS5v
@@ -242,7 +242,7 @@ class GraderSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     run.contest_score should equal (None)
   }}
 
-  omegaUpSubmit(2, Language.Cpp, """
+  omegaUpSubmit("HELLO2", Language.Cpp, """
     #include <cstdlib>
     #include <iostream>
     #include <map>
@@ -264,7 +264,7 @@ class GraderSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     run.contest_score should equal (None)
   }}
 
-  omegaUpSubmit(2, Language.Cpp, """
+  omegaUpSubmit("HELLO2", Language.Cpp, """
     #include <cstdlib>
     #include <iostream>
     #include <map>
@@ -286,7 +286,7 @@ class GraderSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     run.contest_score should equal (None)
   }}
 
-  omegaUpSubmit(3, Language.Cpp, """
+  omegaUpSubmit("HELLO3", Language.Cpp, """
     #include <cstdlib>
     #include <iostream>
     #include <map>
@@ -308,7 +308,7 @@ class GraderSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     run.contest_score should equal (None)
   }}
 
-  omegaUpSubmit(3, Language.Cpp, """
+  omegaUpSubmit("HELLO3", Language.Cpp, """
     #include <cstdlib>
     #include <iostream>
     #include <map>
@@ -330,7 +330,7 @@ class GraderSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     run.contest_score should equal (None)
   }}
 
-  omegaUpSubmit(4, Language.Cpp, """
+  omegaUpSubmit("HELLO4", Language.Cpp, """
     #include <cstdlib>
     #include <iostream>
     #include <map>
@@ -352,7 +352,7 @@ class GraderSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     run.contest_score should equal (None)
   }}
 
-  omegaUpSubmit(4, Language.Cpp, """
+  omegaUpSubmit("HELLO4", Language.Cpp, """
     #include <cstdlib>
     #include <iostream>
     #include <map>
@@ -374,7 +374,7 @@ class GraderSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     run.contest_score should equal (None)
   }}
 
-  omegaUpSubmit(5, Language.Cpp, """
+  omegaUpSubmit("HELLO5", Language.Cpp, """
     #include "solve.h"
 
     long long solve(long long a, long long b) { return a + b; }
@@ -385,7 +385,7 @@ class GraderSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     run.contest_score should equal (None)
   }}
 
-  omegaUpSubmit(5, Language.Cpp, """
+  omegaUpSubmit("HELLO5", Language.Cpp, """
     long long solve(long long a, long long b) { return 0; }
   """) { run => {
     run.status should equal (Status.Ready)
@@ -394,7 +394,7 @@ class GraderSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     run.contest_score should equal (None)
   }}
 
-  omegaUpSubmit(5, Language.Cpp, """
+  omegaUpSubmit("HELLO5", Language.Cpp, """
     #include <stdio.h>
     int main() { printf("Hello, World!\n3\n"); }
   """) { run => {
@@ -404,7 +404,7 @@ class GraderSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     run.contest_score should equal (None)
   }}
 
-  omegaUpSubmit(6, Language.KarelJava, """
+  omegaUpSubmit("KAREL", Language.KarelJava, """
     class program {
       void turn(n) { iterate(n) turnleft(); }
 

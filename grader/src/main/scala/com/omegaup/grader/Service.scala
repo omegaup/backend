@@ -15,7 +15,10 @@ object Service extends Object with Log {
 				Config.load(options.configPath)
 			} else if (args(i) == "--output" && i + 1 < args.length) {
 				i += 1
-				System.setOut(new java.io.PrintStream(new java.io.FileOutputStream(args(i))))
+				val redirect = new java.io.PrintStream(
+					new java.io.FileOutputStream(args(i)))
+				System.setOut(redirect)
+				System.setErr(redirect)
 			}
 			i += 1
 		}
@@ -28,7 +31,7 @@ object Service extends Object with Log {
 
 		// logger
 		Logging.init
-		
+
 		val server = new Grader(options)
 
 		Runtime.getRuntime.addShutdownHook(new Thread() {
@@ -37,7 +40,7 @@ object Service extends Object with Log {
 				server.stop
 			}
 		});
-		
+
 		server.join
 	}
 }
