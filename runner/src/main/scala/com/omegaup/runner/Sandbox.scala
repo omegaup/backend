@@ -8,6 +8,8 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeoutException
 import java.util.concurrent.TimeUnit
 
+import scala.collection.JavaConversions._
+
 import com.omegaup._
 import com.omegaup.data._
 
@@ -49,6 +51,223 @@ trait Sandbox {
           extraMountPoints: List[(String, String)] = List[(String, String)]()): Unit
 }
 
+object NullSandbox extends Object with Sandbox with Log with Using {
+  private val scheduler = Executors.newScheduledThreadPool(1)
+  private val TimedOut = 0x34c9d964
+
+  def compile[A](lang: String,
+                 inputFiles: TraversableOnce[String],
+                 chdir: String = "",
+                 outputFile: String = "",
+                 errorFile: String = "",
+                 metaFile: String = "",
+                 target: String = "Main",
+                 extraFlags: TraversableOnce[String] = List()) (callback: Int => A): A = {
+    val params = (lang match {
+      case "java" =>
+        List(Config.get("java.compiler.path", "/usr/bin/javac"), "-J-Xmx512M") ++
+        inputFiles
+      case "c" =>
+        List(Config.get("c.compiler.path", "/usr/bin/gcc"), "-std=c99", "-O2") ++
+        inputFiles ++ List("-lm", "-o", target)
+      case "cpp" =>
+        List(Config.get("cpp.compiler.path", "/usr/bin/g++"), "-O2") ++
+        inputFiles ++ List("-lm", "-o", target)
+      case "cpp11" =>
+        List(Config.get("cpp.compiler.path", "/usr/bin/g++"), "-O2", "-std=c++11", "-xc++") ++
+        inputFiles ++ List("-lm", "-o", target)
+      case "pas" =>
+        List(
+          Config.get("p.compiler.path", "/usr/bin/fpc"),
+          "-Tlinux",
+          "-O2",
+          "-Mobjfpc",
+          "-Sc",
+          "-Sh"
+        ) ++
+        inputFiles ++ List("-o" + target)
+      case "py" =>
+        List(Config.get("py.compiler.path", "/usr/bin/python"), "-m", "py_compile") ++
+        inputFiles
+      case "rb" =>
+        List(Config.get("rb.compiler.path", "/usr/bin/ruby"), "-wc") ++
+        inputFiles
+      case "kj" =>
+        List(
+          Config.get("kcl.compiler.path", "/usr/bin/kcl"),
+          "-lj",
+          "-o",
+          s"$target.kx",
+          "-c"
+        ) ++
+        inputFiles
+      case "kp" =>
+        List(
+          Config.get("kcl.compiler.path", "/usr/bin/kcl"),
+          "-lp",
+          "-o",
+          s"$target.kx",
+          "-c"
+        ) ++
+        inputFiles
+      case "hs" =>
+        List(
+          Config.get("ghc.compiler.path", "/usr/lib/ghc/lib/ghc"), "-B/usr/lib/ghc",
+          "-O2",
+          "-o",
+          target
+        ) ++
+        inputFiles
+      case _ => null
+    }) ++ extraFlags
+
+    debug("Compile {}", params.mkString(" "))
+
+    val builder = new ProcessBuilder(params)
+    builder.directory(new File(chdir))
+    builder.redirectError(new File(errorFile))
+    builder.redirectOutput(new File(outputFile))
+
+    val t0 = System.currentTimeMillis
+    val status = runWithTimeout(builder, Config.get("java.compile.time_limit", 30) * 1000)
+    val t1 = System.currentTimeMillis
+
+    val meta = Map(
+      "time" -> ("%.3f" format ((t1 - t0) / 1000.0)),
+      "time-wall" -> ("%.3f" format ((t1 - t0) / 1000.0)),
+      "mem" -> "0"
+    ) + (status match {
+      case TimedOut => "status" -> "TO"
+      case 0 => "status" -> "OK"
+      case _ => {
+        val errorPath = chdir + "/" + errorFile
+        // Truncate the compiler error to 8k
+        try {
+          val outChan = new java.io.FileOutputStream(errorPath, true).getChannel()
+          outChan.truncate(8192)
+          outChan.close()
+        } catch {
+          case e: Exception => {
+            error("Unable to truncate {}: {}", errorPath, e)
+          }
+        }
+        "status" -> "RE"
+      }
+    })
+
+    MetaFile.save(metaFile, meta)
+    callback(status)
+  }
+
+  def run(message: RunInputMessage,
+          lang: String,
+          logTag: String = "Run",
+          extraParams: TraversableOnce[String] = List[String](),
+          chdir: String = "",
+          inputFile: String = "",
+          outputFile: String = "",
+          errorFile: String = "",
+          metaFile: String = "",
+          originalInputFile: Option[String] = None,
+          runMetaFile: Option[String] = None,
+          target: String = "Main",
+          extraMountPoints: List[(String, String)] = List[(String, String)]()): Unit = {
+    val timeLimit = message.timeLimit + (lang match {
+      case "java" => 1000
+      case _ => 0
+    }) + message.extraWallTime
+    // 16MB + memory limit to prevent some RTE
+    val memoryLimit = (16 * 1024 + message.memoryLimit) * 1024
+
+    originalInputFile match {
+      case Some(file) => FileUtil.copy(new File(file), new File(chdir, "data.in"))
+      case None => {}
+    }
+
+    runMetaFile match {
+      case Some(file) => FileUtil.copy(new File(file), new File(chdir, "meta.in"))
+      case None => {}
+    }
+
+    val params = (lang match {
+      case "java" =>
+        List("/usr/bin/java", "-Xmx" + memoryLimit, target)
+      case "c" =>
+        List(s"./$target")
+      case "cpp" =>
+        List(s"./$target")
+      case "cpp11" =>
+        List(s"./$target")
+      case "pas" =>
+        List(s"./$target")
+      case "py" =>
+        List("/usr/bin/python", s"$target.py")
+      case "rb" =>
+        List(Config.get("rb.compiler.path", "/usr/bin/ruby"), s"$target.rb")
+      case "kp" =>
+        List(
+          Config.get("karel.runtime.path", "/usr/bin/karel"),
+          "/dev/stdin",
+          "-oi",
+          "-q",
+          "-p2",
+          s"$target.kx"
+        )
+      case "kj" =>
+        List(
+          Config.get("karel.runtime.path", "/usr/bin/karel"),
+          "/dev/stdin",
+          "-oi",
+          "-q",
+          "-p2",
+          s"$target.kx"
+        )
+      case "hs" =>
+        List(s"./$target")
+    }) ++ extraParams
+
+    debug("{} {}", logTag, params.mkString(" "))
+    val builder = new ProcessBuilder(params)
+    builder.directory(new File(chdir))
+    builder.redirectError(new File(errorFile))
+    builder.redirectOutput(new File(outputFile))
+    builder.redirectInput(new File(inputFile))
+
+    val t0 = System.currentTimeMillis
+    val status = runWithTimeout(builder, timeLimit)
+    val t1 = System.currentTimeMillis
+
+    val meta = Map(
+      "time" -> ("%.3f" format ((t1 - t0) / 1000.0)),
+      "time-wall" -> ("%.3f" format ((t1 - t0) / 1000.0)),
+      "mem" -> "0"
+    ) + (status match {
+      case TimedOut => "status" -> "TO"
+      case 0 => "status" -> "OK"
+      case _ => "status" -> "RE"
+    })
+
+    MetaFile.save(metaFile, meta)
+  }
+
+  private def runWithTimeout(builder: ProcessBuilder, timeout: Long): Int = {
+    pusing(builder.start) { p => {
+      val future = scheduler.schedule(new Runnable() {
+        override def run(): Unit = {
+          p.destroy
+        }
+      }, timeout, TimeUnit.MILLISECONDS)
+
+      p.waitFor
+      if (!future.cancel(false)) {
+        TimedOut
+      } else {
+        p.exitValue
+      }
+    }}
+  }
+}
+
 object Minijail extends Object with Sandbox with Log with Using {
   val executor = Executors.newCachedThreadPool
 
@@ -68,8 +287,8 @@ object Minijail extends Object with Sandbox with Log with Using {
       "-C", Config.get("runner.minijail.path", ".") + "/root-compilers",
       "-d", "/home",
       "-b", chdir + ",/home,1",
-      "-1", chdir + "/" + outputFile,
-      "-2", chdir + "/" + errorFile,
+      "-1", outputFile,
+      "-2", errorFile,
       "-M", metaFile,
       "-t", (Config.get("java.compile.time_limit", 30) * 1000).toString,
       "-O", Config.get("runner.compile.output_limit", 64 * 1024 * 1024).toString
@@ -175,15 +394,14 @@ object Minijail extends Object with Sandbox with Log with Using {
 
     val (status, syscallName) = runMinijail(params)
     if (status != -1) {
-      val errorPath = chdir + "/" + errorFile
       // Truncate the compiler error to 8k
       try {
-        val outChan = new java.io.FileOutputStream(errorPath, true).getChannel()
+        val outChan = new java.io.FileOutputStream(errorFile, true).getChannel()
         outChan.truncate(8192)
         outChan.close()
       } catch {
         case e: Exception => {
-          error("Unable to truncate {}: {}", errorPath, e)
+          error("Unable to truncate {}: {}", errorFile, e)
         }
       }
       patchMetaFile(lang, status, syscallName, None, metaFile)

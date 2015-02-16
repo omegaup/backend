@@ -127,9 +127,9 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
           "pas",
           List(inputFile),
           chdir = runDirectory.getCanonicalPath,
-          metaFile = runDirectory.getCanonicalPath + "/compile.meta",
-          outputFile = "compile.out",
-          errorFile = "compile.err"
+          metaFile = new File(runDirectory, "compile.meta").getCanonicalPath,
+          outputFile = new File(runDirectory, "compile.out").getCanonicalPath,
+          errorFile = new File(runDirectory, "compile.err").getCanonicalPath
         ) { status => {
           if(status >= 0) {
             val meta = MetaFile.load(runDirectory.getCanonicalPath + "/compile.meta")
@@ -157,9 +157,9 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
       lang,
       inputFiles,
       chdir = runDirectory.getCanonicalPath,
-      metaFile = runDirectory.getCanonicalPath + "/compile.meta",
-      outputFile = "compile.out",
-      errorFile = "compile.err"
+      metaFile = new File(runDirectory, "compile.meta").getCanonicalPath,
+      outputFile = new File(runDirectory, "compile.out").getCanonicalPath,
+      errorFile = new File(runDirectory, "compile.err").getCanonicalPath
     ) {
       compileStatus(lang, runDirectory, "Main", inputFiles, previousError,
         error_string, _)
@@ -212,8 +212,8 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
           sources,
           chdir = targetRoot.toString,
           metaFile = targetRoot.resolve(Paths.get("compile.meta")).toString,
-          outputFile = "compile.out",
-          errorFile = "compile.err",
+          outputFile = targetRoot.resolve(Paths.get("compile.out")).toString,
+          errorFile = targetRoot.resolve(Paths.get("compile.err")).toString,
           target = makefile.target.getFileName.toString,
           extraFlags = (if (parent) {
             lang match {

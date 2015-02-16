@@ -100,6 +100,7 @@ class GraderSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     }
 
     grader = new Grader(new GraderOptions)
+    grader.start
   }
 
   override def afterAll() {

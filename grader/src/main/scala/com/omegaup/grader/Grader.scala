@@ -85,7 +85,15 @@ class Grader(val options: GraderOptions) extends Object with GraderService with 
 
 	def updateConfiguration(embeddedRunner: Boolean) = {
 		if (Config.get("grader.embedded_runner.enable", false) && !embeddedRunner) {
-			runnerDispatcher.addRunner(new com.omegaup.runner.Runner("#embedded-runner", Minijail))
+			runnerDispatcher.addRunner(
+				new com.omegaup.runner.Runner(
+					"#embedded-runner",
+					Config.get("runner.sandbox", "minijail") match {
+						case "null" => NullSandbox
+						case _ => Minijail
+					}
+				)
+			)
 		}
 		val source = Config.get("grader.routing.table", "")
 		try {
