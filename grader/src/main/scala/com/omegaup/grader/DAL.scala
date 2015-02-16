@@ -1,6 +1,7 @@
 package com.omegaup.grader
 
 import java.sql._
+import com.omegaup.FileUtil
 import com.omegaup.data._
 import com.omegaup.Database._
 
@@ -54,6 +55,7 @@ object GraderData {
 		new Problem(
 			id = rs.getLong("problem_id"),
 			validator = Validator.withName(rs.getString("validator")),
+			title = rs.getString("title"),
 			alias = rs.getString("alias"),
 			time_limit = rs.getString("time_limit") match {
 				case null => None
@@ -122,6 +124,16 @@ object GraderData {
 			id
 		) { hydrateProblem }
 
+	def getProblems()(implicit connection: Connection): Iterable[Problem] =
+		queryEach("""
+			SELECT
+				p.*, NULL as points
+			FROM
+				Problems AS p
+			"""
+		) { hydrateProblem }
+
+
 	def getRuns()(implicit connection: Connection): Iterable[Run] =
 		queryEach("""
 			SELECT
@@ -143,6 +155,8 @@ object GraderData {
 				Contest_Problems AS cp ON
 					cp.contest_id = r.contest_id AND
 					cp.problem_id = r.problem_id
+			ORDER BY
+				r.run_id ASC;
 			"""
 		) { hydrateRun }
 
@@ -187,17 +201,31 @@ object GraderData {
 			run.runtime,
 			run.memory,
 			run.score,
-			run.contest_score match {
-				case None => null
-				case Some(x) => x
-			},
+			run.contest_score.getOrElse(null),
 			run.judged_by,
 			run.id
 		)
 		run
 	}
 
-	def insert(run: Run)(implicit connection: Connection): Run = {
+	def insertProblem(problem: Problem)(implicit connection: Connection): Problem = {
+		execute(
+			"INSERT INTO Problems (alias, title, validator, time_limit, overall_wall_time_limit, extra_wall_time, memory_limit, output_limit, stack_limit) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?);",
+			problem.alias,
+			problem.title,
+			problem.validator,
+			problem.time_limit.getOrElse(null),
+			problem.overall_wall_time_limit.getOrElse(null),
+			problem.extra_wall_time,
+			problem.memory_limit.getOrElse(null),
+			problem.output_limit.getOrElse(null),
+			problem.stack_limit.getOrElse(null)
+		)
+		problem.id = query("SELECT LAST_INSERT_ID()") { rs => rs.getInt(1) }.get
+		problem
+	}
+
+	def insertRun(run: Run)(implicit connection: Connection): Run = {
 		execute(
 			"INSERT INTO Runs (user_id, problem_id, contest_id, guid, language, verdict, ip, time) VALUES(?, ?, ?, ?, ?, ?, ?, ?);",
 			run.user.map(_.id),
@@ -211,6 +239,10 @@ object GraderData {
 		)
 		run.id = query("SELECT LAST_INSERT_ID()") { rs => rs.getInt(1) }.get
 		run
+	}
+
+	def init()(implicit connection: Connection): Unit = {
+		execute(FileUtil.read(getClass.getResourceAsStream("/h2.sql")))
 	}
 }
 

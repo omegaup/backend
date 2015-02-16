@@ -192,7 +192,7 @@ object Service extends Object with Log with Using {
                 val req = Serialization.read[RunInputMessage](request.getReader)
                 token = req.token
                 
-                val zipFile = new File(Config.get("compile.root", "."), token + "/output.zip")
+                val zipFile = new File(Config.get("compile.root", "./compile"), token + "/output.zip")
                 runner.run(req, callbackProxy)
               } catch {
                 case e: Exception => {
@@ -254,7 +254,7 @@ object Service extends Object with Log with Using {
 
                     // Some debugging code to diagnose input transmission problems.
                     if (Config.get("runner.tar.preserve", false)) {
-                      var tarFile = new File(Config.get("input.root", "."), inputName + ".tar")
+                      var tarFile = new File(Config.get("input.root", "./input"), inputName + ".tar")
                       using (new FileOutputStream(tarFile)) {
                         FileUtil.copy(tarStream, _)
                       }

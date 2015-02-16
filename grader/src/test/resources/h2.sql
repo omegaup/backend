@@ -2,17 +2,17 @@ INSERT INTO Contests(title, description, start_time, finish_time, window_length,
 
 INSERT INTO Users(`user_id`, `username`) VALUES (1, 'user');
 
-INSERT INTO Problems(`problem_id`, `public`, `author_id`, `title`, `alias`, `validator`, `server`, `remote_id`, `time_limit`, `overall_wall_time_limit`, `memory_limit`, `visits`, `submissions`, `accepted`, `difficulty`, `creation_date`, `source`, `order`) VALUES (1, 1, 1, 'Hello, World!', 'HELLO', 'token-caseless', NULL, NULL, 3000, 30000, 65536, 0, 0, 0, 0, '2000-01-01 00:00:00', 'own', 'normal');
+INSERT INTO Problems(`problem_id`, `title`, `alias`, `validator`, `time_limit`, `overall_wall_time_limit`, `memory_limit`, `creation_date`) VALUES (1, 'Hello, World!', 'HELLO', 'token-caseless', 3000, 30000, 65536, '2000-01-01 00:00:00');
 
-INSERT INTO Problems(`problem_id`, `public`, `author_id`, `title`, `alias`, `validator`, `server`, `remote_id`, `time_limit`, `overall_wall_time_limit`, `memory_limit`, `visits`, `submissions`, `accepted`, `difficulty`, `creation_date`, `source`, `order`) VALUES (2, 1, 1, 'Hello, World!', 'HELLO2', 'token-caseless', NULL, NULL, 3000, 30000, 65536, 0, 0, 0, 0, '2000-01-01 00:00:00', 'own', 'normal');
+INSERT INTO Problems(`problem_id`, `title`, `alias`, `validator`, `time_limit`, `overall_wall_time_limit`, `memory_limit`, `creation_date`) VALUES (2, 'Hello, World!', 'HELLO2', 'token-caseless', 3000, 30000, 65536, '2000-01-01 00:00:00');
 
-INSERT INTO Problems(`problem_id`, `public`, `author_id`, `title`, `alias`, `validator`, `server`, `remote_id`, `time_limit`, `overall_wall_time_limit`, `memory_limit`, `visits`, `submissions`, `accepted`, `difficulty`, `creation_date`, `source`, `order`) VALUES (3, 1, 1, 'Hello, World!', 'HELLO3', 'token-caseless', NULL, NULL, 3000, 30000, 65536, 0, 0, 0, 0, '2000-01-01 00:00:00', 'own', 'normal');
+INSERT INTO Problems(`problem_id`, `title`, `alias`, `validator`, `time_limit`, `overall_wall_time_limit`, `memory_limit`, `creation_date`) VALUES (3, 'Hello, World!', 'HELLO3', 'token-caseless', 3000, 30000, 65536, '2000-01-01 00:00:00');
 
-INSERT INTO Problems(`problem_id`, `public`, `author_id`, `title`, `alias`, `validator`, `server`, `remote_id`, `time_limit`, `overall_wall_time_limit`, `memory_limit`, `visits`, `submissions`, `accepted`, `difficulty`, `creation_date`, `source`, `order`) VALUES (4, 1, 1, 'Hello, World!', 'HELLO4', 'custom', NULL, NULL, 3000, 30000, 65536, 0, 0, 0, 0, '2000-01-01 00:00:00', 'own', 'normal');
+INSERT INTO Problems(`problem_id`, `title`, `alias`, `validator`, `time_limit`, `overall_wall_time_limit`, `memory_limit`, `creation_date`) VALUES (4, 'Hello, World!', 'HELLO4', 'custom', 3000, 30000, 65536, '2000-01-01 00:00:00');
 
-INSERT INTO Problems(`problem_id`, `public`, `author_id`, `title`, `alias`, `validator`, `server`, `remote_id`, `time_limit`, `overall_wall_time_limit`, `memory_limit`, `visits`, `submissions`, `accepted`, `difficulty`, `creation_date`, `source`, `order`) VALUES (5, 1, 1, 'Hello, World!', 'HELLO5', 'token-caseless', NULL, NULL, 3000, 30000, 65536, 0, 0, 0, 0, '2000-01-01 00:00:00', 'own', 'normal');
+INSERT INTO Problems(`problem_id`, `title`, `alias`, `validator`, `time_limit`, `overall_wall_time_limit`, `memory_limit`, `creation_date`) VALUES (5, 'Hello, World!', 'HELLO5', 'token-caseless', 3000, 30000, 65536, '2000-01-01 00:00:00');
 
-INSERT INTO Problems(`problem_id`, `public`, `author_id`, `title`, `alias`, `validator`, `server`, `remote_id`, `time_limit`, `overall_wall_time_limit`, `memory_limit`, `visits`, `submissions`, `accepted`, `difficulty`, `creation_date`, `source`, `order`) VALUES (6, 1, 1, 'Hello, Karel!', 'KAREL', 'token-caseless', NULL, NULL, 3000, 30000, 65536, 0, 0, 0, 0, '2000-01-01 00:00:00', 'own', 'normal');
+INSERT INTO Problems(`problem_id`, `title`, `alias`, `validator`, `time_limit`, `overall_wall_time_limit`, `memory_limit`, `creation_date`) VALUES (6, 'Hello, Karel!', 'KAREL', 'token-caseless', 3000, 30000, 65536, '2000-01-01 00:00:00');
 
 INSERT INTO Contest_Problems(contest_id, problem_id, points) VALUES(1, 1, 100);
 INSERT INTO Contest_Problems(contest_id, problem_id, points) VALUES(1, 2, 100);

@@ -14,7 +14,7 @@ import Verdict._
 trait OutputValidator extends Object with Log with Using {
 	def validateRun(ctx: RunContext, run: Run): Run = {
 		val alias = run.problem.alias
-		val dataDirectory = new File(Config.get("grader.root", ".") + "/" + run.id)
+		val dataDirectory = new File(Config.get("grader.root", "./grade") + "/" + run.id)
 
 		info("Validating {} {} with {}", alias, run.id, run.problem.validator)
 
@@ -182,7 +182,7 @@ trait OutputValidator extends Object with Log with Using {
 
 		implicit val formats = OmegaUpSerialization.formats
 
-		val details = new File(Config.get("grader.root", "./grader") + "/" + run.id + "/details.json")
+		val details = new File(Config.get("grader.root", "./grade") + "/" + run.id + "/details.json")
 		debug("Writing details into {}.", details.getCanonicalPath)
 		Serialization.write(caseScores, new FileWriter(details))
 

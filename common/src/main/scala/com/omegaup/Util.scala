@@ -4,6 +4,9 @@ import com.omegaup.data.OmegaUpSerialization
 
 import java.io._
 import java.net._
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.FileAlreadyExistsException
 import java.util._
 import java.security.KeyStore
 import java.security.MessageDigest
@@ -74,7 +77,7 @@ object Config {
 			case _: Throwable => {}
 		}
 	}
-	
+
 	def get[T](propname: String, default: T): T = {
 		props.getProperty(propname) match {
 			case null => default
@@ -86,7 +89,7 @@ object Config {
 			}
 		}
 	}
-	
+
 	def set[T](propname: String, value: T): Unit = {
 		props.setProperty(propname, value.toString)
 	}
@@ -238,7 +241,7 @@ class EnumerationWrapper[T](enumeration:java.util.Enumeration[T]) extends Iterat
 	def hasNext:Boolean = enumeration.hasMoreElements()
 	def next:T = enumeration.nextElement()
 	def remove:Unit = {}
-	
+
 	implicit def enumerationToEnumerationWrapper[T](enumeration:java.util.Enumeration[T]):EnumerationWrapper[T] = {
 		new EnumerationWrapper(enumeration)
 	}
@@ -326,50 +329,50 @@ object Https extends Object with Log with Using {
 			Serialization.read[T](new InputStreamReader(conn.getInputStream()))
 		}}
 	}
-	
+
   def send[T, W <: AnyRef](url:String, request:W, responseReader: InputStream=>T, runner: Boolean)(implicit mf: Manifest[T]):T = {
 		debug("Requesting {}", url)
-		
+
 		implicit val formats = OmegaUpSerialization.formats
-		
+
 		cusing (connect(url, runner)) { conn => {
 			conn.addRequestProperty("Content-Type", "text/json")
 			conn.setDoOutput(true)
 			val writer = new PrintWriter(new OutputStreamWriter(conn.getOutputStream()))
 			Serialization.write[W, PrintWriter](request, writer)
 			writer.close()
-		
+
 			responseReader(conn.getInputStream)
 		}}
 	}
 
 	def send[T, W <: AnyRef](url:String, request:W, runner: Boolean)(implicit mf: Manifest[T]):T = {
 		debug("Requesting {}", url)
-		
+
 		implicit val formats = OmegaUpSerialization.formats
-		
+
 		cusing (connect(url, runner)) { conn => {
 			conn.addRequestProperty("Content-Type", "text/json")
 			conn.setDoOutput(true)
 			val writer = new PrintWriter(new OutputStreamWriter(conn.getOutputStream()))
 			Serialization.write[W, PrintWriter](request, writer)
 			writer.close()
-		
+
 			Serialization.read[T](new InputStreamReader(conn.getInputStream()))
 		}}
 	}
-	
+
 	def zip_send[T](url:String, zipfile:String, zipname:String, runner: Boolean)(implicit mf: Manifest[T]): T = {
 		val file = new File(zipfile)
-		
+
 		zip_send(url, new FileInputStream(zipfile), file.length.toInt, zipname, runner)
 	}
-	
+
 	def zip_send[T](url:String, inputStream:InputStream, zipSize:Int, zipname:String, runner: Boolean)(implicit mf: Manifest[T]): T = {
 		debug("Requesting {}", url)
-		
+
 		implicit val formats = OmegaUpSerialization.formats
-		
+
 		cusing (connect(url, runner)) { conn => {
 			conn.addRequestProperty("Content-Type", "application/zip")
 			conn.addRequestProperty("Content-Disposition", "attachment; filename=" + zipname + ";")
@@ -380,14 +383,14 @@ object Https extends Object with Log with Using {
 					FileUtil.copy(_, outputStream)
 				}
 			}}
-		
+
 			Serialization.read[T](new InputStreamReader(conn.getInputStream()))
 		}}
 	}
 
 	def stream_send[T](url:String, mimeType: String, filename: String, callback:OutputStream=>Unit, runner: Boolean = true)(implicit mf: Manifest[T]): T = {
 		debug("Requesting {}", url)
-		
+
 		implicit val formats = OmegaUpSerialization.formats
 
 		cusing (connect(url, runner)) { conn => {
@@ -399,14 +402,14 @@ object Https extends Object with Log with Using {
 			using (conn.getOutputStream) {
 				callback(_)
 			}
-		
+
 			Serialization.read[T](new InputStreamReader(conn.getInputStream()))
 		}}
 	}
-	
+
 	def receive_zip[T, W <: AnyRef](url:String, request:W, file:String, runner: Boolean = true)(implicit mf: Manifest[T]): Option[T] = {
 		debug("Requesting {}", url)
-		
+
 		implicit val formats = OmegaUpSerialization.formats
 
 		cusing (connect(url, runner)) { conn => {
@@ -415,20 +418,20 @@ object Https extends Object with Log with Using {
 			val writer = new PrintWriter(new OutputStreamWriter(conn.getOutputStream()))
 			Serialization.write[W, PrintWriter](request, writer)
 			writer.close()
-		
+
 			if (conn.getHeaderField("Content-Type") == "application/zip") {
 				val outputStream = new FileOutputStream(file)
 				val inputStream = conn.getInputStream
 				val buffer = Array.ofDim[Byte](1024)
 				var read = 0
-		
+
 				while( { read = inputStream.read(buffer) ; read > 0 } ) {
 					outputStream.write(buffer, 0, read)
 				}
-		
+
 				inputStream.close
 				outputStream.close
-			
+
 				None
 			} else {
 				Some(Serialization.read[T](new InputStreamReader(conn.getInputStream())))
@@ -468,7 +471,7 @@ object FileUtil extends Object with Using {
 			contents.toString.trim
 		}}
 	}
-	
+
 	@throws(classOf[IOException])
 	def write(filename: String, data: String): Unit = write(new File(filename), data)
 
@@ -509,7 +512,7 @@ object FileUtil extends Object with Using {
 	}
 
 	@throws(classOf[IOException])
-	def copy(src: InputStream, dest: OutputStream): Unit = {
+	def copy(src: InputStream, dest: OutputStream): Long = {
 		val buffer = Array.ofDim[Byte](1024)
 		var read = 0
 		var written: Long = 0
@@ -521,10 +524,10 @@ object FileUtil extends Object with Using {
 
 		written
 	}
-		
+
 	@throws(classOf[IOException])
 	def deleteDirectory(dir: String): Boolean = FileUtil.deleteDirectory(new File(dir))
-	
+
 	@throws(classOf[IOException])
 	def deleteDirectory(dir: File): Boolean = {
 		if(dir.exists) {
@@ -573,34 +576,63 @@ object FileUtil extends Object with Using {
 			keystore
 		}}
 	}
+
+	def createRandomFile(rootFile: File, length: Int = 16, split: Option[Int] = Some(2)): (File, String) = {
+		val random = new Random
+		val bytes = new Array[Byte](length)
+		val root = rootFile.toPath
+		var target: Path = null
+		var guid: String = null
+		while (target == null) {
+			random.nextBytes(bytes)
+			val sb = new StringBuilder(2 * length)
+			for (b <- bytes) {
+				sb.append(f"${b & 0xff}%02x")
+			}
+			guid = sb.toString
+			target = root.resolve(split match {
+				case None => guid
+				case Some(off) => guid.substring(0, off) + "/" + guid.substring(off)
+			})
+			try {
+				Files.createFile(target)
+			} catch {
+				case e: FileAlreadyExistsException => {
+					// Ignore, let's try again.
+					target = null
+				}
+			}
+		}
+		(target.toFile, guid)
+	}
 }
 
 object MetaFile extends Object with Using {
 	@throws(classOf[IOException])
 	def load(path: String): scala.collection.Map[String,String] = {
-		using (new FileReader(path)) { reader => 
+		using (new FileReader(path)) { reader =>
 			load(reader)
 		}
 	}
-	
+
 	@throws(classOf[IOException])
 	def load(reader: Reader): scala.collection.Map[String,String] = {
 		val meta = new mutable.ListMap[String,String]
 		using (new BufferedReader(reader)) { bReader => {
 			var line: String = null
-	
+
 			while( { line = bReader.readLine(); line != null} ) {
 				val idx = line.indexOf(':')
-			
+
 				if(idx > 0) {
 					meta += (line.substring(0, idx) -> line.substring(idx+1))
 				}
 			}
-		
+
 			meta
 		}}
 	}
-	
+
 	@throws(classOf[IOException])
 	def save(path: String, meta: scala.collection.Map[String,String]) = {
 		using (new PrintWriter(new FileWriter(path))) { writer => {
@@ -616,7 +648,7 @@ object DataUriStream extends Object with Log {
 		val buffer = Array.ofDim[Byte](1024)
 		var bytesRead = 0
 		var ch = 0
-		
+
 		bytesRead = stream.read(buffer, 0, 5)
 
 		if (bytesRead != 5 || new String(buffer, 0, bytesRead) != "data:") {

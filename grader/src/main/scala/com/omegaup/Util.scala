@@ -3,6 +3,7 @@ package com.omegaup
 import java.io._
 import java.net._
 import scala.xml._
+import scala.collection.mutable.TreeSet
 
 object Database extends Object with Log with Using {
 	def bmap[T](test: => Boolean)(block: => T): List[T] = {
@@ -140,4 +141,170 @@ class XmlWalker(xml: String) {
 		
 		return node.text.trim
 	}
+}
+
+class GitException(message: String) extends RuntimeException(message) {}
+
+class Git(repository: File) extends Object with Using {
+  val runtime = Runtime.getRuntime
+  val env = List[String]()
+
+  def init() = {
+    val params = List("/usr/bin/git", "init", "-q")
+
+    pusing (runtime.exec(params.toArray, env.toArray, repository)) { p => {
+      val error = new StringBuilder
+
+      using (new BufferedReader(new InputStreamReader(p.getErrorStream))) { reader =>
+        error.append(reader.readLine)
+        error.append('\n')
+      }
+
+      if (p.waitFor != 0) {
+        throw new GitException(error.toString)
+      }
+    }}
+  }
+
+  def clean() = {
+    val params = List("/usr/bin/git", "rm", "-rf", ".")
+
+    pusing (runtime.exec(params.toArray, env.toArray, repository)) { p => {
+      val error = new StringBuilder
+
+      using (new BufferedReader(new InputStreamReader(p.getErrorStream))) { reader =>
+        error.append(reader.readLine)
+        error.append('\n')
+      }
+
+      if (p.waitFor != 0) {
+        throw new GitException(error.toString)
+      }
+    }}
+  }
+
+  def commit(username: String, message: String) = {
+    val gitAttributes = new File(repository, ".gitattributes")
+    if (!gitAttributes.exists) {
+      FileUtil.write(gitAttributes,
+        "cases/in/* -diff -delta -merge -text -crlf\n" +
+				"cases/out/* -diff -delta -merge -text -crlf")
+    }
+
+    add(".")
+
+    if (status.length > 0) {
+      config("user.email", s"$username@omegaup")
+      config("user.name", username)
+      config("push.default", "matching")
+      val params = List("/usr/bin/git", "commit", "-m", message)
+
+      pusing (runtime.exec(params.toArray, env.toArray, repository)) { p => {
+        val error = new StringBuilder
+
+        using (new BufferedReader(new InputStreamReader(p.getErrorStream))) { reader =>
+          error.append(reader.readLine)
+          error.append('\n')
+        }
+
+        if (p.waitFor != 0) {
+          throw new GitException(error.toString)
+        }
+      }}
+    }
+  }
+
+  def config(name: String, value: String) = {
+    val params = List("/usr/bin/git", "config", name, value)
+
+    pusing (runtime.exec(params.toArray, env.toArray, repository)) { p => {
+      val error = new StringBuilder
+
+      using (new BufferedReader(new InputStreamReader(p.getErrorStream))) { reader =>
+        error.append(reader.readLine)
+        error.append('\n')
+      }
+
+      if (p.waitFor != 0) {
+        throw new GitException(error.toString)
+      }
+    }}
+  }
+
+  def add(path: String) = {
+    val params = List("/usr/bin/git", "add", ".")
+
+    pusing (runtime.exec(params.toArray, env.toArray, repository)) { p => {
+      val error = new StringBuilder
+
+      using (new BufferedReader(new InputStreamReader(p.getErrorStream))) { reader =>
+        error.append(reader.readLine)
+        error.append('\n')
+      }
+
+      if (p.waitFor != 0) {
+        throw new GitException(error.toString)
+      }
+    }}
+  }
+
+  def status(): String = {
+    val params = List("/usr/bin/git", "status", "-s", "--porcelain")
+
+    pusing (runtime.exec(params.toArray, env.toArray, repository)) { p => {
+      val output = new StringBuilder
+
+      var first = true
+      using (new BufferedReader(new InputStreamReader(p.getInputStream))) { reader =>
+        if (!first) {
+          output.append('\n')
+        } else {
+          first = false
+        }
+        output.append(reader.readLine)
+      }
+
+      output.toString
+    }}
+  }
+
+  def revParse(commitish: String) = {
+    val params = List("/usr/bin/git", "rev-parse", commitish)
+
+    pusing (runtime.exec(params.toArray, env.toArray, repository)) { p => {
+      using (new BufferedReader(new InputStreamReader(p.getInputStream))) { reader =>
+        reader.readLine
+      }
+    }}
+  }
+
+  def getTreeHash(directory: String) = {
+    val params = List("/usr/bin/git", "ls-tree", "HEAD", "-d", directory)
+
+    pusing (runtime.exec(params.toArray, env.toArray, repository)) { p => {
+      using (new BufferedReader(new InputStreamReader(p.getInputStream))) { reader =>
+        reader.readLine.split("\\s")(2)
+      }
+    }}
+  }
+
+  def getTreeEntries(treeish: String): Iterable[(String, String)] = {
+    val params = List("/usr/bin/git", "ls-tree", treeish)
+    val treeHashes = new TreeSet[(String, String)]
+
+    // Get the files in the directory from git.
+    pusing (runtime.exec(params.toArray, env.toArray, repository)) { p => {
+      var line: String = null
+      using (new BufferedReader(new InputStreamReader(p.getInputStream))) { reader =>{
+        while ({ line = reader.readLine ; line != null } ){
+          var tokens = line.split("\t")
+          val name = tokens(1)
+          tokens = tokens(0).split(" ")
+          treeHashes += ((name, tokens(2)))
+        }
+      }}
+    }}
+
+    treeHashes
+  }
 }

@@ -49,6 +49,9 @@ class GraderSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
       new File("grader/src/test/resources/sandbox-profiles").getCanonicalPath
     )
     Config.set("submissions.root", root.getCanonicalPath + "/submissions")
+    for (i <- 0 until 256) {
+      new File(root, f"submissions/$i%02x").mkdirs
+    }
     Config.set("problems.root", root.getCanonicalPath + "/problems")
     Config.set("compile.root", root.getCanonicalPath + "/compile")
     Config.set("input.root", root.getCanonicalPath + "/input")
@@ -89,9 +92,12 @@ class GraderSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
       Config.get("db.user", "omegaup"),
       Config.get("db.password", "")
     )
-    FileUtil.read("grader/src/main/resources/h2.sql").split("\n\n").foreach { Database.execute(_) }
-    FileUtil.read("grader/src/test/resources/h2.sql").split("\n\n").foreach { Database.execute(_) }
-    conn.close
+    try {
+      FileUtil.read("grader/src/main/resources/h2.sql").split("\n\n").foreach { Database.execute(_) }
+      FileUtil.read("grader/src/test/resources/h2.sql").split("\n\n").foreach { Database.execute(_) }
+    } finally {
+      conn.close
+    }
 
     grader = new Grader(new GraderOptions)
   }
@@ -124,7 +130,7 @@ class GraderSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
       }
     }
 
-    def omegaUpSubmit(problem: String, language: Language, code: String, contest: Option[Long] = None)(test: (Run) => Unit) = {
+    def omegaUpSubmit(problem: String, language: Language, code: String, contest: Option[String] = None)(test: (Run) => Unit) = {
       val submit_id = Service.runNew(RunNewInputMessage(
         problem = problem,
         language = language.toString,
@@ -134,7 +140,7 @@ class GraderSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
 
       ready = false
       tests += test
-      grader.grade(new RunGradeInputMessage(id = submit_id))
+      grader.grade(new RunGradeInputMessage(id = List(submit_id.get)))
 
       lock.synchronized {
         if (!ready) {
@@ -159,6 +165,8 @@ class GraderSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
       run.contest_score should equal (None)
     }}
 
+  // Contest submission disabled.
+  /*
   omegaUpSubmit("HELLO", Language.Cpp, """
     #include <cstdlib>
     #include <iostream>
@@ -181,6 +189,7 @@ class GraderSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     run.score should equal (1)
     run.contest_score should equal (Some(100))
   }}
+  */
 
   omegaUpSubmit("HELLO", Language.Cpp, """
     #include <cstdlib>

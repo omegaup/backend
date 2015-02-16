@@ -16,41 +16,10 @@ import Status._
 import Validator._
 
 object OmegaUpDriver extends Driver with Log with Using {
-  def getInputName(alias: String): String = {
-    val runtime = Runtime.getRuntime
-    val params = List("/usr/bin/git", "ls-tree", "HEAD", "-d", "cases/in")
-    val env = List[String]()
-    val path = new File(Config.get("problems.root", "problems"), alias)
-
-    // Call git to obtain the hash of the cases/in directory.
-    pusing (runtime.exec(params.toArray, env.toArray, path)) { p => {
-      using (new BufferedReader(new InputStreamReader(p.getInputStream))) { reader =>
-        reader.readLine.split("\\s")(2)
-      }
-    }}
-  }
-
-  def getInputEntries(alias: String, inputName: String): Iterable[InputEntry] = {
-    val runtime = Runtime.getRuntime
-    val params = List("/usr/bin/git", "ls-tree", inputName)
-    val env = List[String]()
+  def getInputEntries(treeHashes: Iterable[(String, String)], alias: String): Iterable[InputEntry] = {
     val path = new File(Config.get("problems.root", "problems"), alias)
     val objectsPath = new File(path, ".git/objects")
     val casesPath = new File(path, "cases/in")
-    val treeHashes = new TreeSet[(String, String)]
-
-    // Get the files in the directory from git.
-    pusing (runtime.exec(params.toArray, env.toArray, path)) { p => {
-      var line: String = null
-      using (new BufferedReader(new InputStreamReader(p.getInputStream))) { reader =>{
-        while ({ line = reader.readLine ; line != null } ){
-          var tokens = line.split("\t")
-          val name = tokens(1)
-          tokens = tokens(0).split(" ")
-          treeHashes += ((name, tokens(2)))
-        }
-      }}
-    }}
 
     // Return a lazy view with the hashes plus their stream.
     treeHashes.view.map { case (name: String, hash: String) => {
@@ -82,7 +51,7 @@ object OmegaUpDriver extends Driver with Log with Using {
     val errorFile = new File(Config.get("grader.root", "grader"), + id + ".err")
 
     info("Compiling {} {} on {}", alias, id, ctx.service.name)
-	
+
     if (errorFile.exists) {
       errorFile.delete
     }
@@ -91,15 +60,17 @@ object OmegaUpDriver extends Driver with Log with Using {
     run.judged_by = Some(ctx.service.name)
     ctx.updateVerdict(run)
 
-    val code = FileUtil.read(Config.get("submissions.root", "submissions") + "/" + run.guid)
+    val code = FileUtil.read(
+      Config.get("submissions.root", "submissions") + "/" +
+      run.guid.substring(0, 2) + "/" + run.guid.substring(2))
     val compileMessage = createCompileMessage(ctx, run, code)
     val output = ctx.trace(EventCategory.Compile) {
       ctx.service.compile(compileMessage)
     }
-  
+
     if(output.status != "ok") {
       FileUtil.write(errorFile, output.error.get)
-  
+
       run.status = Status.Ready
       run.verdict = Verdict.CompileError
       run.memory = 0
@@ -109,7 +80,8 @@ object OmegaUpDriver extends Driver with Log with Using {
       return run
     }
 
-    val input = getInputName(alias)
+    val git = new Git(new File(Config.get("problems.root", "problems"), alias))
+    val input = git.getTreeHash("cases/in")
     val msg = new RunInputMessage(
       output.token.get,
       debug = ctx.debug,
@@ -149,7 +121,7 @@ object OmegaUpDriver extends Driver with Log with Using {
         }
       }
     )
-  
+
     run.status = Status.Running
     ctx.updateVerdict(run)
 
@@ -168,7 +140,7 @@ object OmegaUpDriver extends Driver with Log with Using {
         info("Received a missing input message, trying to send input from {} ({})", alias, ctx.service.name)
         ctx.trace(EventCategory.Input) {
           if(ctx.service.input(
-            input, getInputEntries(alias, input)
+            input, getInputEntries(git.getTreeEntries(input), alias)
           ).status != "ok") {
             throw new RuntimeException("Unable to send input. giving up.")
           }
@@ -305,7 +277,7 @@ object OmegaUpDriver extends Driver with Log with Using {
 
         val unitName = FileUtil.read(unitNameFile)
         codes += unitName + "." + run.language.toString -> code
-    
+
         if (codes.size < 2) {
           throw new FileNotFoundException(langDir.getCanonicalPath)
         }

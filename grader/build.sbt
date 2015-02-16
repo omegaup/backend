@@ -5,6 +5,8 @@ libraryDependencies ++= Seq(
   "com.h2database" % "h2" % "1.3.175" % "runtime",
   "mysql" % "mysql-connector-java" % "5.1.29" % "runtime",
   "org.apache.commons" % "commons-compress" % "1.8.1",
+  "commons-fileupload" % "commons-fileupload" % "1.3.1",
+  "commons-io" % "commons-io" % "2.4",
   "org.eclipse.jetty" % "jetty-client" % "9.1.5.v20140505",
   "org.eclipse.jetty" % "jetty-security" % "9.1.5.v20140505",
   "org.eclipse.jetty" % "jetty-server" % "9.1.5.v20140505",
@@ -41,8 +43,7 @@ ProguardKeys.options in Proguard ++= Seq(
 
 ProguardKeys.inputFilter in Proguard := { file =>
   file.name match {
-    case "grader_2.10-1.1.jar" => None
-    case _ => Some("!**/ECLIPSEF.RSA,!**/ECLIPSEF.SF,!about.html,!META-INF/MANIFEST.MF,!rootdoc.txt,!META-INF/services/java.sql.Driver,!META-INF/LICENSE.txt,!META-INF/NOTICE.txt")
+    case _ => Some("!**/ECLIPSEF.RSA,!**/ECLIPSEF.SF,!about.html,!META-INF/MANIFEST.MF,!rootdoc.txt,!META-INF/services/java.sql.Driver,!META-INF/LICENSE.txt,!META-INF/NOTICE.txt,!decoder.properties")
   }
 }
 

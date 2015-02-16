@@ -119,12 +119,20 @@ case class EndpointRegisterInputMessage(hostname: String, port: Int)
 case class EndpointRegisterOutputMessage(status: String = "ok", error: Option[String] = None)
 
 // for standalone Grader
-case class RunNewInputMessage(problem: String, language: String, code: String, ip: String = "", contest: Option[Long] = None)
+case class RunNewInputMessage(problem: String, language: String, code: String, ip: Option[String] = None, contest: Option[String] = None)
 case class RunNewOutputMessage(status: String = "ok", id: Option[String] = None, error: Option[String] = None)
 case class RunStatusInputMessage(id: String)
-case class RunStatusOutputMessage(status: String, verdict: String, score: Double, runtime: Double, memory: Double)
+case class RunStatusOutputMessage(problem: String, status: String, verdict: String, score: Double, runtime: Double, memory: Double)
 case class RunListInputMessage()
-case class RunListOutputMessageEntry(id: String, status: String, verdict: String, score: Double, runtime: Double, memory: Double)
+case class RunListOutputMessageEntry(problem: String, id: String, status: String, verdict: String, score: Double, runtime: Double, memory: Double)
+case class ProblemNewOutputMessage(status: String = "ok", error: Option[String] = None)
+case class ProblemListInputMessage()
+case class ProblemListOutputMessageEntry(id: String, title: String,
+  validator: String, time_limit: Option[Double],
+  overall_wall_time_limit: Option[Double], extra_wall_time: Double,
+  memory_limit: Option[Double], output_limit: Option[Double],
+  stack_limit: Option[Double], points: Option[Double], slow: Boolean,
+  statements: Map[String, String])
 
 // for serializing judgement details
 case class CaseVerdictMessage(name: String, verdict: String, score: Double)

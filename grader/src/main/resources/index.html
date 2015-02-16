@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+
+		<title>&Omega;&#11014;</title>
+
+		<link id="favicon" rel="shortcut icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3wIQEiApzfHLdQAAABl0RVh0Q29tbWVudABDcmVhdGVkIHdpdGggR0lNUFeBDhcAAAC5SURBVFjDY2AYBSMdMBJSENpx9z8yf3WFMiM11MIA00CHwKgDRh0w6oBRB5DsgIC260JYS8HQVUx0cQALA7M9NvH/Rkb15DiAhfTag2lKcNvNfz8Yfx7k+snMyMDKavyfmamQkYHRiy4OYGRklGJkZNnAxcDCwMBBZI027HPBfwaGX////8uiiwP+//s35f///88Y/jP8ZGBguPf////pjP9/aK2pVJ0+4A2S0ZJw1AGjDhgFo4AcAADyQDKXqqizEgAAAABJRU5ErkJggg==">
+
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css">
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap-theme.min.css">
+		<style type="text/css">
+		.navbar-brand {
+			font-weight: bold;
+		}
+		.center-tabs > li, .center-pills > li {
+			float:none;
+			display:inline-block;
+		}
+		.center-tabs {
+			text-align:center;
+		}
+		textarea {
+			min-height: 10em;
+		}
+
+		#problems {
+			padding-top: 1em;
+		}
+
+		.problem .title {
+			text-align: center;
+			font-size: 1.5em;
+			margin: 1em;
+		}
+		.problem .data {
+			width: 30em;
+			margin: 10px auto;
+		}
+		.problem .data td {
+			border: 1px solid #000;
+			padding: 2px;
+		}
+
+		.statement h1 {
+			font-size: 1.3em;
+			margin: 1.0em 0 0.5em 0;
+			font-weight: bold;
+		}
+		.statement h2 {
+			font-size: 1.1em;
+			margin: 1.0em 0 0.5em 0;
+			font-weight: bold;
+		}
+		.statement h3 {
+			font-size: 1.0em;
+			margin: 1.0em 0 0.5em 0;
+			font-weight: bold;
+		}
+		.statement p {
+			line-height: 150%;
+			text-align: justify;
+		}
+
+		.statement ul {
+			list-style: disc;
+		}
+
+		.statement ol {
+			list-style: decimal;
+		}
+
+		.statement ul li, .statement ol li {
+			margin-left: 2em;
+			text-align: justify;
+		}
+
+		.statement table.sample_io {
+			margin: 5px;
+			padding : 5px;
+		}
+		.sample_io tbody {
+			background: #eee;
+			border: 1px solid #000;
+		}
+		.statement .sample_io th {
+			padding: 10px;
+			border-top: 0;
+		}
+		.statement .sample_io td {
+			vertical-align: top;
+			padding: 10px;
+			border: 1px solid #000;
+		}
+		.statement .sample_io pre {
+			white-space: pre;
+			word-break: keep-all;
+			word-wrap: normal;
+			background: transparent;
+			border: 0px;
+			padding: 0px;
+			margin: inherit;
+		}
+		.statement iframe {
+			width: 100%;
+			height: 400px;
+		}
+		.statement a.libinteractive-help {
+			display: inline-block;
+			float: right;
+		}
+		.statement img {
+			max-width: 100%;
+		}
+
+		#runs table {
+			width: 100%;
+		}
+		#runs table th, #runs table td {
+			text-align: center;
+		}
+		</style>
+	</head>
+	<body>
+		<!-- Fixed navbar -->
+		<nav class="navbar navbar-default navbar-static-top">
+			<div class="container">
+				<div class="navbar-header">
+					<a class="navbar-brand" href="#" title="micro omegaUp">&mu;&Omega;&#11014;</a>
+				</div>
+			</div>
+		</nav>
+
+		<div class="container">
+			<div role="tabpanel">
+
+				<!-- Nav tabs -->
+				<ul id="main-tab" class="nav nav-tabs center-tabs" role="tablist">
+					<li role="presentation" class="active"><a href="#problems" aria-controls="problems" role="tab" data-toggle="tab">Problemas</a></li>
+					<li role="presentation"><a href="#runs" aria-controls="runs" role="tab" data-toggle="tab">Envíos</a></li>
+					<li role="presentation"><a href="#problem-new" aria-controls="problem-new" role="tab" data-toggle="tab">Nuevo problema</a></li>
+				</ul>
+
+				<!-- Tab panes -->
+				<div class="tab-content">
+					<div role="tabpanel" class="tab-pane active" id="problems"></div>
+					<div role="tabpanel" class="tab-pane" id="runs"></div>
+					<div role="tabpanel" class="tab-pane" id="problem-new">
+					</div>
+				</div>
+
+			</div>
+		</div> <!-- /container -->
+
+		<script src="https://code.jquery.com/jquery-2.1.3.min.js"></script>
+		<script src="https://omegaup.com/js/pagedown/Markdown.Converter.js"></script>
+		<script src="https://omegaup.com/js/pagedown/Markdown.Sanitizer.js"></script>
+		<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/js/bootstrap.min.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/react/0.12.2/react.min.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/react/0.12.2/JSXTransformer.js"></script>
+		<script src="https://omegaup.com/js/mathjax-config.js"></script>
+		<script src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+		<script type="text/jsx">
+		$(document).ready(function() {
+			var converter = Markdown.getSanitizingConverter();
+
+			function handleAjaxError(xhr, status, err) {
+				var errorString = err.toString();
+				try {
+					errorString = JSON.parse(xhr.responseText).error || errorString;
+				} catch(exc) {
+				}
+				alert(errorString);
+				console.error(status, errorString);
+			}
+
+			var ProblemSubmit = React.createClass({
+				handleSubmit: function(e) {
+					e.preventDefault();
+					var language = this.refs.language.getDOMNode().value;
+					var code = this.refs.code.getDOMNode().value;
+					if (!language || !code) {
+						return;
+					}
+					this.props.onRunSubmit({
+						problem: this.props.problem,
+						language: language,
+						code: code
+					});
+				},
+				render: function() {
+					var languageId = "problem-language-" + this.props.problem;
+					var codeId = "problem-code-" + this.props.problem;
+					return (
+						<div className="panel panel-default">
+							<div className="panel-heading">Enviar</div>
+							<div className="panel-body">
+								<form className="form-horizontal" onSubmit={this.handleSubmit}>
+									<div className="form-group">
+										<label for={languageId}  className="col-sm-2 control-label">Lenguaje</label>
+										<div className="col-sm-10">
+											<select defaultValue="cpp11" id={languageId} ref="language" className="form-control">
+												<option value="c">C</option>
+												<option value="cpp11">C++</option>
+												<option value="pascal">Pascal</option>
+												<option value="java">Java</option>
+												<option value="python">Python</option>
+												<option value="ruby">Ruby</option>
+											</select>
+										</div>
+									</div>
+									<div className="form-group">
+										<label for={codeId} className="col-sm-2 control-label">Código</label>
+										<div className="col-sm-10">
+											<textarea ref="code" className="form-control" id={codeId} />
+										</div>
+									</div>
+									 <div className="form-group">
+										 <div className="col-sm-offset-2 col-sm-10">
+											<button type="submit" className="btn btn-default">Enviar</button>
+										 </div>
+									 </div>
+								</form>
+							</div>
+						</div>
+					);
+				}
+			});
+
+			var ProblemNew = React.createClass({
+				handleSubmit: function(e) {
+					e.preventDefault();
+					var data = new FormData();
+					for (var x in this.refs) {
+						if (!this.refs.hasOwnProperty(x) || x == "form" ||
+								x == "problem_contents") {
+							continue;
+						}
+						data.append(x, this.refs[x].getDOMNode().value);
+					}
+					data.append("problem_contents",
+						this.refs.problem_contents.getDOMNode().files[0]);
+					$.ajax({
+						url: '/problem/new/',
+						type: 'POST',
+						data: data,
+						processData: false,
+						contentType: false,
+						success: function(data) {
+							$('#main-tab a[href="#problems"]').tab('show')
+							$(document).trigger('problem-update');
+						}.bind(this),
+						error: handleAjaxError,
+					});
+				},
+				render: function() {
+					return (
+						<div className="panel panel-primary">
+							<div className="panel-heading">
+								<h3 className="panel-title">Crear problema</h3>
+							</div>
+							<div className="panel-body">
+								<form className="form" enctype="multipart/form-data" onSubmit={this.handleSubmit} ref="form">
+									<div className="row">
+										<div className="form-group col-md-6">
+											<label for="problem_contents">Archivo</label>
+											<input ref="problem_contents" type="file" className="form-control" />
+										</div>
+
+										<div className="form-group  col-md-6">
+											<label for="title">Título</label>
+											<input id="title" ref="title" type="text" className="form-control" />
+										</div>
+									</div>
+
+									<div className="row">
+										<div className="form-group  col-md-6">
+											<label for="alias">Alias</label>
+											<input id="alias" ref="alias" type="text" className="form-control"/>
+										</div>
+
+										<div className="form-group col-md-6">
+											<label for="validator">Tipo de validador</label>
+											<select ref="validator" id="validator" className="form-control" >
+												<option value="token-caseless">Token por token, ignorando mayúsculas/minúsculas</option>
+												<option value="token-numeric">Tokens numéricos con tolerancia</option>
+												<option value="token">Token por Token</option>
+												<option value="literal">Interpretar salida estándar como puntaje</option>
+												<option value="custom">Validador personalizado (validator.$lang$)</option>
+											</select>
+										</div>
+									</div>
+
+									<div className="row">
+										<div className="form-group  col-md-6">
+											<label for="time_limit">Tiempo límite (s)</label>
+											<input id="time_limit" ref="time_limit" defaultValue="1" type="text" className="form-control" />
+										</div>
+
+										<div className="form-group col-md-6">
+											<label for="overall_wall_time_limit">Tiempo límite total (s)</label>
+											<input id="overall_wall_time_limit" ref="overall_wall_time_limit" defaultValue="60" type="text" className="form-control" />
+										</div>
+									</div>
+
+									<div className="row">
+										<div className="form-group col-md-6">
+											<label for="extra_wall_time">Tiempo extra para libinteractive (s)</label>
+											<input id="extra_wall_time" ref="extra_wall_time" defaultValue="0" type="text" className="form-control" />
+										</div>
+
+										<div className="form-group  col-md-6">
+											<label for="memory_limit">Límite de memoria (MB)</label>
+											<input id="memory_limit" ref="memory_limit" defaultValue="32" type="text" className="form-control" />
+										</div>
+									</div>
+
+									<div className="row">
+										<div className="form-group  col-md-6">
+											<label for="output_limit">Límite de salida (kB)</label>
+											<input id="output_limit" ref="output_limit" defaultValue="10" type="text" className="form-control" />
+										</div>
+
+										<div className="form-group  col-md-6">
+											<label for="stack_limit">Límite de pila (kB)</label>
+											<input id="stack_limit" ref="stack_limit" defaultValue="1024" type="text" className="form-control" />
+										</div>
+									</div>
+
+									<div className="row">
+										<div className="form-group col-md-6 no-bottom-margin">
+											<button type="submit" className="btn btn-primary">Crear problema</button>
+										</div>
+									</div>
+								</form>
+							</div>
+						</div>
+					);
+				}
+			});
+
+			var Problem = React.createClass({
+				componentDidMount: function (root) {
+					MathJax.Hub.Queue(["Typeset", MathJax.Hub, root]);
+				},
+				componentDidUpdate: function (props, state, root) {
+					MathJax.Hub.Queue(["Typeset", MathJax.Hub, root]);
+				},
+				handleRunSubmit: function(run) {
+					$.ajax({
+						url: '/run/new/',
+						dataType: 'json',
+						type: 'POST',
+						data: JSON.stringify(run),
+						contentType: 'text/json',
+						processData: false,
+						success: function(data) {
+							$('#main-tab a[href="#runs"]').tab('show')
+							$(document).trigger('run-update');
+						}.bind(this),
+						error: handleAjaxError,
+					});
+				},
+				render: function() {
+					var rawMarkup = converter.makeHtml(this.props.problem.statements.es);
+					return (
+						<div className="problem">
+							<h1 className="title">{this.props.problem.title}</h1>
+							<table className="data">
+								<tr>
+									<td>Límite de tiempo</td><td>{this.props.problem.time_limit} s</td>
+									<td>Límite de memoria</td><td>{this.props.problem.memory_limit} MB</td>
+								</tr>
+							</table>
+							<div className="statement" dangerouslySetInnerHTML={{__html: rawMarkup}} />
+							<ProblemSubmit problem={this.props.problem.id} onRunSubmit={this.handleRunSubmit} />
+						</div>
+					);
+				}
+			});
+
+			var ProblemView = React.createClass({
+				getInitialState: function() {
+					return {problems: []};
+				},
+				updateProblemList: function() {
+					$.ajax({
+						url: '/problem/list/',
+						dataType: 'json',
+						success: function(data) {
+							this.setState({problems: data});
+						}.bind(this),
+						error: handleAjaxError,
+					});
+				},
+				componentDidMount: function() {
+					this.updateProblemList();
+					$(document).on('problem-update', this.updateProblemList.bind(this));
+				},
+				componentDidUpdate: function (props, state, root) {
+					$('.nav-tabs').tab();
+				},
+				render: function() {
+					var tabNodes = this.state.problems.map(function (problem) {
+						var id = 'problems_' + problem.id;
+						var href = '#' + id;
+						return (
+							<li role="presentation"><a href={href} aria-controls={id} role="tab" data-toggle="pill">{problem.title}</a></li>
+						);
+					});
+					var problemNodes = this.state.problems.map(function (problem) {
+						var id = 'problems_' + problem.id;
+						return (
+							<div role="tabpanel" className="tab-pane" id={id}>
+								<Problem problem={problem} />
+							</div>
+						);
+					});
+					return (
+						<div className="row">
+							<div className="col-sm-9">
+								<div className="tab-content">
+									{problemNodes}
+								</div>
+							</div>
+							<div className="col-sm-3">
+								<ul className="nav nav-pills nav-stacked">
+									{tabNodes}
+								</ul>
+							</div>
+						</div>
+					);
+				}
+			});
+
+			var Run = React.createClass({
+				getInitialState: function() {
+					return {run: this.props.run};
+				},
+				render: function() {
+					var runtime = this.props.run.runtime.toFixed(3);
+					var memory = this.props.run.memory.toFixed(2);
+					var score = (this.props.run.score * 100).toFixed(2);
+					return (
+						<tr>
+							<td>{this.props.run.problem}</td>
+							<td>{this.props.run.id}</td>
+							<td>{this.props.run.status}</td>
+							<td>{this.props.run.verdict}</td>
+							<td>{score}</td>
+							<td>{runtime}</td>
+							<td>{memory}</td>
+						</tr>
+					);
+				}
+			});
+
+			var RunView = React.createClass({
+				getInitialState: function() {
+					return {runs: []};
+				},
+				updateRunList: function() {
+					$.ajax({
+						url: '/run/list/',
+						dataType: 'json',
+						success: function(data) {
+							data.reverse();
+							this.setState({runs: data});
+							if (data.filter(function (r) { return r.status != 'ready'; }).length) {
+								setTimeout(this.updateRunList.bind(this), 5000);
+							}
+						}.bind(this),
+						error: handleAjaxError,
+					});
+				},
+				componentDidMount: function() {
+					this.updateRunList();
+					$(document).on('run-update', this.updateRunList.bind(this));
+				},
+				render: function() {
+					var runNodes = this.state.runs.map(function (run) {
+						return (
+							<Run run={run} />
+						);
+					});
+					return (
+						<table>
+							<tr>
+								<th>Problema</th>
+								<th>ID</th>
+								<th>Status</th>
+								<th>Veredicto</th>
+								<th>Puntos</th>
+								<th>Tiempo</th>
+								<th>Memoria</th>
+							</tr>
+							{runNodes}
+						</table>
+					);
+				}
+			});
+
+			React.render(<ProblemView />, document.getElementById("problems"));
+			React.render(<RunView />, document.getElementById("runs"));
+			React.render(<ProblemNew />, document.getElementById("problem-new"));
+		});
+		</script>
+	</body>
+</html>

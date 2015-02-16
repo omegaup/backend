@@ -25,7 +25,7 @@ class Grader(val options: GraderOptions) extends Object with GraderService with 
 		Config.get("db.password", "")
 	)
 
-	{
+	def start() = {
 		updateConfiguration(false)
 
 		recoverQueue

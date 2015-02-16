@@ -240,7 +240,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
   def compile(message: CompileInputMessage): CompileOutputMessage = {
     info("compile {}", message.lang)
     
-    val compileDirectory = new File(Config.get("compile.root", "."))
+    val compileDirectory = new File(Config.get("compile.root", "./compile"))
     compileDirectory.mkdirs
     
     var runDirectoryFile = File.createTempFile(System.nanoTime.toString, null, compileDirectory)
@@ -295,7 +295,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
         if (in.contains(".") || in.contains("/")) {
           return new RunOutputMessage(status="error", error=Some("Invalid input"))
         }
-        new File (Config.get("input.root", "."), in)
+        new File (Config.get("input.root", "./input"), in)
       }
       case None => null
     }
@@ -307,7 +307,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
     if(casesDirectory != null && !casesDirectory.exists) {
       new RunOutputMessage(status="error", error=Some("missing input"))
     } else {
-      val runDirectory = new File(Config.get("compile.root", "."), message.token)
+      val runDirectory = new File(Config.get("compile.root", "./compile"), message.token)
     
       if(!runDirectory.exists) return new RunOutputMessage(status="error", error=Some("Invalid token"))
     
@@ -661,7 +661,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
   }
   
   def removeCompileDir(token: String): Unit = {
-    val runDirectory = new File(Config.get("compile.root", ".") + "/" + token)
+    val runDirectory = new File(Config.get("compile.root", "./compile") + "/" + token)
    
     if (!runDirectory.exists) throw new IllegalArgumentException("Invalid token")
 
@@ -672,7 +672,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
   }
 
   def input(inputName: String, entries: Iterable[InputEntry]): InputOutputMessage = {
-    val inputDirectory = new File(Config.get("input.root", "."), inputName)
+    val inputDirectory = new File(Config.get("input.root", "./input"), inputName)
     inputDirectory.mkdirs
 
     try {
