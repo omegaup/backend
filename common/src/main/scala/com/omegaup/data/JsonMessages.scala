@@ -119,12 +119,19 @@ case class EndpointRegisterInputMessage(hostname: String, port: Int)
 case class EndpointRegisterOutputMessage(status: String = "ok", error: Option[String] = None)
 
 // for standalone Grader
-case class RunNewInputMessage(problem: String, language: String, code: String, ip: Option[String] = None, contest: Option[String] = None)
-case class RunNewOutputMessage(status: String = "ok", id: Option[String] = None, error: Option[String] = None)
+case class RunNewInputMessage(problem: String, language: String, code: String,
+  ip: Option[String] = None, contest: Option[String] = None)
+case class RunNewOutputMessage(status: String = "ok",
+  id: Option[String] = None, error: Option[String] = None)
 case class RunStatusInputMessage(id: String)
-case class RunStatusOutputMessage(problem: String, status: String, verdict: String, score: Double, runtime: Double, memory: Double)
+case class RunStatusOutputMessage(problem: String, status: String,
+  verdict: String, score: Double, runtime: Double, memory: Double,
+  source: String, groups: Option[List[GroupVerdictMessage]],
+  compile_error: Option[String])
 case class RunListInputMessage()
-case class RunListOutputMessageEntry(problem: String, id: String, status: String, verdict: String, score: Double, runtime: Double, memory: Double)
+case class RunListOutputMessageEntry(problem: String, id: String,
+  status: String, verdict: String, score: Double, runtime: Double,
+  memory: Double)
 case class ProblemNewOutputMessage(status: String = "ok", error: Option[String] = None)
 case class ProblemListInputMessage()
 case class ProblemListOutputMessageEntry(id: String, title: String,

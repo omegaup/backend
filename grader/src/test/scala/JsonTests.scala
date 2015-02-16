@@ -33,4 +33,12 @@ class JsonSpec extends FlatSpec with Matchers {
       Serialization.read[RandomObject]("""/""")
     }
 	}
+
+  "GroupVerdictMessage lists" should "be parseable" in {
+		implicit val formats = OmegaUpSerialization.formats
+
+    val serialized = """[{"group":"0","cases":[{"name":"0","verdict":"AC","score":1.0}],"score":1.0},{"group":"1","cases":[{"name":"1","verdict":"AC","score":1.0}],"score":1.0}]"""
+    val deserialized = Serialization.read[List[GroupVerdictMessage]](serialized)
+    deserialized.length should equal (2)
+  }
 }

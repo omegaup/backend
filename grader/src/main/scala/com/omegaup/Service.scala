@@ -7,6 +7,7 @@ import com.omegaup.broadcaster.Broadcaster
 
 import java.io.File
 import java.io.FileInputStream
+import java.io.FileReader
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
@@ -40,7 +41,12 @@ class HttpHandler(grader: Grader, broadcaster: Broadcaster) extends AbstractHand
 			response.setContentType("text/html")
 			response.setStatus(HttpServletResponse.SC_OK)
 			FileUtil.copy(
-				getClass.getResourceAsStream("/index.html"), response.getOutputStream)
+				(if (new File("index.html").exists) {
+					new FileInputStream("index.html")
+				} else {
+					getClass.getResourceAsStream("/index.html")
+				}
+			), response.getOutputStream)
 			info("{} {} {}", request.getMethod, request.getPathInfo, response.getStatus)
 			baseRequest.setHandled(true)
 			return
@@ -262,19 +268,23 @@ class HttpService(grader: Grader, broadcaster: Broadcaster) extends ServiceInter
 	val server = new org.eclipse.jetty.server.Server
 
 	{
-		// boilerplate code for jetty with https support
-		val sslContext = new org.eclipse.jetty.util.ssl.SslContextFactory(
-			Config.get("ssl.keystore", "omegaup.jks"))
-		sslContext.setKeyManagerPassword(Config.get("ssl.password", "omegaup"))
-		sslContext.setKeyStorePassword(Config.get("ssl.keystore.password", "omegaup"))
-		sslContext.setTrustStore(FileUtil.loadKeyStore(
-			Config.get("ssl.truststore", "omegaup.jks"),
-			Config.get("ssl.truststore.password", "omegaup")
-		))
-		sslContext.setNeedClientAuth(true)
+		val graderConnector = (if (Config.get("grader.insecure", false)) {
+			new org.eclipse.jetty.server.ServerConnector(server)
+		} else {
+			// boilerplate code for jetty with https support
+			val sslContext = new org.eclipse.jetty.util.ssl.SslContextFactory(
+				Config.get("ssl.keystore", "omegaup.jks"))
+			sslContext.setKeyManagerPassword(Config.get("ssl.password", "omegaup"))
+			sslContext.setKeyStorePassword(Config.get("ssl.keystore.password", "omegaup"))
+			sslContext.setTrustStore(FileUtil.loadKeyStore(
+				Config.get("ssl.truststore", "omegaup.jks"),
+				Config.get("ssl.truststore.password", "omegaup")
+			))
+			sslContext.setNeedClientAuth(true)
 
-		val graderConnector = new org.eclipse.jetty.server.ServerConnector(
-			server, sslContext)
+			new org.eclipse.jetty.server.ServerConnector(
+				server, sslContext)
+		})
 		graderConnector.setPort(Config.get("grader.port", 21680))
 
 		server.setConnectors(List(graderConnector).toArray)
@@ -326,10 +336,32 @@ object Service extends Object with Log with Using {
 	}
 
 	def runStatus(id: String)(implicit connection: Connection): Option[RunStatusOutputMessage] = {
+		implicit val formats = OmegaUpSerialization.formats
 		GraderData.getRun(id) map(
-			run => RunStatusOutputMessage(run.problem.alias, run.status.toString,
-				run.verdict.toString, run.score, run.runtime / 1000.0,
-				run.memory / 1024.0 / 1024.0)
+			run => {
+				val sourceFile = new File(Config.get("submissions.root", "submissions"),
+					run.guid.substring(0, 2) + "/" + run.guid.substring(2))
+				val groupsFile = new File(Config.get("grader.root", "grade"),
+					run.id.toString + "/details.json")
+				val compileErrorFile = new File(Config.get("grader.root", "grade"),
+					run.id.toString + ".err")
+
+				RunStatusOutputMessage(run.problem.alias, run.status.toString,
+					run.verdict.toString, run.score, run.runtime / 1000.0,
+					run.memory / 1024.0 / 1024.0,
+					source = FileUtil.read(sourceFile),
+					compile_error = compileErrorFile.exists match {
+						case false => None
+						case true => Some(FileUtil.read(compileErrorFile))
+					},
+					groups = groupsFile.exists match {
+						case false => None
+						case true => Some(Serialization.read[List[GroupVerdictMessage]](
+							new FileReader(groupsFile)
+						))
+					}
+				)
+			}
 		)
 	}
 
