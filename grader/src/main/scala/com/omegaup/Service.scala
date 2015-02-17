@@ -268,7 +268,7 @@ class HttpService(grader: Grader, broadcaster: Broadcaster) extends ServiceInter
 	val server = new org.eclipse.jetty.server.Server
 
 	{
-		val graderConnector = (if (Config.get("grader.insecure", false)) {
+		val graderConnector = (if (Config.get("https.disable", false)) {
 			new org.eclipse.jetty.server.ServerConnector(server)
 		} else {
 			// boilerplate code for jetty with https support
@@ -282,8 +282,7 @@ class HttpService(grader: Grader, broadcaster: Broadcaster) extends ServiceInter
 			))
 			sslContext.setNeedClientAuth(true)
 
-			new org.eclipse.jetty.server.ServerConnector(
-				server, sslContext)
+			new org.eclipse.jetty.server.ServerConnector(server, sslContext)
 		})
 		graderConnector.setPort(Config.get("grader.port", 21680))
 
@@ -542,10 +541,10 @@ stack_limit:${problem.stack_limit.getOrElse(-1)}""")
 			for (i <- 0 until 256) {
 				new File(submissions, f"$i%02x").mkdirs
 			}
-			new File(Config.get("grader.root", "grade")).mkdir
-			new File(Config.get("problems.root", "problems")).mkdir
-			new File(Config.get("input.root", "input")).mkdir
-			new File(Config.get("compile.root", "compile")).mkdir
+			new File(Config.get("grader.root", "grade")).mkdirs
+			new File(Config.get("problems.root", "problems")).mkdirs
+			new File(Config.get("input.root", "input")).mkdirs
+			new File(Config.get("compile.root", "compile")).mkdirs
 			implicit val connection: Connection = grader.conn
 			GraderData.init
 		}

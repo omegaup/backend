@@ -27,7 +27,10 @@ class OmegaUpRunstreamReader(callback: RunCaseCallback) extends Object with Usin
 }
 
 class RunnerProxy(val hostname: String, port: Int) extends RunnerService with Using with Log {
-	private val url = "https://" + hostname + ":" + port
+	private val url = (Config.get("https.disable", false) match {
+		case false => "https://"
+		case true => "http://"
+	}) + hostname + ":" + port
 
 	def name() = hostname
 

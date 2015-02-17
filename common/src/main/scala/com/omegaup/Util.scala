@@ -249,51 +249,60 @@ class EnumerationWrapper[T](enumeration:java.util.Enumeration[T]) extends Iterat
 
 object Https extends Object with Log with Using {
 	val defaultSocketFactory = SSLSocketFactory.getDefault().asInstanceOf[SSLSocketFactory]
-	val runnerSocketFactory = new SSLSocketFactory {
-		private val sslContextFactory = new org.eclipse.jetty.util.ssl.SslContextFactory(
-			Config.get("ssl.keystore", "omegaup.jks"))
-		sslContextFactory.setKeyManagerPassword(Config.get("ssl.password", "omegaup"))
-		sslContextFactory.setKeyStorePassword(Config.get("ssl.keystore.password", "omegaup"))
-		sslContextFactory.setTrustStore(FileUtil.loadKeyStore(
-			Config.get("ssl.truststore", "omegaup.jks"),
-			Config.get("ssl.truststore.password", "omegaup")
-		))
-		sslContextFactory.setNeedClientAuth(true)
-		sslContextFactory.start
-		private val socketFactory = sslContextFactory.getSslContext.getSocketFactory
+	val runnerSocketFactory: Option[SSLSocketFactory] =
+		Config.get("https.disable", false) match {
+			case true => None
+			case false => Some(new SSLSocketFactory {
+				private val sslContextFactory = new org.eclipse.jetty.util.ssl.SslContextFactory(
+					Config.get("ssl.keystore", "omegaup.jks"))
+				sslContextFactory.setKeyManagerPassword(Config.get("ssl.password", "omegaup"))
+				sslContextFactory.setKeyStorePassword(Config.get("ssl.keystore.password", "omegaup"))
+				sslContextFactory.setTrustStore(FileUtil.loadKeyStore(
+					Config.get("ssl.truststore", "omegaup.jks"),
+					Config.get("ssl.truststore.password", "omegaup")
+				))
+				sslContextFactory.setNeedClientAuth(true)
+				sslContextFactory.start
+				private val socketFactory = sslContextFactory.getSslContext.getSocketFactory
 
-		override def getDefaultCipherSuites(): Array[String] = defaultSocketFactory.getDefaultCipherSuites
-		override def getSupportedCipherSuites(): Array[String] = defaultSocketFactory.getSupportedCipherSuites
+				override def getDefaultCipherSuites(): Array[String] = defaultSocketFactory.getDefaultCipherSuites
+				override def getSupportedCipherSuites(): Array[String] = defaultSocketFactory.getSupportedCipherSuites
 
-		@throws(classOf[IOException])
-		override def createSocket(host: String, port: Int): Socket =
-			socketFactory.createSocket(host, port)
+				@throws(classOf[IOException])
+				override def createSocket(host: String, port: Int): Socket =
+					socketFactory.createSocket(host, port)
 
-		@throws(classOf[IOException])
-		override def createSocket(host: String, port: Int, clientAddress: InetAddress, clientPort: Int): Socket =
-			socketFactory.createSocket(host, port, clientAddress, clientPort)
+				@throws(classOf[IOException])
+				override def createSocket(host: String, port: Int, clientAddress: InetAddress, clientPort: Int): Socket =
+					socketFactory.createSocket(host, port, clientAddress, clientPort)
 
-		@throws(classOf[IOException])
-		override def createSocket(address: InetAddress, port: Int): Socket =
-			socketFactory.createSocket(address, port)
+				@throws(classOf[IOException])
+				override def createSocket(address: InetAddress, port: Int): Socket =
+					socketFactory.createSocket(address, port)
 
-		@throws(classOf[IOException])
-		override def createSocket(address: InetAddress, port: Int, clientAddress: InetAddress, clientPort: Int): Socket =
-			socketFactory.createSocket(address, port, clientAddress, clientPort)
+				@throws(classOf[IOException])
+				override def createSocket(address: InetAddress, port: Int, clientAddress: InetAddress, clientPort: Int): Socket =
+					socketFactory.createSocket(address, port, clientAddress, clientPort)
 
-		@throws(classOf[IOException])
-		override def createSocket(socket: Socket, host: String, port: Int, autoClose: Boolean): Socket =
-			socketFactory.createSocket(socket, host, port, autoClose)
+				@throws(classOf[IOException])
+				override def createSocket(socket: Socket, host: String, port: Int, autoClose: Boolean): Socket =
+					socketFactory.createSocket(socket, host, port, autoClose)
 
-		@throws(classOf[IOException])
-		override def createSocket(): Socket = socketFactory.createSocket
-	}
+				@throws(classOf[IOException])
+				override def createSocket(): Socket = socketFactory.createSocket
+			})
+		}
 
 	private def connect(url: String, runner: Boolean) = {
 		val conn = new URL(url).openConnection.asInstanceOf[HttpURLConnection]
 		if (url.startsWith("https://")) {
 			if (runner) {
-				conn.asInstanceOf[HttpsURLConnection].setSSLSocketFactory(runnerSocketFactory)
+				runnerSocketFactory match {
+					case None =>
+						throw new IllegalStateException("Service was started with https.disable")
+					case Some(factory) =>
+						conn.asInstanceOf[HttpsURLConnection].setSSLSocketFactory(factory)
+				}
 			}
 		}
 		conn

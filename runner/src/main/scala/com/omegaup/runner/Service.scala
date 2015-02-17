@@ -163,13 +163,22 @@ object Service extends Object with Log with Using {
       throw new IllegalArgumentException("runner.hostname configuration must be set")
     }
 
+		new File(Config.get("input.root", "input")).mkdirs
+		new File(Config.get("compile.root", "compile")).mkdirs
+
     var registerThread: RegisterThread = null
     
     // logger
     Logging.init
 
     // And build a runner instance
-    val runner = new Runner(hostname, Minijail)
+    val runner = new Runner(
+			hostname,
+			Config.get("runner.sandbox", "minijail") match {
+				case "null" => NullSandbox
+				case _ => Minijail
+			}
+		)
 
     // the handler
     val handler = new AbstractHandler() {
@@ -303,24 +312,28 @@ object Service extends Object with Log with Using {
       }
     };
 
-    // boilerplate code for jetty with https support  
-    val server = new org.eclipse.jetty.server.Server()
-    
-    val sslContext =
-      new org.eclipse.jetty.util.ssl.SslContextFactory(
-        Config.get("ssl.keystore", "omegaup.jks")
-      )
-    sslContext.setKeyManagerPassword(Config.get("ssl.password", "omegaup"))
-    sslContext.setKeyStorePassword(Config.get("ssl.keystore.password", "omegaup"))
-    sslContext.setTrustStore(FileUtil.loadKeyStore(
-      Config.get("ssl.truststore", "omegaup.jks"),
-      Config.get("ssl.truststore.password", "omegaup")
-    ))
-    sslContext.setNeedClientAuth(true)
-  
-    val runnerConnector = new org.eclipse.jetty.server.ServerConnector(server, sslContext)
+		val server = new org.eclipse.jetty.server.Server()
+		val runnerConnector = (if (Config.get("https.disable", false)) {
+			new org.eclipse.jetty.server.ServerConnector(server)
+		} else {
+			// boilerplate code for jetty with https support  
+			
+			val sslContext =
+				new org.eclipse.jetty.util.ssl.SslContextFactory(
+					Config.get("ssl.keystore", "omegaup.jks")
+				)
+			sslContext.setKeyManagerPassword(Config.get("ssl.password", "omegaup"))
+			sslContext.setKeyStorePassword(Config.get("ssl.keystore.password", "omegaup"))
+			sslContext.setTrustStore(FileUtil.loadKeyStore(
+				Config.get("ssl.truststore", "omegaup.jks"),
+				Config.get("ssl.truststore.password", "omegaup")
+			))
+			sslContext.setNeedClientAuth(true)
+
+			new org.eclipse.jetty.server.ServerConnector(server, sslContext)
+		})
     runnerConnector.setPort(Config.get("runner.port", 0))
-    
+
     server.setConnectors(List(runnerConnector).toArray)
     server.setHandler(handler)
 
