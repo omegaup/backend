@@ -11,20 +11,12 @@ libraryDependencies ++= Seq(
 proguardSettings
 
 ProguardKeys.options in Proguard ++= Seq(
-  "-dontskipnonpubliclibraryclasses",
-  "-dontskipnonpubliclibraryclassmembers",
   "-dontoptimize",
   "-dontobfuscate",
   "-dontnote",
   "-dontwarn",
   "-keep interface scala.ScalaObject",
-  "-keep class com.omegaup.*",
-  "-keep class com.omegaup.data.*",
-  "-keep class com.omegaup.grader.*",
-  "-keep class com.omegaup.runner.*",
-  "-keepclassmembers class com.omegaup.data.* { *; }",
-  "-keepclassmembers class com.omegaup.runner.* { *; }",
-  "-keepclassmembers class com.omegaup.Service { *; }",
+  "-keep class com.omegaup.**",
   "-keepclassmembers class scala.tools.scalap.scalax.rules.** { *; }",
   "-keep class scala.collection.JavaConversions",
   "-keep class org.eclipse.jetty.util.log.Slf4jLog",
@@ -35,11 +27,14 @@ ProguardKeys.options in Proguard ++= Seq(
 
 ProguardKeys.inputFilter in Proguard := { file =>
   file.name match {
-    case "runner_2.10-1.1.jar" => None
+    case s if s.startsWith("runner") => None
+    case s if s.startsWith("scala-compiler") => Some("!META-INF/**,!scala/tools/nsc/**")
     case _ => Some("!**/ECLIPSEF.RSA,!**/ECLIPSEF.SF,!about.html,!META-INF/MANIFEST.MF,!rootdoc.txt,!META-INF/LICENSE.txt,!META-INF/NOTICE.txt")
   }
 }
 
 ProguardKeys.proguardVersion in Proguard := "5.2"
+
+mainClass in (Compile, run) := Some("com.omegaup.runner.Service")
 
 javaOptions in (Proguard, ProguardKeys.proguard) := Seq("-Xmx2G")
