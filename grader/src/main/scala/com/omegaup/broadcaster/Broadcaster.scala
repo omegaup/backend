@@ -41,7 +41,7 @@ class QueuedMessage(contest: String, broadcast: Boolean, targetUser: Long, userO
 	extends QueuedElement(contest, broadcast, targetUser, userOnly) {}
 
 class Broadcaster extends Object with ServiceInterface with Runnable with Log with Using {
-	private val PathRE = """^/([a-zA-Z0-9_-]+)/?""".r
+	private val PathRE = "^/([a-zA-Z0-9_-]+)/?".r
 	// A collection of subscribers.
 	private val subscribers = new mutable.HashMap[String, mutable.ArrayBuffer[BroadcasterSession]]
 	private val subscriberLock = new Object
@@ -310,23 +310,27 @@ class Broadcaster extends Object with ServiceInterface with Runnable with Log wi
 			val entropy = tokens(0)
 			val user = tokens(1)
 
-			if (tokens(2) == hashdigest("SHA-256", Config.get("omegaup.md5.salt", "") + user + entropy)) {
+			val digest = hashdigest("SHA-256",
+				Config.get("omegaup.md5.salt", "omegaup") + user + entropy)
+			if (tokens(2) == digest) {
 				try {
 					(user.toInt, userId)
 				} catch {
 					case e: Exception => (-1, userId)
 				}
 			} else {
+				info("Hash mismatch on the auth token")
 				(-1, userId)
 			}
 		}
 
 		private def getSession(sess: Session): BroadcasterSession = {
-			val contest = PathRE findFirstIn sess.getUpgradeRequest.getRequestURI.getPath match {
-				case Some(PathRE(contest)) => {
+			debug("CONN {}", sess.getUpgradeRequest.getRequestURI.getPath)
+			val contest = sess.getUpgradeRequest.getRequestURI.getPath match {
+				case PathRE(contest) => {
 					contest
 				}
-				case None => {
+				case _ => {
 					null
 				}
 			}

@@ -47,7 +47,7 @@ class HttpHandler(grader: Grader, broadcaster: Broadcaster) extends AbstractHand
 					getClass.getResourceAsStream("/index.html")
 				}
 			), response.getOutputStream)
-			info("{} {} {}", request.getMethod, request.getPathInfo, response.getStatus)
+			debug("{} {} {}", request.getMethod, request.getPathInfo, response.getStatus)
 			baseRequest.setHandled(true)
 			return
 		}
@@ -259,7 +259,7 @@ class HttpHandler(grader: Grader, broadcaster: Broadcaster) extends AbstractHand
 			}
 		}, response.getWriter())
 
-		info("{} {} {}", request.getMethod, request.getPathInfo, response.getStatus)
+		debug("{} {} {}", request.getMethod, request.getPathInfo, response.getStatus)
 		baseRequest.setHandled(true)
 	}
 }
