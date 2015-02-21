@@ -251,7 +251,7 @@ object NullSandbox extends Object with Sandbox with Log with Using {
   }
 
   private def runWithTimeout(builder: ProcessBuilder, timeout: Long): Int = {
-    pusing(builder.start) { p => {
+    using(builder.start) { p => {
       val future = scheduler.schedule(new Runnable() {
         override def run(): Unit = {
           p.destroy
@@ -544,7 +544,7 @@ object Minijail extends Object with Sandbox with Log with Using {
     var status = -1
     var syscallName = ""
 
-    pusing (runtime.exec(helperParams.toArray)) { helper => {
+    using (runtime.exec(helperParams.toArray)) { helper => {
       if (helper == null) {
         error("minijail_syscall_helper was null")
       } else {
@@ -554,7 +554,7 @@ object Minijail extends Object with Sandbox with Log with Using {
         val initialStatus = reader.readLine
         debug("minijail helper initial status {}", initialStatus)
 
-        pusing (runtime.exec(params.toArray)) { minijail =>
+        using (runtime.exec(params.toArray)) { minijail =>
           if (minijail == null) {
             error("minijail process was null")
           } else {

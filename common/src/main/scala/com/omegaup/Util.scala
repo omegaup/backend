@@ -24,54 +24,6 @@ import org.apache.commons.codec.binary.Base64InputStream
 import scala.collection.mutable
 import scala.language.implicitConversions
 
-trait Using {
-	def using[A, B <: java.io.Closeable] (closeable: B) (f: B => A): A =
-		 try { f(closeable) } finally { closeable.close }
-
-	def susing[A, B <: java.sql.Statement] (closeable: B) (f: B => A): A =
-		 try { f(closeable) } finally { closeable.close }
-
-	def rusing[A, B <: java.sql.ResultSet] (closeable: B) (f: B => A): A =
-		 try { f(closeable) } finally { closeable.close }
-
-	def cusing[A, B <: java.net.HttpURLConnection] (connection: B) (f: B => A): A = {
-		// This tries to leverage HttpURLConnection's Keep-Alive facilities.
-		try {
-			f(connection)
-		} catch {
-			case e: IOException => {
-				try {
-					val err = connection.getErrorStream
-					val buf = Array.ofDim[Byte](1024)
-					var ret: Int = 0
-					while ({ ret = err.read(buf); ret > 0}){}
-					err.close
-				} catch {
-					case _: Throwable => {}
-				}
-				throw e
-			}
-		} finally {
-			try {
-				connection.getInputStream.close
-			} catch {
-				case _: Throwable => {}
-			}
-		}
-	 }
-
-	def pusing[A] (process: Process) (f: Process => A): A =
-		 try {
-			f(process)
-		} finally {
-			if (process != null) {
-				process.getInputStream.close()
-				process.getOutputStream.close()
-				process.getErrorStream.close()
-			}
-		}
-}
-
 object FileUtil extends Object with Using {
 	@throws(classOf[IOException])
 	def read(filename: String): String = read(new File(filename))

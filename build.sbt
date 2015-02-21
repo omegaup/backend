@@ -25,7 +25,14 @@ lazy val backend = project.in(file("."))
 		name := "omegaUp"
 	)
 
+lazy val common_macros = project
+	.settings(commonSettings: _*)
+	.settings(
+		name := "common_macros"
+	)
+
 lazy val common = project
+  .dependsOn(common_macros)
 	.settings(commonSettings: _*)
 	.settings(
 		name := "common"

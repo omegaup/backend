@@ -85,7 +85,7 @@ object Https extends Object with Log with Using {
 	def get(url: String, runner: Boolean = true):String = {
 		debug("GET {}", url)
 
-		cusing (connect(url, runner)) { conn => {
+		using (connect(url, runner)) { conn => {
 			conn.addRequestProperty("Connection", "close")
 			conn.setDoOutput(false)
 			new BufferedReader(new InputStreamReader(conn.getInputStream())).readLine
@@ -101,7 +101,7 @@ object Https extends Object with Log with Using {
 
 		implicit val formats = OmegaUpSerialization.formats
 
-		cusing (connect(url, runner)) { conn => {
+		using (connect(url, runner)) { conn => {
 			conn.setDoOutput(true)
 			conn.setRequestMethod("POST")
 			conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
@@ -118,7 +118,7 @@ object Https extends Object with Log with Using {
 
 		implicit val formats = OmegaUpSerialization.formats
 
-		cusing (connect(url, runner)) { conn => {
+		using (connect(url, runner)) { conn => {
 			conn.addRequestProperty("Content-Type", "text/json")
 			conn.setDoOutput(true)
 			val writer = new PrintWriter(new OutputStreamWriter(conn.getOutputStream()))
@@ -134,7 +134,7 @@ object Https extends Object with Log with Using {
 
 		implicit val formats = OmegaUpSerialization.formats
 
-		cusing (connect(url, runner)) { conn => {
+		using (connect(url, runner)) { conn => {
 			conn.addRequestProperty("Content-Type", "text/json")
 			conn.setDoOutput(true)
 			val writer = new PrintWriter(new OutputStreamWriter(conn.getOutputStream()))
@@ -156,7 +156,7 @@ object Https extends Object with Log with Using {
 
 		implicit val formats = OmegaUpSerialization.formats
 
-		cusing (connect(url, runner)) { conn => {
+		using (connect(url, runner)) { conn => {
 			conn.addRequestProperty("Content-Type", "application/zip")
 			conn.addRequestProperty("Content-Disposition", "attachment; filename=" + zipname + ";")
 			conn.setFixedLengthStreamingMode(zipSize)
@@ -176,7 +176,7 @@ object Https extends Object with Log with Using {
 
 		implicit val formats = OmegaUpSerialization.formats
 
-		cusing (connect(url, runner)) { conn => {
+		using (connect(url, runner)) { conn => {
 			conn.addRequestProperty("Content-Type", mimeType)
 			conn.addRequestProperty("Content-Disposition", "attachment; filename=" + filename + ";")
 			conn.setDoOutput(true)
@@ -195,7 +195,7 @@ object Https extends Object with Log with Using {
 
 		implicit val formats = OmegaUpSerialization.formats
 
-		cusing (connect(url, runner)) { conn => {
+		using (connect(url, runner)) { conn => {
 			conn.addRequestProperty("Content-Type", "text/json")
 			conn.setDoOutput(true)
 			val writer = new PrintWriter(new OutputStreamWriter(conn.getOutputStream()))

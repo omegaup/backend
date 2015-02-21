@@ -70,8 +70,8 @@ object Database extends Object with Log with Using {
 		val q = build(sql, params : _*)
 		trace(q)
 		try {
-			susing (connection.createStatement) { statement =>
-				rusing (statement.executeQuery(q)) { results =>
+			using (connection.createStatement) { statement =>
+				using (statement.executeQuery(q)) { results =>
 					results.next match {
 						case true => Some(process(results))
 						case false => None
@@ -80,8 +80,8 @@ object Database extends Object with Log with Using {
 			}
 		} catch {
 			case e: Exception => {
-				susing (connection.createStatement) { statement =>
-					rusing (statement.executeQuery(q)) { results =>
+				using (connection.createStatement) { statement =>
+					using (statement.executeQuery(q)) { results =>
 						results.next match {
 							case true => Some(process(results))
 							case false => None
@@ -96,12 +96,12 @@ object Database extends Object with Log with Using {
 		val q = build(sql, params : _*)
 		trace(q)
 		try {
-			susing (connection.createStatement) { statement =>
+			using (connection.createStatement) { statement =>
 				statement.execute(q)
 			}
 		} catch {
 			case e: Exception => {
-				susing (connection.createStatement) { statement =>
+				using (connection.createStatement) { statement =>
 					statement.execute(q)
 				}
 			}
@@ -113,8 +113,8 @@ object Database extends Object with Log with Using {
 		val q = build(sql, params : _*)
 		trace(q)
 		val ret = new scala.collection.mutable.ListBuffer[T]
-		susing (connection.createStatement) { statement =>
-			rusing (statement.executeQuery(q)) { results =>
+		using (connection.createStatement) { statement =>
+			using (statement.executeQuery(q)) { results =>
 				while (results.next) {
 					ret += process(results)
 				}
@@ -152,7 +152,7 @@ class Git(repository: File) extends Object with Using {
   def init() = {
     val params = List("/usr/bin/git", "init", "-q")
 
-    pusing (runtime.exec(params.toArray, env.toArray, repository)) { p => {
+    using (runtime.exec(params.toArray, env.toArray, repository)) { p => {
       val error = new StringBuilder
 
       using (new BufferedReader(new InputStreamReader(p.getErrorStream))) { reader =>
@@ -169,7 +169,7 @@ class Git(repository: File) extends Object with Using {
   def clean() = {
     val params = List("/usr/bin/git", "rm", "-rf", ".")
 
-    pusing (runtime.exec(params.toArray, env.toArray, repository)) { p => {
+    using (runtime.exec(params.toArray, env.toArray, repository)) { p => {
       val error = new StringBuilder
 
       using (new BufferedReader(new InputStreamReader(p.getErrorStream))) { reader =>
@@ -199,7 +199,7 @@ class Git(repository: File) extends Object with Using {
       config("push.default", "matching")
       val params = List("/usr/bin/git", "commit", "-m", message)
 
-      pusing (runtime.exec(params.toArray, env.toArray, repository)) { p => {
+      using (runtime.exec(params.toArray, env.toArray, repository)) { p => {
         val error = new StringBuilder
 
         using (new BufferedReader(new InputStreamReader(p.getErrorStream))) { reader =>
@@ -217,7 +217,7 @@ class Git(repository: File) extends Object with Using {
   def config(name: String, value: String) = {
     val params = List("/usr/bin/git", "config", name, value)
 
-    pusing (runtime.exec(params.toArray, env.toArray, repository)) { p => {
+    using (runtime.exec(params.toArray, env.toArray, repository)) { p => {
       val error = new StringBuilder
 
       using (new BufferedReader(new InputStreamReader(p.getErrorStream))) { reader =>
@@ -234,7 +234,7 @@ class Git(repository: File) extends Object with Using {
   def add(path: String) = {
     val params = List("/usr/bin/git", "add", ".")
 
-    pusing (runtime.exec(params.toArray, env.toArray, repository)) { p => {
+    using (runtime.exec(params.toArray, env.toArray, repository)) { p => {
       val error = new StringBuilder
 
       using (new BufferedReader(new InputStreamReader(p.getErrorStream))) { reader =>
@@ -251,7 +251,7 @@ class Git(repository: File) extends Object with Using {
   def status(): String = {
     val params = List("/usr/bin/git", "status", "-s", "--porcelain")
 
-    pusing (runtime.exec(params.toArray, env.toArray, repository)) { p => {
+    using (runtime.exec(params.toArray, env.toArray, repository)) { p => {
       val output = new StringBuilder
 
       var first = true
@@ -271,7 +271,7 @@ class Git(repository: File) extends Object with Using {
   def revParse(commitish: String) = {
     val params = List("/usr/bin/git", "rev-parse", commitish)
 
-    pusing (runtime.exec(params.toArray, env.toArray, repository)) { p => {
+    using (runtime.exec(params.toArray, env.toArray, repository)) { p => {
       using (new BufferedReader(new InputStreamReader(p.getInputStream))) { reader =>
         reader.readLine
       }
@@ -281,7 +281,7 @@ class Git(repository: File) extends Object with Using {
   def getTreeHash(directory: String) = {
     val params = List("/usr/bin/git", "ls-tree", "HEAD", "-d", directory)
 
-    pusing (runtime.exec(params.toArray, env.toArray, repository)) { p => {
+    using (runtime.exec(params.toArray, env.toArray, repository)) { p => {
       using (new BufferedReader(new InputStreamReader(p.getInputStream))) { reader =>
         reader.readLine.split("\\s")(2)
       }
@@ -293,7 +293,7 @@ class Git(repository: File) extends Object with Using {
     val treeHashes = new TreeSet[(String, String)]
 
     // Get the files in the directory from git.
-    pusing (runtime.exec(params.toArray, env.toArray, repository)) { p => {
+    using (runtime.exec(params.toArray, env.toArray, repository)) { p => {
       var line: String = null
       using (new BufferedReader(new InputStreamReader(p.getInputStream))) { reader =>{
         while ({ line = reader.readLine ; line != null } ){

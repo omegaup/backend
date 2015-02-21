@@ -426,7 +426,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
           .mkdir
       val pipeDir = new File(binDirectory, s"${interface}_pipes")
       pipeDir.mkdir
-      pusing (runtime.exec(Array[String](
+      using (runtime.exec(Array[String](
           "/usr/bin/mkfifo",
           new File(pipeDir, "in").getCanonicalPath,
           new File(pipeDir, "out").getCanonicalPath))
