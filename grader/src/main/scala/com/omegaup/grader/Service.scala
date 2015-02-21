@@ -36,7 +36,7 @@ object Service extends Object with Log {
 
 		Runtime.getRuntime.addShutdownHook(new Thread() {
 			override def run() = {
-				info("Shutting down")
+				log.info("Shutting down")
 				server.stop
 			}
 		});

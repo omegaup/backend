@@ -52,7 +52,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
           }
         }
     
-        info("compile finished successfully")
+        log.info("compile finished successfully")
         return new CompileOutputMessage(
           token = Some(runDirectory.getParentFile.getName))
       }
@@ -84,7 +84,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
       FileUtil.deleteDirectory(runDirectory.getParentFile.getCanonicalPath)
     }
   
-    error("compile finished with errors: {}", compileError)
+    log.error("compile finished with errors: {}", compileError)
     new CompileOutputMessage(errorString, error = Some(compileError))
   }
 
@@ -108,7 +108,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
 
     if (lang == "cat") {
       // Literal. We're done.
-      info("compile finished successfully")
+      log.info("compile finished successfully")
       return new CompileOutputMessage(token = Some(runDirectory.getParentFile.getName))
     }
 
@@ -238,7 +238,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
   }
   
   def compile(message: CompileInputMessage): CompileOutputMessage = {
-    info("compile {}", message.lang)
+    log.info("compile {}", message.lang)
     
     val compileDirectory = new File(Config.get("compile.root", "./compile"))
     compileDirectory.mkdirs
@@ -289,7 +289,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
   }
 
   def run(message: RunInputMessage, callback: RunCaseCallback) : RunOutputMessage = {
-    info("run {}", message)
+    log.info("run {}", message)
     val casesDirectory:File = message.input match {
       case Some(in) => {
         if (in.contains(".") || in.contains("/")) {
@@ -318,17 +318,17 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
       if (lang == "cat") {
         // Literal. Just copy the "program" as the output and produce a fake .meta.
         try {
-          debug("Literal submission {}", new File(binDirectory, "Main.cat"))
+          log.debug("Literal submission {}", new File(binDirectory, "Main.cat"))
           using (new FileInputStream(new File(binDirectory, "Main.cat"))) { fileStream => {
             using (new ZipInputStream(new DataUriInputStream(fileStream))) { stream => {
-              debug("Literal stream")
+              log.debug("Literal stream")
               val inputFiles = casesDirectory.listFiles
                                              .filter {_.getName.endsWith(".in")}
                                              .map { _.getName }
               var entry: ZipEntry = stream.getNextEntry
       
               while(entry != null) {
-                debug("Literal stream: {}", entry.getName)
+                log.debug("Literal stream: {}", entry.getName)
                 val caseName = FileUtil.removeExtension(FileUtil.basename(entry.getName))
                 if (entry.getName.endsWith(".out") && inputFiles.contains(caseName + ".in")) {
                   using (new FileOutputStream(new File(runDirectory, caseName + ".out"))) {
@@ -345,7 +345,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
           }}
         } catch {
           case e: Exception => {
-            warn("Literal submission: {}", e)
+            log.warn(e, "Literal submission")
             val caseName = runDirectory.getCanonicalPath + "/Main"
             FileUtil.copy(new File(binDirectory, "Main.cat"), new File(caseName + ".out"))
             FileUtil.write(caseName + ".err", "")
@@ -408,7 +408,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
         }
       }
     
-      info("run finished token={}", message.token)
+      log.info("run finished token={}", message.token)
       
       new RunOutputMessage()
     }
@@ -563,7 +563,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
 
     val finalMeta = (
       if (childMeta("status") == "OK" && parentMeta("status") != "OK") {
-        error("Child processes finished correctly, but parent did not {}",
+        log.error("Child processes finished correctly, but parent did not {}",
           parentMeta)
         if (parentMeta("status") == "OL") {
           // Special case for OLE
@@ -624,7 +624,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
           }}
         } catch {
           case e: Exception => {
-            error("validador " + caseFile + ".out", e)
+            log.error(e, "validador " + caseFile + ".out")
             List(("status", "JE"), ("error", "file `validator/" + caseName + ".out' missing or empty"))
           }
         }
@@ -655,7 +655,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
 
   def publish(callback: RunCaseCallback, file: File, prefix: String = "") = {
     using (new FileInputStream(file)) {
-      debug("Publishing {} {}", file, file.length)
+      log.debug("Publishing {} {}", file, file.length)
       callback(prefix + file.getName, file.length, _)
     }
   }
@@ -666,7 +666,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
     if (!runDirectory.exists) throw new IllegalArgumentException("Invalid token")
 
     if (!Config.get("runner.preserve", false)) {
-      error("Removing directory {}", runDirectory)
+      log.error("Removing directory {}", runDirectory)
       FileUtil.deleteDirectory(runDirectory)
     }
   }

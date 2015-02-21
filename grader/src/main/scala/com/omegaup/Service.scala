@@ -47,7 +47,7 @@ class HttpHandler(grader: Grader, broadcaster: Broadcaster) extends AbstractHand
 					getClass.getResourceAsStream("/index.html")
 				}
 			), response.getOutputStream)
-			debug("{} {} {}", request.getMethod, request.getPathInfo, response.getStatus)
+			log.debug("{} {} {}", request.getMethod, request.getPathInfo, response.getStatus)
 			baseRequest.setHandled(true)
 			return
 		}
@@ -65,10 +65,10 @@ class HttpHandler(grader: Grader, broadcaster: Broadcaster) extends AbstractHand
 
 					req.overrides match {
 						case Some(x) => {
-							info("Configuration reloaded {}", x)
+							log.info("Configuration reloaded {}", x)
 							x.foreach { case (k, v) => Config.set(k, v) }
 						}
-						case None => info("Configuration reloaded")
+						case None => log.info("Configuration reloaded")
 					}
 
 					Logging.init()
@@ -79,7 +79,7 @@ class HttpHandler(grader: Grader, broadcaster: Broadcaster) extends AbstractHand
 					new ReloadConfigOutputMessage()
 				} catch {
 					case e: Exception => {
-						error("Reload config: {}", e)
+						log.error(e, "Reload config")
 						response.setStatus(HttpServletResponse.SC_BAD_REQUEST)
 						new ReloadConfigOutputMessage(status = "error", error = Some(e.getMessage))
 					}
@@ -99,12 +99,12 @@ class HttpHandler(grader: Grader, broadcaster: Broadcaster) extends AbstractHand
 					grader.grade(req)
 				} catch {
 					case e: IllegalArgumentException => {
-						error("Grade failed: {}", e)
+						log.error(e, "Grade failed")
 						response.setStatus(HttpServletResponse.SC_NOT_FOUND)
 						new RunGradeOutputMessage(status = "error", error = Some(e.getMessage))
 					}
 					case e: Exception => {
-						error("Grade failed: {}", e)
+						log.error(e, "Grade failed")
 						response.setStatus(HttpServletResponse.SC_BAD_REQUEST)
 						new RunGradeOutputMessage(status = "error", error = Some(e.getMessage))
 					}
@@ -117,7 +117,7 @@ class HttpHandler(grader: Grader, broadcaster: Broadcaster) extends AbstractHand
 					grader.runnerDispatcher.register(req.hostname, req.port)
 				} catch {
 					case e: Exception => {
-						error("Register failed: {}", e)
+						log.error(e, "Register failed")
 						response.setStatus(HttpServletResponse.SC_BAD_REQUEST)
 						new EndpointRegisterOutputMessage(status = "error", error = Some(e.getMessage))
 					}
@@ -130,6 +130,7 @@ class HttpHandler(grader: Grader, broadcaster: Broadcaster) extends AbstractHand
 					grader.runnerDispatcher.deregister(req.hostname, req.port)
 				} catch {
 					case e: Exception => {
+						log.warn(e, "Deregister failed")
 						response.setStatus(HttpServletResponse.SC_BAD_REQUEST)
 						new EndpointRegisterOutputMessage(status = "error", error = Some(e.getMessage))
 					}
@@ -149,7 +150,7 @@ class HttpHandler(grader: Grader, broadcaster: Broadcaster) extends AbstractHand
 				} catch {
 					case e: Exception => {
 						response.setStatus(HttpServletResponse.SC_BAD_REQUEST)
-						error("Broadcast failed: {}", e)
+						log.error(e, "Broadcast failed")
 						new BroadcastOutputMessage(status = "error", error = Some(e.getMessage))
 					}
 				}
@@ -167,12 +168,12 @@ class HttpHandler(grader: Grader, broadcaster: Broadcaster) extends AbstractHand
 							outputMessage
 						} catch {
 							case e: IllegalArgumentException => {
-								error("Submitting new run failed: {}", e)
+								log.error(e, "Submitting new run failed")
 								response.setStatus(HttpServletResponse.SC_NOT_FOUND)
 								new RunNewOutputMessage(status = "error", error = Some(e.getMessage))
 							}
 							case e: Exception => {
-								error("Submitting new run failed: {}", e)
+								log.error(e, "Submitting new run failed")
 								response.setStatus(HttpServletResponse.SC_BAD_REQUEST)
 								new RunNewOutputMessage(status = "error", error = Some(e.getMessage))
 							}
@@ -194,7 +195,7 @@ class HttpHandler(grader: Grader, broadcaster: Broadcaster) extends AbstractHand
 							}
 						} catch {
 							case e: Exception => {
-								error("Getting run status failed: {}", e)
+								log.error(e, "Getting run status failed")
 								response.setStatus(HttpServletResponse.SC_BAD_REQUEST)
 								new NullMessage()
 							}
@@ -211,7 +212,7 @@ class HttpHandler(grader: Grader, broadcaster: Broadcaster) extends AbstractHand
 							Service.runList(req)
 						} catch {
 							case e: Exception => {
-								error("Getting run list failed: {}", e)
+								log.error(e, "Getting run list failed")
 								response.setStatus(HttpServletResponse.SC_BAD_REQUEST)
 								new NullMessage()
 							}
@@ -228,7 +229,7 @@ class HttpHandler(grader: Grader, broadcaster: Broadcaster) extends AbstractHand
 							Service.problemList(req)
 						} catch {
 							case e: Exception => {
-								error("Getting problem list failed: {}", e)
+								log.error(e, "Getting problem list failed")
 								response.setStatus(HttpServletResponse.SC_BAD_REQUEST)
 								new NullMessage()
 							}
@@ -241,7 +242,7 @@ class HttpHandler(grader: Grader, broadcaster: Broadcaster) extends AbstractHand
 							Service.problemNew(request)
 						} catch {
 							case e: Exception => {
-								error("Creating new problem failed: {}", e)
+								log.error(e, "Creating new problem failed")
 								response.setStatus(HttpServletResponse.SC_BAD_REQUEST)
 								new ProblemNewOutputMessage(status = "error",
 									error = Some(e.getMessage))
@@ -259,7 +260,7 @@ class HttpHandler(grader: Grader, broadcaster: Broadcaster) extends AbstractHand
 			}
 		}, response.getWriter())
 
-		debug("{} {} {}", request.getMethod, request.getPathInfo, response.getStatus)
+		log.debug("{} {} {}", request.getMethod, request.getPathInfo, response.getStatus)
 		baseRequest.setHandled(true)
 	}
 }
@@ -290,17 +291,17 @@ class HttpService(grader: Grader, broadcaster: Broadcaster) extends ServiceInter
 
 		server.setHandler(new HttpHandler(grader, broadcaster))
 		server.start()
-		info("omegaUp HTTPS service started")
+		log.info("omegaUp HTTPS service started")
 	}
 
 	override def stop(): Unit = {
-		info("omegaUp HTTPS service stopping")
+		log.info("omegaUp HTTPS service stopping")
 		server.stop
 	}
 
 	override def join(): Unit = {
 		server.join
-		info("omegaUp HTTPS service stopped")
+		log.info("omegaUp HTTPS service stopped")
 	}
 }
 
@@ -558,23 +559,23 @@ stack_limit:${problem.stack_limit.getOrElse(-1)}""")
 			new HttpService(grader, broadcaster)
 		)
 
-		info("omegaUp backend service ready")
+		log.info("omegaUp backend service ready")
 
 		Runtime.getRuntime.addShutdownHook(new Thread() {
 			override def run() = {
-				info("Shutting down")
+				log.info("Shutting down")
 				try {
 					servers foreach (_.stop)
 				} catch {
 					case e: Exception => {
-						error("Error shutting down. Good night.", e)
+						log.error(e, "Error shutting down. Good night.")
 					}
 				}
 			}
 		});
 
 		servers foreach (_.join)
-		info("Shut down cleanly")
+		log.info("Shut down cleanly")
 	}
 }
 

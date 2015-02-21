@@ -227,7 +227,7 @@ object MetaFile extends Object with Using {
 
 object DataUriStream extends Object with Log {
 	def apply(stream: InputStream) = {
-		debug("Reading data URI")
+		log.debug("Reading data URI")
 
 		val buffer = Array.ofDim[Byte](1024)
 		var bytesRead = 0
@@ -236,7 +236,7 @@ object DataUriStream extends Object with Log {
 		bytesRead = stream.read(buffer, 0, 5)
 
 		if (bytesRead != 5 || new String(buffer, 0, bytesRead) != "data:") {
-			debug("Illegal data URI: No \"data\"")
+			log.debug("Illegal data URI: No \"data\"")
 			throw new IOException("Illegal data uri stream")
 		}
 
@@ -246,15 +246,15 @@ object DataUriStream extends Object with Log {
 		}
 
 		if (ch == -1) {
-			debug("Illegal data URI: No comma")
+			log.debug("Illegal data URI: No comma")
 			throw new IOException("Illegal data uri stream")
 		}
 
 		if (new String(buffer, 0, bytesRead).contains("base64")) {
-			debug("Using base64")
+			log.debug("Using base64")
 			new Base64InputStream(stream)
 		} else {
-			debug("Using regular stream")
+			log.debug("Using regular stream")
 			stream
 		}
 	}

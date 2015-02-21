@@ -30,7 +30,7 @@ class Grader(val options: GraderOptions) extends Object with GraderService with 
 
 		recoverQueue
 
-		info("omegaUp Grader service started")
+		log.info("omegaUp Grader service started")
 	}
 
 	def addListener(listener: Listener) = listeners += listener
@@ -40,13 +40,13 @@ class Grader(val options: GraderOptions) extends Object with GraderService with 
 	def recoverQueue() = {
 		val pendingRuns = GraderData.pendingRuns
 
-		info("Recovering previous queue: {} runs re-added", pendingRuns.size)
+		log.info("Recovering previous queue: {} runs re-added", pendingRuns.size)
 
 		pendingRuns foreach(run => grade(new RunContext(Some(this), run, false, false)))
 	}
 
 	def grade(ctx: RunContext): Unit = {
-		info("Judging {}", ctx.run.id)
+		log.info("Judging {}", ctx.run.id)
 
 		if (ctx.run.status != Status.Waiting) {
 			ctx.run.status = Status.Waiting
@@ -75,7 +75,7 @@ class Grader(val options: GraderOptions) extends Object with GraderService with 
 			GraderData.update(run)
 		}
 		if (run.status == Status.Ready) {
-			info("Verdict update: {} {} {} {} {} {} {}",
+			log.info("Verdict update: {} {} {} {} {} {} {}",
 				run.id, run.status, run.verdict, run.score, run.contest_score, run.runtime, run.memory)
 			listeners foreach { listener => listener(ctx, run) }
 		}
@@ -103,7 +103,7 @@ class Grader(val options: GraderOptions) extends Object with GraderService with 
 			)
 		} catch {
 			case ex: ParseException => {
-				error("Unable to parse {} at character {}", source, ex.getErrorOffset)
+				log.error("Unable to parse {} at character {}", source, ex.getErrorOffset)
 			}
 		}
 		Config.get("grader.routing.registered_runners", "").split("\\s+").foreach({ endpoint => {
@@ -119,14 +119,14 @@ class Grader(val options: GraderOptions) extends Object with GraderService with 
 	}
 
 	override def stop(): Unit = {
-		info("omegaUp grader stopping")
+		log.info("omegaUp grader stopping")
 		runnerDispatcher.stop
 	}
 
 	override def join(): Unit = {
 		runnerDispatcher.join
 		conn.close
-		info("omegaUp grader stopped")
+		log.info("omegaUp grader stopped")
 	}
 }
 

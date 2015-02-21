@@ -83,7 +83,7 @@ object Https extends Object with Log with Using {
 	}
 
 	def get(url: String, runner: Boolean = true):String = {
-		debug("GET {}", url)
+		log.debug("GET {}", url)
 
 		using (connect(url, runner)) { conn => {
 			conn.addRequestProperty("Connection", "close")
@@ -93,7 +93,7 @@ object Https extends Object with Log with Using {
 	}
 
 	def post[T](url: String, data: scala.collection.Map[String, String], runner: Boolean = true)(implicit mf: Manifest[T]):T = {
-		debug("POST {}", url)
+		log.debug("POST {}", url)
 
 		val postdata = data.map { case(key, value) =>
 			URLEncoder.encode(key, "UTF-8") + "=" + URLEncoder.encode(value, "UTF-8")
@@ -114,7 +114,7 @@ object Https extends Object with Log with Using {
 	}
 
   def send[T, W <: AnyRef](url:String, request:W, responseReader: InputStream=>T, runner: Boolean)(implicit mf: Manifest[T]):T = {
-		debug("Requesting {}", url)
+		log.debug("Requesting {}", url)
 
 		implicit val formats = OmegaUpSerialization.formats
 
@@ -130,7 +130,7 @@ object Https extends Object with Log with Using {
 	}
 
 	def send[T, W <: AnyRef](url:String, request:W, runner: Boolean)(implicit mf: Manifest[T]):T = {
-		debug("Requesting {}", url)
+		log.debug("Requesting {}", url)
 
 		implicit val formats = OmegaUpSerialization.formats
 
@@ -152,7 +152,7 @@ object Https extends Object with Log with Using {
 	}
 
 	def zip_send[T](url:String, inputStream:InputStream, zipSize:Int, zipname:String, runner: Boolean)(implicit mf: Manifest[T]): T = {
-		debug("Requesting {}", url)
+		log.debug("Requesting {}", url)
 
 		implicit val formats = OmegaUpSerialization.formats
 
@@ -172,7 +172,7 @@ object Https extends Object with Log with Using {
 	}
 
 	def stream_send[T](url:String, mimeType: String, filename: String, callback:OutputStream=>Unit, runner: Boolean = true)(implicit mf: Manifest[T]): T = {
-		debug("Requesting {}", url)
+		log.debug("Requesting {}", url)
 
 		implicit val formats = OmegaUpSerialization.formats
 
@@ -191,7 +191,7 @@ object Https extends Object with Log with Using {
 	}
 
 	def receive_zip[T, W <: AnyRef](url:String, request:W, file:String, runner: Boolean = true)(implicit mf: Manifest[T]): Option[T] = {
-		debug("Requesting {}", url)
+		log.debug("Requesting {}", url)
 
 		implicit val formats = OmegaUpSerialization.formats
 

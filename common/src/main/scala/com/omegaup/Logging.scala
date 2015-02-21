@@ -1,41 +1,207 @@
 package com.omegaup
 
-import org.slf4j.{Logger, LoggerFactory}
+import org.slf4j.LoggerFactory
+import org.slf4j.helpers.MessageFormatter
+import ch.qos.logback
 
 trait Log {
-	private lazy val log = LoggerFactory.getLogger(getClass.getName.replace("$", "#").stripSuffix("#"))
+	protected lazy val log =
+		new Logger(getClass.getName.replace("$", "#").stripSuffix("#"))
+}
 
-	protected def trace(message:String, values:Any*) =
-		log.trace(message, values.map(_.asInstanceOf[Object]).toArray:_*)
-	protected def trace(message:String, error:Throwable) = log.trace(message, error)
+class Logger(name: String) {
+	private lazy val log = LoggerFactory.getLogger(name)
+			.asInstanceOf[logback.classic.Logger]
 
-	protected def debug(message:String, values:Any*) =
-		log.debug(message, values.map(_.asInstanceOf[Object]).toArray:_*)
-	protected def debug(message:String, error:Throwable) = log.debug(message, error)
+	private val isTraceEnabled = log.isTraceEnabled
+	private val isDebugEnabled = log.isDebugEnabled
+	private val isInfoEnabled = log.isInfoEnabled
+	private val isWarnEnabled = log.isWarnEnabled
+	private val isErrorEnabled = log.isErrorEnabled
 
-	protected def info(message:String, values:Any*) =
-		log.info(message, values.map(_.asInstanceOf[Object]).toArray:_*)
-	protected def info(message:String, error:Throwable) = log.info(message, error)
+	private def traceImpl(message: String, throwable: Throwable) = {
+		log.trace(message, throwable)
+	}
+	private def debugImpl(message: String, throwable: Throwable) = {
+		log.debug(message, throwable)
+	}
+	private def infoImpl(message: String, throwable: Throwable) = {
+		log.info(message, throwable)
+	}
+	private def warnImpl(message: String, throwable: Throwable) = {
+		log.warn(message, throwable)
+	}
+	private def errorImpl(message: String, throwable: Throwable) = {
+		log.error(message, throwable)
+	}
 
-	protected def warn(message:String, values:Any*) =
-		log.warn(message, values.map(_.asInstanceOf[Object]).toArray:_*)
-	protected def warn(message:String, error:Throwable) = log.warn(message, error)
+	def trace(message: String) = {
+		if (isTraceEnabled) {
+			traceImpl(message, null)
+		}
+	}
+	def trace(message: String, values: Any*) = {
+		if (isTraceEnabled) {
+			traceImpl(
+				MessageFormatter.arrayFormat(
+					message, values.map(_.asInstanceOf[Object]).toArray
+				).getMessage,
+				null
+			)
+		}
+	}
+	def trace(throwable: Throwable, message: String) = {
+		if (isTraceEnabled) {
+			traceImpl(message, throwable)
+		}
+	}
+	def trace(throwable: Throwable, message: String, values: Object*) = {
+		if (isTraceEnabled) {
+			traceImpl(
+				MessageFormatter.arrayFormat(
+					message, values.map(_.asInstanceOf[Object]).toArray
+				).getMessage,
+				throwable
+			)
+		}
+	}
 
-	protected def error(message:String, values:Any*) =
-		log.error(message, values.map(_.asInstanceOf[Object]).toArray:_*)
-	protected def error(message:String, error:Throwable) = log.error(message, error)
+	def debug(message: String) = {
+		if (isDebugEnabled) {
+			debugImpl(message, null)
+		}
+	}
+	def debug(message: String, values: Any*) = {
+		if (isDebugEnabled) {
+			debugImpl(
+				MessageFormatter.arrayFormat(
+					message, values.map(_.asInstanceOf[Object]).toArray
+				).getMessage,
+				null
+			)
+		}
+	}
+	def debug(throwable: Throwable, message: String) = {
+		if (isDebugEnabled) {
+			debugImpl(message, throwable)
+		}
+	}
+	def debug(throwable: Throwable, message: String, values: Object*) = {
+		if (isDebugEnabled) {
+			debugImpl(
+				MessageFormatter.arrayFormat(
+					message, values.map(_.asInstanceOf[Object]).toArray
+				).getMessage,
+				throwable
+			)
+		}
+	}
+
+	def info(message: String) = {
+		if (isInfoEnabled) {
+			infoImpl(message, null)
+		}
+	}
+	def info(message: String, values: Any*) = {
+		if (isInfoEnabled) {
+			infoImpl(
+				MessageFormatter.arrayFormat(
+					message, values.map(_.asInstanceOf[Object]).toArray
+				).getMessage,
+				null
+			)
+		}
+	}
+	def info(throwable: Throwable, message: String) = {
+		if (isInfoEnabled) {
+			infoImpl(message, throwable)
+		}
+	}
+	def info(throwable: Throwable, message: String, values: Object*) = {
+		if (isInfoEnabled) {
+			infoImpl(
+				MessageFormatter.arrayFormat(
+					message, values.map(_.asInstanceOf[Object]).toArray
+				).getMessage,
+				throwable
+			)
+		}
+	}
+
+	def warn(message: String) = {
+		if (isWarnEnabled) {
+			warnImpl(message, null)
+		}
+	}
+	def warn(message: String, values: Any*) = {
+		if (isWarnEnabled) {
+			warnImpl(
+				MessageFormatter.arrayFormat(
+					message, values.map(_.asInstanceOf[Object]).toArray
+				).getMessage,
+				null
+			)
+		}
+	}
+	def warn(throwable: Throwable, message: String) = {
+		if (isWarnEnabled) {
+			warnImpl(message, throwable)
+		}
+	}
+	def warn(throwable: Throwable, message: String, values: Object*) = {
+		if (isWarnEnabled) {
+			warnImpl(
+				MessageFormatter.arrayFormat(
+					message, values.map(_.asInstanceOf[Object]).toArray
+				).getMessage,
+				throwable
+			)
+		}
+	}
+
+	def error(message: String) = {
+		if (isErrorEnabled) {
+			errorImpl(message, null)
+		}
+	}
+	def error(message: String, values: Any*) = {
+		if (isErrorEnabled) {
+			errorImpl(
+				MessageFormatter.arrayFormat(
+					message, values.map(_.asInstanceOf[Object]).toArray
+				).getMessage,
+				null
+			)
+		}
+	}
+	def error(throwable: Throwable, message: String) = {
+		if (isErrorEnabled) {
+			errorImpl(message, throwable)
+		}
+	}
+	def error(throwable: Throwable, message: String, values: Object*) = {
+		if (isErrorEnabled) {
+			errorImpl(
+				MessageFormatter.arrayFormat(
+					message, values.map(_.asInstanceOf[Object]).toArray
+				).getMessage,
+				throwable
+			)
+		}
+	}
 }
 
 object Logging extends Object with Log {
 	private val encoderPattern = "%date [%thread] %-5level %logger{35} - %msg%n"
 	def init(): Unit = {
-		import ch.qos.logback.classic.Logger
-		import ch.qos.logback.classic.Level._
-		import ch.qos.logback.core.filter._
-		import ch.qos.logback.classic.spi.ILoggingEvent
-		import ch.qos.logback.core.spi.FilterReply
+		import logback.classic.Logger
+		import logback.classic.Level._
+		import logback.core.filter._
+		import logback.classic.spi.ILoggingEvent
+		import logback.core.spi.FilterReply
 
-		val rootLogger = LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME).asInstanceOf[Logger]
+		val rootLogger = LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME)
+			.asInstanceOf[logback.classic.Logger]
 
 		val logLevel = Config.get("logging.level", "info") match {
 			case "all" => TRACE
@@ -52,36 +218,41 @@ object Logging extends Object with Log {
 			case "severe" => ERROR
 		}
 
-		createAppender(rootLogger, Config.get("logging.file", ""), new Filter[ILoggingEvent]() {
-			override def decide(event: ILoggingEvent): FilterReply = {
-				val throwable = event.getThrowableProxy()
+		createAppender(
+			rootLogger,
+			Config.get("logging.file", ""),
+			new Filter[ILoggingEvent]() {
+				override def decide(event: ILoggingEvent): FilterReply = {
+					val throwable = event.getThrowableProxy()
 
-				// Jetty is too verbose in DEBUG.
-				if (event.getLoggerName.startsWith("org.eclipse.jetty") &&
-						event.getLevel == DEBUG && logLevel.isGreaterOrEqual(TRACE)) {
-					return FilterReply.DENY
-				}
-
-				// These exceptions seem benign and clutter up the logs as well.
-				if (throwable != null) {
-					val message = throwable.getClassName
-
-					if (message.contains("java.nio.channels.ClosedChannelException") ||
-						message.contains("org.mortbay.jetty.EofException")
-					) {
+					// Jetty is too verbose in DEBUG.
+					if (event.getLoggerName.startsWith("org.eclipse.jetty") &&
+							event.getLevel == DEBUG && logLevel.isGreaterOrEqual(TRACE)) {
 						return FilterReply.DENY
 					}
-				}
 
-				FilterReply.NEUTRAL
+					// These exceptions seem benign and clutter up the logs as well.
+					if (throwable != null) {
+						val message = throwable.getClassName
+
+						if (message.contains("java.nio.channels.ClosedChannelException") ||
+							message.contains("org.mortbay.jetty.EofException")
+						) {
+							return FilterReply.DENY
+						}
+					}
+
+					FilterReply.NEUTRAL
+				}
 			}
-		})
+		)
 
 		rootLogger.setLevel(logLevel)
 
 		val perfLog = Config.get("logging.perf.file", "")
 		if (perfLog != "") {
-			val perfLogger = LoggerFactory.getLogger("omegaup.grader.RunContext").asInstanceOf[Logger]
+			val perfLogger = LoggerFactory.getLogger("omegaup.grader.RunContext")
+				.asInstanceOf[logback.classic.Logger]
 
 			createAppender(perfLogger, perfLog)
 
@@ -89,18 +260,18 @@ object Logging extends Object with Log {
 			perfLogger.setLevel(INFO)
 		}
 
-		info("Logger loaded for {}", Config.get("logging.file", ""))
+		log.info("Logger loaded for {}", Config.get("logging.file", ""))
 	}
 
 	private def createAppender(
-		logger: ch.qos.logback.classic.Logger,
+		logger: logback.classic.Logger,
 		file: String,
-		filter: ch.qos.logback.core.filter.Filter[ch.qos.logback.classic.spi.ILoggingEvent] = null
+		filter: logback.core.filter.Filter[logback.classic.spi.ILoggingEvent] = null
 	) = {
-		import ch.qos.logback.core.{FileAppender, ConsoleAppender}
-		import ch.qos.logback.classic.net._
-		import ch.qos.logback.classic.encoder._
-		import ch.qos.logback.classic.spi.ILoggingEvent
+		import logback.core.{FileAppender, ConsoleAppender}
+		import logback.classic.net._
+		import logback.classic.encoder._
+		import logback.classic.spi.ILoggingEvent
 
 		logger.detachAndStopAllAppenders
 		val context = logger.getLoggerContext

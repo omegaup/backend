@@ -96,7 +96,7 @@ class RunContext(grader: Option[Grader], var run: Run, val debug: Boolean, val r
 
 	def finish() = {
 		eventList += new Event(false, EventCategory.Task, "run_id" -> run.id.toString)
-		info("[" + eventList.map(_.toString).mkString(",") + "]")
+		log.info("[" + eventList.map(_.toString).mkString(",") + "]")
 	}
 
 	def updateVerdict(run: Run) = {

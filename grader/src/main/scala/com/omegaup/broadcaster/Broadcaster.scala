@@ -70,11 +70,11 @@ class Broadcaster extends Object with ServiceInterface with Runnable with Log wi
 
 		server.start
 
-		info("Registering port {}", broadcasterConnector.getLocalPort)
+		log.info("Registering port {}", broadcasterConnector.getLocalPort)
 
 		broadcastThread.start
 
-		info("Broadcaster started")
+		log.info("Broadcaster started")
 	}
 
 	def subscribe(session: BroadcasterSession) = {
@@ -83,7 +83,7 @@ class Broadcaster extends Object with ServiceInterface with Runnable with Log wi
 				subscribers.put(session.contest, new mutable.ArrayBuffer[BroadcasterSession])
 			}
 			subscribers(session.contest) += session
-			info("Connected {}->{} ({})", session.user, session.contest, subscribers(session.contest).length)
+			log.info("Connected {}->{} ({})", session.user, session.contest, subscribers(session.contest).length)
 		}
 	}
 
@@ -92,7 +92,7 @@ class Broadcaster extends Object with ServiceInterface with Runnable with Log wi
 			subscriberLock.synchronized {
 				if (subscribers.contains(session.contest)) {
 					subscribers(session.contest) -= session
-					info("Disconnected {}->{} ({})", session.user, session.contest, subscribers(session.contest).length)
+					log.info("Disconnected {}->{} ({})", session.user, session.contest, subscribers(session.contest).length)
 				}
 			}
 		}
@@ -149,7 +149,7 @@ class Broadcaster extends Object with ServiceInterface with Runnable with Log wi
 				if (Config.get("grader.scoreboard_refresh.enable", true)) {
 					m.ctx.trace(EventCategory.GraderRefresh) {
 						try {
-							info("Scoreboard refresh {}",
+							log.info("Scoreboard refresh {}",
 								Https.post[ScoreboardRefreshResponse](
 									Config.get(
 										"grader.scoreboard_refresh.url",
@@ -164,7 +164,7 @@ class Broadcaster extends Object with ServiceInterface with Runnable with Log wi
 								)
 							)
 						} catch {
-							case e: Exception => error("Scoreboard refresh", e)
+							case e: Exception => log.error(e, "Scoreboard refresh")
 						}
 					}
 				}
@@ -224,12 +224,12 @@ class Broadcaster extends Object with ServiceInterface with Runnable with Log wi
 			try {
 				val elm = queue.take
 				if (elm == PoisonPill) {
-					info("Broadcaster thread finished normally")
+					log.info("Broadcaster thread finished normally")
 					return
 				}
 				runLoop(elm)
 			} catch {
-				case e: Exception => error("runLoop: {}", e)
+				case e: Exception => log.error(e, "runLoop")
 			}
 		}
 	}
@@ -241,7 +241,7 @@ class Broadcaster extends Object with ServiceInterface with Runnable with Log wi
 				session.getRemote.sendString(message)
 			} catch {
 				case e: Exception => {
-					error("Failed to send a message: {}", e)
+					log.error(e, "Failed to send a message")
 					close
 				}
 			}
@@ -253,7 +253,7 @@ class Broadcaster extends Object with ServiceInterface with Runnable with Log wi
 				session.close(1000, "done")
 			} catch {
 				case e: Exception => {
-					error("Failed to close the socket: {}", e)
+					log.error(e, "Failed to close the socket")
 				}
 			}
 		}
@@ -265,7 +265,7 @@ class Broadcaster extends Object with ServiceInterface with Runnable with Log wi
 		private var session: BroadcasterSession = null
 
 		override def onWebSocketConnect(sess: Session): Unit = {
-			info("Connecting from {}", sess.getRemoteAddress.getAddress)
+			log.info("Connecting from {}", sess.getRemoteAddress.getAddress)
 			session = getSession(sess)
 			if (session == null) {
 				sess.close(new CloseStatus(1000, "forbidden"))
@@ -288,7 +288,7 @@ class Broadcaster extends Object with ServiceInterface with Runnable with Log wi
 				}
 			} catch {
 				case e: Exception => {
-					error("Error getting role", e)
+					log.error(e, "Error getting role")
 				}
 			}
 			null
@@ -319,13 +319,13 @@ class Broadcaster extends Object with ServiceInterface with Runnable with Log wi
 					case e: Exception => (-1, userId)
 				}
 			} else {
-				info("Hash mismatch on the auth token")
+				log.info("Hash mismatch on the auth token")
 				(-1, userId)
 			}
 		}
 
 		private def getSession(sess: Session): BroadcasterSession = {
-			debug("CONN {}", sess.getUpgradeRequest.getRequestURI.getPath)
+			log.debug("CONN {}", sess.getUpgradeRequest.getRequestURI.getPath)
 			val contest = sess.getUpgradeRequest.getRequestURI.getPath match {
 				case PathRE(contest) => {
 					contest
@@ -353,7 +353,7 @@ class Broadcaster extends Object with ServiceInterface with Runnable with Log wi
 				}
 			} catch {
 				case e: Exception => {
-					error("Error getting role", e)
+					log.error(e, "Error getting role")
 					null
 				}
 			}
@@ -361,24 +361,24 @@ class Broadcaster extends Object with ServiceInterface with Runnable with Log wi
 
 		override def onWebSocketText(message: String): Unit = {
 			if (session == null || !session.isOpen) return
-			debug("Received {}", message)
+			log.debug("Received {}", message)
 		}
 
 		override def onWebSocketClose(statusCode: Int, reason: String): Unit = {
-			info("Closed {} {}", statusCode, reason)
+			log.info("Closed {} {}", statusCode, reason)
 			unsubscribe(session)
 			if (session == null || !session.isOpen) return
 		}
 
 		override def onWebSocketError(cause: Throwable): Unit = {
-			info("Error {}", cause)
+			log.info(cause, "Error")
 			unsubscribe(session)
 			if (session == null || !session.isOpen) return
 		}
 	}
 
 	override def stop(): Unit = {
-		info("Broadcaster stopping")
+		log.info("Broadcaster stopping")
 		server.stop
 		queue.put(PoisonPill)
 	}
@@ -386,7 +386,7 @@ class Broadcaster extends Object with ServiceInterface with Runnable with Log wi
 	override def join(): Unit = {
 		server.join
 		broadcastThread.join
-		info("Broadcaster stopped")
+		log.info("Broadcaster stopped")
 	}
 }
 
@@ -399,7 +399,7 @@ object Manager extends Object with Log {
 
 		Runtime.getRuntime.addShutdownHook(new Thread() {
 			override def run() = {
-				info("Shutting down")
+				log.info("Shutting down")
 
 				server.stop()
 			}

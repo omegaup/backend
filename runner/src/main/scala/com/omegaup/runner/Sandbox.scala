@@ -121,7 +121,7 @@ object NullSandbox extends Object with Sandbox with Log with Using {
       case _ => null
     }) ++ extraFlags
 
-    debug("Compile {}", params.mkString(" "))
+    log.debug("Compile {}", params.mkString(" "))
 
     val builder = new ProcessBuilder(params)
     builder.directory(new File(chdir))
@@ -148,7 +148,7 @@ object NullSandbox extends Object with Sandbox with Log with Using {
           outChan.close()
         } catch {
           case e: Exception => {
-            error("Unable to truncate {}: {}", errorPath, e)
+            log.error("Unable to truncate {}: {}", errorPath, e)
           }
         }
         "status" -> "RE"
@@ -226,7 +226,7 @@ object NullSandbox extends Object with Sandbox with Log with Using {
         List(s"./$target")
     }) ++ extraParams
 
-    debug("{} {}", logTag, params.mkString(" "))
+    log.debug("{} {}", logTag, params.mkString(" "))
     val builder = new ProcessBuilder(params)
     builder.directory(new File(chdir))
     builder.redirectError(new File(errorFile))
@@ -390,7 +390,7 @@ object Minijail extends Object with Sandbox with Log with Using {
       case _ => null
     }) ++ extraFlags
 
-    debug("Compile {}", params.mkString(" "))
+    log.debug("Compile {}", params.mkString(" "))
 
     val (status, syscallName) = runMinijail(params)
     if (status != -1) {
@@ -401,7 +401,7 @@ object Minijail extends Object with Sandbox with Log with Using {
         outChan.close()
       } catch {
         case e: Exception => {
-          error("Unable to truncate {}: {}", errorFile, e)
+          log.error("Unable to truncate {}: {}", errorFile, e)
         }
       }
       patchMetaFile(lang, status, syscallName, None, metaFile)
@@ -532,7 +532,7 @@ object Minijail extends Object with Sandbox with Log with Using {
         List("-m", hardLimit, "--", s"./$target")
     }) ++ extraParams
 
-    debug("{} {}", logTag, params.mkString(" "))
+    log.debug("{} {}", logTag, params.mkString(" "))
     val (status, syscallName) = runMinijail(params)
     patchMetaFile(lang, status, syscallName, Some(message), metaFile)
   }
@@ -546,20 +546,20 @@ object Minijail extends Object with Sandbox with Log with Using {
 
     using (runtime.exec(helperParams.toArray)) { helper => {
       if (helper == null) {
-        error("minijail_syscall_helper was null")
+        log.error("minijail_syscall_helper was null")
       } else {
         val reader = new BufferedReader(new InputStreamReader(helper.getInputStream))
 
         // Read one line before starting the actual minijail process
         val initialStatus = reader.readLine
-        debug("minijail helper initial status {}", initialStatus)
+        log.debug("minijail helper initial status {}", initialStatus)
 
         using (runtime.exec(params.toArray)) { minijail =>
           if (minijail == null) {
-            error("minijail process was null")
+            log.error("minijail process was null")
           } else {
             status = minijail.waitFor
-            debug("minijail returned {}", status)
+            log.debug("minijail returned {}", status)
           }
         }
 
@@ -573,17 +573,17 @@ object Minijail extends Object with Sandbox with Log with Using {
               using (new BufferedReader(new InputStreamReader(helper.getErrorStream))) { stream =>
                 var line: String = null
                 while ( { line = stream.readLine ; line != null } ) {
-                  error("minijail_syscall_helper {}", line)
+                  log.error("minijail_syscall_helper {}", line)
                 }
               }
             } catch {
               case e: Exception => {
-                debug("minijail_syscall_helper {}", e)
+                log.debug(e, "minijail_syscall_helper")
               }
             }
             val helperStatus = helper.waitFor
             if (helperStatus != 0) {
-              debug("minijail_syscall_helper exit status {}", helperStatus)
+              log.debug("minijail_syscall_helper exit status {}", helperStatus)
             }
             result
           }
@@ -593,15 +593,15 @@ object Minijail extends Object with Sandbox with Log with Using {
         try {
           syscallName = future.get(1, TimeUnit.SECONDS)
           if (syscallName != null) {
-            debug("syscall: {}", syscallName)
+            log.debug("syscall: {}", syscallName)
           }
         } catch {
           case e: TimeoutException => {
-            info("Timeout reading syscall name")
+            log.info("Timeout reading syscall name")
             helper.destroy
           }
           case e: Exception => {
-            error("Failed to read syscall name: {}", e)
+            log.error(e, "Failed to read syscall name")
             helper.destroy
           }
         }
@@ -637,7 +637,7 @@ object Minijail extends Object with Sandbox with Log with Using {
         case "25" => "OL" // SIGFSZ
         case "35" => "OL" // SIGFSZ
         case other => {
-          error("Received odd signal: {}", other)
+          log.error("Received odd signal: {}", other)
           "JE"
         }
       }

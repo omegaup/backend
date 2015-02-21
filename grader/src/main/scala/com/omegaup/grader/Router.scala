@@ -28,14 +28,14 @@ object RoutingDescription extends StandardTokenParsers with Log {
 	lexical.reserved += ("not", "in", "user", "slow", "problem", "true", "urgent", "contest", "practice", "rejudge")
 
 	def parse(input: String): RunRouter = {
-		info("Parsing routing table: {}", input)
+		log.info("Parsing routing table: {}", input)
 		routingTable(new lexical.Scanner(input)) match {
 			case Success(rules, _) => {
-				info("Routing rule parsed: {}", rules)
+				log.info("Routing rule parsed: {}", rules)
 				new RunRouterImpl(rules)
 			}
 			case NoSuccess(msg, err) => {
-				System.err.println(err.pos.longString)
+				log.error(err.pos.longString)
 				throw new ParseException(msg, err.offset)
 			}
 		}
@@ -77,9 +77,9 @@ object RoutingDescription extends StandardTokenParsers with Log {
 		def apply(ctx: RunContext): Int = {
 			val slow = if (ctx.run.problem.slow) 1 else 0
 			for (entry <- routingMap) {
-				debug("Run {} matching against {}", ctx.run, entry._1)
+				log.debug("Run {} matching against {}", ctx.run, entry._1)
 				if (entry._1(ctx)) {
-					debug("Run {} matched. Priority {}", ctx.run.id, entry._2 + slow)
+					log.debug("Run {} matched. Priority {}", ctx.run.id, entry._2 + slow)
 					return entry._2 + slow
 				}
 			}
@@ -92,7 +92,7 @@ object RoutingDescription extends StandardTokenParsers with Log {
 			} else {
 				2
 			}
-			debug("Run {} matched nothing. Default priority of {}", ctx.run.id, queue + slow)
+			log.debug("Run {} matched nothing. Default priority of {}", ctx.run.id, queue + slow)
 			queue + slow
 		}
 
@@ -217,21 +217,21 @@ class RunnerDispatcher extends ServiceInterface with Log {
 		lock.synchronized {
 			if (!registeredEndpoints.contains(endpoint)) {
 				val proxy = new RunnerProxy(endpoint.hostname, endpoint.port) 
-				info("Registering {}", proxy)
+				log.info("Registering {}", proxy)
 				registeredEndpoints += endpoint -> System.currentTimeMillis
 				addRunner(proxy)
 			}
 			registeredEndpoints(endpoint) = System.currentTimeMillis
 		}
 
-		debug("Runner queue register length {} known endpoints {}", runnerQueue.size, registeredEndpoints.size)
+		log.debug("Runner queue register length {} known endpoints {}", runnerQueue.size, registeredEndpoints.size)
 
 		new EndpointRegisterOutputMessage()
 	}
 
 	private def deregisterLocked(endpoint: RunnerEndpoint) = {
 		if (registeredEndpoints.contains(endpoint)) {
-			info("De-registering {}", endpoint)
+			log.info("De-registering {}", endpoint)
 			registeredEndpoints -= endpoint
 		}
 	}
@@ -243,7 +243,7 @@ class RunnerDispatcher extends ServiceInterface with Log {
 			deregisterLocked(endpoint)
 		}
 
-		debug("Runner queue deregister length {} known endpoints {}", runnerQueue.size, registeredEndpoints.size)
+		log.debug("Runner queue deregister length {} known endpoints {}", runnerQueue.size, registeredEndpoints.size)
 
 		new EndpointRegisterOutputMessage()
 	}
@@ -251,7 +251,7 @@ class RunnerDispatcher extends ServiceInterface with Log {
 	def addRun(ctx: RunContext) = {
 		ctx.queued()
 		lock.synchronized {
-			debug("Adding run {}", ctx)
+			log.debug("Adding run {}", ctx)
 			runQueue(runRouter(ctx)) += ctx
 			dispatchLocked
 		}
@@ -273,7 +273,7 @@ class RunnerDispatcher extends ServiceInterface with Log {
 				gradeTask
 			} catch {
 				case e: Exception => {
-					error("Error while running {}: {}", ctx.run.id, e)
+					log.error("Error while running {}: {}", ctx.run.id, e)
 				}
 			}
 		}
@@ -289,7 +289,7 @@ class RunnerDispatcher extends ServiceInterface with Log {
 				future.get(Config.get("grader.runner.timeout", 10 * 60) * 1000, TimeUnit.MILLISECONDS)
 			} catch {
 				case e: ExecutionException => {
-					error("Submission {} {} failed - {} {}",
+					log.error("Submission {} {} failed - {} {}",
 						ctx.run.problem.alias,
 						ctx.run.id,
 						e.getCause.toString,
@@ -324,7 +324,7 @@ class RunnerDispatcher extends ServiceInterface with Log {
 					ctx.run
 				}
 				case e: TimeoutException => {
-					error("Submission {} {} timed out - {} {}",
+					log.error("Submission {} {} timed out - {} {}",
 						ctx.run.problem.alias,
 						ctx.run.id,
 						e.toString,
@@ -347,7 +347,7 @@ class RunnerDispatcher extends ServiceInterface with Log {
 					driver.validateOutput(ctx, ctx.run.copy)
 				} catch {
 					case e: Exception => {
-						error("Error while validating {}", e)
+						log.error(e, "Error while validating")
 						ctx.run.score = 0
 						ctx.run.contest_score = ctx.run.contest match {
 							case None => None
@@ -370,7 +370,7 @@ class RunnerDispatcher extends ServiceInterface with Log {
 		var pruned = false
 		runsInFlight.foreach { case (i, ctx) => {
 			if (ctx.flightTime < cutoffTime) {
-				warn("Expiring stale flight {}, run {}", ctx.service, ctx.run.id)
+				log.warn("Expiring stale flight {}, run {}", ctx.service, ctx.run.id)
 				ctx.service match {
 					case proxy: RunnerProxy => deregisterLocked(new RunnerEndpoint(proxy.hostname, proxy.port))
 					case _ => {}
@@ -396,13 +396,13 @@ class RunnerDispatcher extends ServiceInterface with Log {
 			}
 			addRunnerLocked(ctx.service)
 		} else {
-			error("Lost track of flight {}!", flightIndex)
+			log.error("Lost track of flight {}!", flightIndex)
 			throw new RuntimeException("Flight corrupted, bail out")
 		}
 	}
 
 	private def addRunnerLocked(runner: RunnerService) = {
-		debug("Adding runner {}", runner)
+		log.debug("Adding runner {}", runner)
 		if (!runnerQueue.contains(runner))
 			runnerQueue += runner
 		runner match {
@@ -417,7 +417,7 @@ class RunnerDispatcher extends ServiceInterface with Log {
 
 	private def dispatchLocked(): Unit = {
 		// Prune any runners that are not registered or haven't communicated in a while.
-		debug("Before pruning the queue {}", status)
+		log.debug("Before pruning the queue {}", status)
 		var cutoffTime = System.currentTimeMillis -
 			Config.get("grader.runner.queue_timeout", 10 * 60 * 1000)
 		runnerQueue.dequeueAll (
@@ -427,7 +427,7 @@ class RunnerDispatcher extends ServiceInterface with Log {
 					// Also expire stale endpoints.
 					if (registeredEndpoints.contains(endpoint) &&
 							registeredEndpoints(endpoint) < cutoffTime) {
-						warn("Stale endpoint {}", proxy)
+						log.warn("Stale endpoint {}", proxy)
 						deregister(endpoint.hostname, endpoint.port)
 					}
 					!registeredEndpoints.contains(endpoint)
@@ -436,13 +436,13 @@ class RunnerDispatcher extends ServiceInterface with Log {
 			}
 		)
 
-		debug("After pruning the queue {}", status)
+		log.debug("After pruning the queue {}", status)
 
 		while (!runnerQueue.isEmpty) {
-			debug("But there's enough to run something!")
+			log.debug("But there's enough to run something!")
 			val queue = selectRunQueueLocked
 			if (queue.isEmpty) {
-				debug("But there is nothing to run it on")
+				log.debug("But there is nothing to run it on")
 				return
 			}
 			runLocked(runnerQueue.dequeue, queue.get.dequeue)

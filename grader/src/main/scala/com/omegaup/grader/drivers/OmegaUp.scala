@@ -50,7 +50,7 @@ object OmegaUpDriver extends Driver with Log with Using {
     val lang = run.language
     val errorFile = new File(Config.get("grader.root", "grader"), + id + ".err")
 
-    info("Compiling {} {} on {}", alias, id, ctx.service.name)
+    log.info("Compiling {} {} on {}", alias, id, ctx.service.name)
 
     if (errorFile.exists) {
       errorFile.delete
@@ -130,14 +130,14 @@ object OmegaUpDriver extends Driver with Log with Using {
     target.mkdir
     val placer = new CasePlacer(target)
 
-    info("Running {}({}) on {}", alias, id, ctx.service.name)
+    log.info("Running {}({}) on {}", alias, id, ctx.service.name)
     var response = ctx.trace(EventCategory.Run) {
       ctx.service.run(msg, placer)
     }
-    debug("Ran {} {}, returned {}", alias, id, response)
+    log.debug("Ran {} {}, returned {}", alias, id, response)
     if (response.status != "ok") {
       if (response.error.get ==  "missing input") {
-        info("Received a missing input message, trying to send input from {} ({})", alias, ctx.service.name)
+        log.info("Received a missing input message, trying to send input from {} ({})", alias, ctx.service.name)
         ctx.trace(EventCategory.Input) {
           if(ctx.service.input(
             input, getInputEntries(git.getTreeEntries(input), alias)
@@ -149,7 +149,7 @@ object OmegaUpDriver extends Driver with Log with Using {
           ctx.service.run(msg, placer)
         }
         if (response.status != "ok") {
-          error("Second try, ran {}({}) on {}, returned {}", alias, id, ctx.service.name, response)
+          log.error("Second try, ran {}({}) on {}, returned {}", alias, id, ctx.service.name, response)
           throw new RuntimeException("Unable to run submission after sending input. giving up.")
         }
       } else {
@@ -163,7 +163,7 @@ object OmegaUpDriver extends Driver with Log with Using {
 
   class CasePlacer(directory: File) extends Object with RunCaseCallback with Using with Log {
     def apply(filename: String, length: Long, stream: InputStream): Unit = {
-      debug("Placing file {}({}) into {}", filename, length, directory)
+      log.debug("Placing file {}({}) into {}", filename, length, directory)
       val target = new File(directory, filename)
       if (!target.getParentFile.exists) {
         target.getParentFile.mkdirs
@@ -201,7 +201,7 @@ object OmegaUpDriver extends Driver with Log with Using {
         )
       }).find(_._2.exists) match {
         case Some((lang, validator)) => {
-          debug("Using custom validator {} for problem {}",
+          log.debug("Using custom validator {} for problem {}",
                 validator.getCanonicalPath,
                 run.problem.alias)
           validatorLang = Some(lang)
@@ -215,7 +215,7 @@ object OmegaUpDriver extends Driver with Log with Using {
         }
       }
     } else {
-      debug("Using {} validator for problem {}", run.problem.validator, run.problem.alias)
+      log.debug("Using {} validator for problem {}", run.problem.validator, run.problem.alias)
     }
 
     val codes = new ListBuffer[(String,String)]
@@ -226,7 +226,7 @@ object OmegaUpDriver extends Driver with Log with Using {
     var interactive: Option[InteractiveDescription] = None
 
     if (interactiveRoot.isDirectory) {
-      debug("Using interactive mode problem {}", run.problem.alias)
+      log.debug("Using interactive mode problem {}", run.problem.alias)
 
       val interactiveFiles = interactiveRoot
         .list

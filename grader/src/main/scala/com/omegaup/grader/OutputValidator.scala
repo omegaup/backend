@@ -16,7 +16,7 @@ trait OutputValidator extends Object with Log with Using {
 		val alias = run.problem.alias
 		val dataDirectory = new File(Config.get("grader.root", "./grade") + "/" + run.id)
 
-		info("Validating {} {} with {}", alias, run.id, run.problem.validator)
+		log.info("Validating {} {} with {}", alias, run.id, run.problem.validator)
 
 		run.status = Status.Ready
 		run.verdict = Verdict.Accepted
@@ -30,7 +30,7 @@ trait OutputValidator extends Object with Log with Using {
 		
 		val weightsFile = new File(Config.get("problems.root", "./problems") + "/" + alias + "/testplan")
 
-		trace("Finding Weights file in {}", weightsFile.getCanonicalPath)
+		log.trace("Finding Weights file in {}", weightsFile.getCanonicalPath)
 		
 		val weights:scala.collection.Map[String,scala.collection.Map[String,Double]] = if (weightsFile.exists) {
 			val weights = new mutable.ListMap[String,mutable.ListMap[String,Double]]
@@ -183,7 +183,7 @@ trait OutputValidator extends Object with Log with Using {
 		implicit val formats = OmegaUpSerialization.formats
 
 		val details = new File(Config.get("grader.root", "./grade") + "/" + run.id + "/details.json")
-		debug("Writing details into {}.", details.getCanonicalPath)
+		log.debug("Writing details into {}.", details.getCanonicalPath)
 		Serialization.write(caseScores, new FileWriter(details))
 
 		val normalizedWeights = weights.foldLeft(0.0)(_+_._2.foldLeft(0.0)(_+_._2))
@@ -360,34 +360,33 @@ class Tokenizer(file: File, containedInTokenClass: (Char) => Boolean) extends It
 
 trait TokenizerValidator extends Object with Log {
 	def validateCase(run: Run, caseName: String, inA: Tokenizer, inB: Tokenizer, tc: TokenValidator): Double = {
-		debug("Validating {}, case {}", run, caseName)
+		log.debug("Validating {}, case {}", run, caseName)
 
 		try {
 			var points:Double = 1
 
 			while (points > 0 && inA.hasNext && inB.hasNext) {
 				if (!tc.equal(inA.next, inB.next)) {
-					debug("Token mismatch {} {} {}", caseName, inA.path, inB.path)
+					log.debug("Token mismatch {} {} {}", caseName, inA.path, inB.path)
 					points = 0
 				}
 			}
 			
 			if (inA.hasNext || inB.hasNext) {
-				debug("Unfinished input {} {} {}", caseName, inA.path, inB.path)
+				log.debug("Unfinished input {} {} {}", caseName, inA.path, inB.path)
 				points = 0
 			}
 			
-			debug("Validating {}, case {}. Reporting {} points", run, caseName, points)
+			log.debug("Validating {}, case {}. Reporting {} points", run, caseName, points)
 			points
 		} catch {
 			case e: Exception => {
-				error("Error grading: {}", e)
-				error("Stack trace {}", e.getStackTrace)
+				log.error(e, "Error grading")
 				
 				0
 			}
 		} finally {
-			debug("Finished grading {}, case {}", run, caseName)
+			log.debug("Finished grading {}, case {}", run, caseName)
 			inA.close
 			inB.close
 		}

@@ -68,7 +68,7 @@ object Database extends Object with Log with Using {
 	/** Executes the SQL and processes the result set using the specified function. */
 	def query[B](sql: String, params: Any*)(process: ResultSet => B)(implicit connection: Connection): Option[B] = {
 		val q = build(sql, params : _*)
-		trace(q)
+		log.trace(q)
 		try {
 			using (connection.createStatement) { statement =>
 				using (statement.executeQuery(q)) { results =>
@@ -94,7 +94,7 @@ object Database extends Object with Log with Using {
 	
 	def execute(sql: String, params: Any*)(implicit connection: Connection): Unit = {
 		val q = build(sql, params : _*)
-		trace(q)
+		log.trace(q)
 		try {
 			using (connection.createStatement) { statement =>
 				statement.execute(q)
@@ -111,7 +111,7 @@ object Database extends Object with Log with Using {
 	/** Executes the SQL and uses the process function to convert each row into a T. */
 	def queryEach[T](sql: String, params: Any*)(process: ResultSet => T)(implicit connection: Connection): Iterable[T] = {
 		val q = build(sql, params : _*)
-		trace(q)
+		log.trace(q)
 		val ret = new scala.collection.mutable.ListBuffer[T]
 		using (connection.createStatement) { statement =>
 			using (statement.executeQuery(q)) { results =>

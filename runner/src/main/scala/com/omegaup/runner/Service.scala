@@ -18,7 +18,7 @@ class OmegaUpRunstreamWriter(outputStream: OutputStream) extends Closeable with 
 
   def apply(filename: String, length: Long, stream: InputStream): Unit = {
     if (finalized) return
-    debug("Writing {}({}) into runstream", filename, length)
+    log.debug("Writing {}({}) into runstream", filename, length)
     dos.writeBoolean(true)
     dos.writeUTF(filename)
     dos.writeLong(length)
@@ -32,7 +32,7 @@ class OmegaUpRunstreamWriter(outputStream: OutputStream) extends Closeable with 
 
   def finalize(message: RunOutputMessage): Unit = {
     if (finalized) return
-    debug("Finalizing runstream with {}", message)
+    log.debug("Finalizing runstream with {}", message)
     dos.writeBoolean(false)
     implicit val formats = OmegaUpSerialization.formats
     Serialization.write(message, new OutputStreamWriter(dos))
@@ -57,7 +57,7 @@ class RegisterThread(hostname: String, port: Int) extends Thread("RegisterThread
     lock.synchronized {
       lock.notifyAll
     }
-    info("Shutting down")
+    log.info("Shutting down")
     try {
       // well, at least try to de-register
       Https.send[EndpointRegisterOutputMessage, EndpointRegisterInputMessage](
@@ -117,7 +117,7 @@ class RegisterThread(hostname: String, port: Int) extends Thread("RegisterThread
           )
         } catch {
           case e: IOException => {
-            error("Failed to register", e)
+            log.error(e, "Failed to register")
           }
         }
       }
@@ -205,11 +205,11 @@ object Service extends Object with Log with Using {
                 runner.run(req, callbackProxy)
               } catch {
                 case e: Exception => {
-                  error("/run/", e)
+                  log.error(e, "/run/")
                   new RunOutputMessage(status = "error", error = Some(e.getMessage))
                 }
               }
-              info("Returning {}", message)
+              log.info("Returning {}", message)
               if (token != null && ((message.error getOrElse "") != "missing input"))
                 runner.removeCompileDir(token)
               callbackProxy.finalize(message)
@@ -229,7 +229,7 @@ object Service extends Object with Log with Using {
                   runner.compile(req)
                 } catch {
                   case e: Exception => {
-                    error("/compile/", e)
+                    log.error(e, "/compile/")
                     response.setStatus(HttpServletResponse.SC_BAD_REQUEST)
                     new CompileOutputMessage(status = "error", error = Some(e.getMessage))
                   }
@@ -240,7 +240,7 @@ object Service extends Object with Log with Using {
               })
               case "/input/" => lock(registerThread) ({
                 try {
-                  info("/input/")
+                  log.info("/input/")
                   
                   response.setStatus(HttpServletResponse.SC_OK)
                   if(request.getContentType() != "application/x-tar" ||
@@ -291,7 +291,7 @@ object Service extends Object with Log with Using {
                   }
                 } catch {
                   case e: Exception => {
-                    error("/input/", e)
+                    log.error(e, "/input/")
                     response.setStatus(HttpServletResponse.SC_BAD_REQUEST)
                     new InputOutputMessage(status = "error", error = Some(e.getMessage))
                   }
@@ -339,7 +339,7 @@ object Service extends Object with Log with Using {
 
     server.start()
 
-    info("Runner {} registering port {}", hostname, runnerConnector.getLocalPort)
+    log.info("Runner {} registering port {}", hostname, runnerConnector.getLocalPort)
     registerThread = new RegisterThread(hostname, runnerConnector.getLocalPort)
     
     Runtime.getRuntime.addShutdownHook(new Thread() {
@@ -354,7 +354,7 @@ object Service extends Object with Log with Using {
 
     server.join
     registerThread.join
-    info("Shut down cleanly")
+    log.info("Shut down cleanly")
   }
 }
 
