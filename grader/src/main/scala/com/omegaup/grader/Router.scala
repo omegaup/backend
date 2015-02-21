@@ -27,7 +27,7 @@ object RoutingDescription extends StandardTokenParsers with Log {
 	lexical.delimiters ++= List("(", ")", "[", "]", "{", "}", ",", ":", ";", "==", "!=", "||", "&&", "!")
 	lexical.reserved += ("not", "in", "user", "slow", "problem", "true", "urgent", "contest", "practice", "rejudge")
 
-	def parse(input: String): RunRouter = {
+	def parse(input: String)(implicit ctx: Context): RunRouter = {
 		log.info("Parsing routing table: {}", input)
 		routingTable(new lexical.Scanner(input)) match {
 			case Success(rules, _) => {
@@ -75,6 +75,7 @@ object RoutingDescription extends StandardTokenParsers with Log {
 
 	private class RunRouterImpl(routingMap: Iterable[(RunMatcher, Int)]) extends Object with RunRouter with Log {
 		def apply(ctx: RunContext): Int = {
+			implicit val loggingCtx = ctx
 			val slow = if (ctx.run.problem.slow) 1 else 0
 			for (entry <- routingMap) {
 				log.debug("Run {} matching against {}", ctx.run, entry._1)
@@ -163,7 +164,7 @@ object RoutingDescription extends StandardTokenParsers with Log {
 	}
 }
 
-class RunnerDispatcher extends ServiceInterface with Log {
+class RunnerDispatcher(implicit serviceCtx: Context) extends ServiceInterface with Log {
 	private val registeredEndpoints = scala.collection.mutable.HashMap.empty[RunnerEndpoint, Long]
 	private val runnerQueue = scala.collection.mutable.Queue.empty[RunnerService]
 	private val runQueue = new Array[scala.collection.mutable.Queue[RunContext]](8)
@@ -180,8 +181,8 @@ class RunnerDispatcher extends ServiceInterface with Log {
 		new java.util.TimerTask() {
 			override def run(): Unit = pruneFlights
 		},
-		Config.get("grader.flight_pruner.interval", 60) * 1000,
-		Config.get("grader.flight_pruner.interval", 60) * 1000
+		serviceCtx.config.get("grader.flight_pruner.interval", 60) * 1000,
+		serviceCtx.config.get("grader.flight_pruner.interval", 60) * 1000
 	)
 
 	for (i <- 0 until runQueue.length) runQueue(i) = scala.collection.mutable.Queue.empty[RunContext]
@@ -265,9 +266,8 @@ class RunnerDispatcher extends ServiceInterface with Log {
 
 	private class GradeTask(
 		flightIndex: Long,
-		ctx: RunContext,
 		driver: Driver
-	) extends Runnable {
+	)(implicit ctx: RunContext) extends Runnable {
 		override def run(): Unit = {
 			try {
 				gradeTask
@@ -281,12 +281,12 @@ class RunnerDispatcher extends ServiceInterface with Log {
 		private def gradeTask() = {
 			val future = executor.submit(new Callable[Run]() {
 					override def call(): Run = ctx.trace(EventCategory.Runner, "runner" -> ctx.service.name) {
-						driver.run(ctx, ctx.run.copy)
+						driver.run(ctx.run.copy)
 					}
 			})
 
 			ctx.run = try {
-				future.get(Config.get("grader.runner.timeout", 10 * 60) * 1000, TimeUnit.MILLISECONDS)
+				future.get(serviceCtx.config.get("grader.runner.timeout", 10 * 60) * 1000, TimeUnit.MILLISECONDS)
 			} catch {
 				case e: ExecutionException => {
 					log.error("Submission {} {} failed - {} {}",
@@ -344,7 +344,7 @@ class RunnerDispatcher extends ServiceInterface with Log {
 
 			if (ctx.run.status != Status.Ready) {
 				ctx.run = try {
-					driver.validateOutput(ctx, ctx.run.copy)
+					driver.validateOutput(ctx.run.copy)
 				} catch {
 					case e: Exception => {
 						log.error(e, "Error while validating")
@@ -366,7 +366,7 @@ class RunnerDispatcher extends ServiceInterface with Log {
 	}
 
 	private def pruneFlights() = lock.synchronized {
-		var cutoffTime = System.currentTimeMillis - Config.get("grader.runner.timeout", 10 * 60) * 1000
+		var cutoffTime = System.currentTimeMillis - serviceCtx.config.get("grader.runner.timeout", 10 * 60) * 1000
 		var pruned = false
 		runsInFlight.foreach { case (i, ctx) => {
 			if (ctx.flightTime < cutoffTime) {
@@ -419,7 +419,7 @@ class RunnerDispatcher extends ServiceInterface with Log {
 		// Prune any runners that are not registered or haven't communicated in a while.
 		log.debug("Before pruning the queue {}", status)
 		var cutoffTime = System.currentTimeMillis -
-			Config.get("grader.runner.queue_timeout", 10 * 60 * 1000)
+			serviceCtx.config.get("grader.runner.queue_timeout", 10 * 60 * 1000)
 		runnerQueue.dequeueAll (
 			_ match {
 				case proxy: com.omegaup.runner.RunnerProxy => {
@@ -467,7 +467,7 @@ class RunnerDispatcher extends ServiceInterface with Log {
 		if (ctx.run.problem.slow) {
 			slowRuns += 1
 		}
-		executor.submit(new GradeTask(flightIndex, ctx, OmegaUpDriver))
+		executor.submit(new GradeTask(flightIndex, OmegaUpDriver)(ctx))
 
 		flightIndex += 1
 	}

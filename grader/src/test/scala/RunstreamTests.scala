@@ -9,6 +9,7 @@ import org.scalatest.matchers._
 import Matchers._
 
 class RunstreamSpec extends FlatSpec with Using {
+	private implicit val ctx = new Context
 
 	"Runstream proxy" should "pass stuff correctly" in {
     val cases = List(
@@ -43,6 +44,7 @@ class RunstreamSpec extends FlatSpec with Using {
     reader(input) should equal(message)
     timesCalled should equal(cases.length)
 	}
-	
+
 }
 
+/* vim: set noexpandtab: */

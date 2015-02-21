@@ -1,24 +1,20 @@
 package com.omegaup
 
-object Config {
+class Config(path: String = "omegaup.conf") {
 	private val props = new java.util.Properties(System.getProperties)
-	load()
-
-	def load(path: String = "omegaup.conf"): Unit = {
-		try{
-			props.load(new java.io.FileInputStream(path))
-		} catch {
-			case _: Throwable => {}
-		}
+	try {
+		props.load(new java.io.FileInputStream(path))
+	} catch {
+		case _: Throwable => {}
 	}
 
 	def get[T](propname: String, default: T): T = {
 		props.getProperty(propname) match {
 			case null => default
-			case ans:Any => default match {
-				case x:String  => ans.asInstanceOf[T]
-				case x:Int     => ans.toInt.asInstanceOf[T]
-				case x:Boolean => (ans == "true").asInstanceOf[T]
+			case value: Any => default match {
+				case x:String  => value.asInstanceOf[T]
+				case x:Int     => value.toInt.asInstanceOf[T]
+				case x:Boolean => (value == "true").asInstanceOf[T]
 				case _	 => null.asInstanceOf[T]
 			}
 		}
@@ -28,3 +24,5 @@ object Config {
 		props.setProperty(propname, value.toString)
 	}
 }
+
+/* vim: set noexpandtab: */

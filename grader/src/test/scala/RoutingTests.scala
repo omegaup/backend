@@ -1,3 +1,4 @@
+import com.omegaup.Context
 import com.omegaup.grader._
 import com.omegaup.data._
 
@@ -7,6 +8,7 @@ import org.scalatest.matchers._
 import Matchers._
 
 class RoutingSpec extends FlatSpec {
+  private implicit val ctx = new Context
 
 	"Routing descriptions" should "parse correctly" in {
     var thrown: ParseException = null
@@ -19,48 +21,46 @@ class RoutingSpec extends FlatSpec {
       practice: slow
     """)
     router(
-      new RunContext(null, new Run(
+      new RunContext(ctx.config, null, new Run(
         contest = Some(new Contest(alias = "foo")),
         problem = new Problem(),
         user = Some(new User(username = "foo"))
       ), false, false)
     ) should equal (2)
     router(
-      new RunContext(null, new Run(
+      new RunContext(ctx.config, null, new Run(
         contest = Some(new Contest(alias = "test_contest")),
         problem = new Problem(),
         user = Some(new User(username = "foo"))
       ), false, false)
     ) should equal (2)
     router(
-      new RunContext(null, new Run(
+      new RunContext(ctx.config, null, new Run(
         contest = Some(new Contest(alias = "test_contest")),
         problem = new Problem(),
         user = Some(new User(username = "test_user"))
       ), false, false)
     ) should equal (0)
     router(
-      new RunContext(null, new Run(
+      new RunContext(ctx.config, null, new Run(
         contest = Some(new Contest(alias = "test_contest")),
         problem = new Problem(),
         user = Some(new User(username = "test_user"))
       ), false, true)
     ) should equal (6)
     router(
-      new RunContext(null, new Run(
+      new RunContext(ctx.config, null, new Run(
         contest = Some(new Contest(alias = "test_contest")),
         problem = new Problem(slow = true),
         user = Some(new User(username = "test_user"))
       ), false, false)
     ) should equal (1)
     router(
-      new RunContext(null, new Run(
+      new RunContext(ctx.config, null, new Run(
         contest = Some(new Contest(alias = "test_contest")),
         problem = new Problem(alias = "problem", slow = true),
         user = Some(new User(username = "test_user"))
       ), false, false)
     ) should equal (3)
 	}
-	
 }
-

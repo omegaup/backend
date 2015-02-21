@@ -26,11 +26,14 @@ class OmegaUpRunstreamReader(callback: RunCaseCallback) extends Object with Usin
 	}
 }
 
-class RunnerProxy(val hostname: String, port: Int) extends RunnerService with Using with Log {
-	private val url = (Config.get("https.disable", false) match {
-		case false => "https://"
-		case true => "http://"
-	}) + hostname + ":" + port
+class RunnerProxy(val hostname: String, port: Int) extends RunnerService
+with Using with Log {
+	private def url()(implicit ctx: Context) = {
+		(ctx.config.get("https.disable", false) match {
+			case false => "https://"
+			case true => "http://"
+		}) + hostname + ":" + port
+	}
 
 	def name() = hostname
 
@@ -38,14 +41,16 @@ class RunnerProxy(val hostname: String, port: Int) extends RunnerService with Us
 
 	override def toString() = "RunnerProxy(%s:%d)".format(hostname, port)
 
-	def compile(message: CompileInputMessage): CompileOutputMessage = {
+	def compile(message: CompileInputMessage)(implicit ctx: Context):
+	CompileOutputMessage = {
 		Https.send[CompileOutputMessage, CompileInputMessage](url + "/compile/",
 			message,
 			true
 		)
 	}
 
-	def run(message: RunInputMessage, callback: RunCaseCallback) : RunOutputMessage = {
+	def run(message: RunInputMessage, callback: RunCaseCallback)(implicit ctx: Context):
+	RunOutputMessage = {
 		val reader = new OmegaUpRunstreamReader(callback)
 		Https.send[RunOutputMessage, RunInputMessage](url + "/run/",
 			message,
@@ -54,7 +59,8 @@ class RunnerProxy(val hostname: String, port: Int) extends RunnerService with Us
 		)
 	}
 	
-	def input(inputName: String, entries: Iterable[InputEntry]): InputOutputMessage = {
+	def input(inputName: String, entries: Iterable[InputEntry])(implicit ctx: Context):
+	InputOutputMessage = {
 		Https.stream_send[InputOutputMessage](
 			url + "/input/",
 			"application/x-tar",

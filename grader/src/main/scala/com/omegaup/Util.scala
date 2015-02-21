@@ -66,7 +66,8 @@ object Database extends Object with Log with Using {
 	}
 
 	/** Executes the SQL and processes the result set using the specified function. */
-	def query[B](sql: String, params: Any*)(process: ResultSet => B)(implicit connection: Connection): Option[B] = {
+	def query[B](sql: String, params: Any*)(process: ResultSet => B)
+	(implicit connection: Connection, ctx: Context): Option[B] = {
 		val q = build(sql, params : _*)
 		log.trace(q)
 		try {
@@ -92,7 +93,8 @@ object Database extends Object with Log with Using {
 		}
 	}
 	
-	def execute(sql: String, params: Any*)(implicit connection: Connection): Unit = {
+	def execute(sql: String, params: Any*)
+	(implicit connection: Connection, ctx: Context): Unit = {
 		val q = build(sql, params : _*)
 		log.trace(q)
 		try {
@@ -109,7 +111,8 @@ object Database extends Object with Log with Using {
 	}
 
 	/** Executes the SQL and uses the process function to convert each row into a T. */
-	def queryEach[T](sql: String, params: Any*)(process: ResultSet => T)(implicit connection: Connection): Iterable[T] = {
+	def queryEach[T](sql: String, params: Any*)(process: ResultSet => T)
+	(implicit connection: Connection, ctx: Context): Iterable[T] = {
 		val q = build(sql, params : _*)
 		log.trace(q)
 		val ret = new scala.collection.mutable.ListBuffer[T]
@@ -308,3 +311,5 @@ class Git(repository: File) extends Object with Using {
     treeHashes
   }
 }
+
+/* vim: set noexpandtab: */

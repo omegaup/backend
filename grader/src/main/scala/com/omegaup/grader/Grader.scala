@@ -12,17 +12,18 @@ case class GraderOptions(
 	configPath: String = "omegaup.conf"
 )
 
-class Grader(val options: GraderOptions) extends Object with GraderService with ServiceInterface with Log {
+class Grader(val options: GraderOptions)(implicit serviceCtx: Context)
+extends Object with GraderService with ServiceInterface with Log {
 	type Listener = (RunContext, Run) => Unit
 	private val listeners = scala.collection.mutable.ListBuffer.empty[Listener]
 	val runnerDispatcher = new RunnerDispatcher
 
 	// Loading SQL connector driver
-	Class.forName(Config.get("db.driver", "org.h2.Driver"))
+	Class.forName(serviceCtx.config.get("db.driver", "org.h2.Driver"))
 	implicit val conn = java.sql.DriverManager.getConnection(
-		Config.get("db.url", "jdbc:h2:file:omegaup"),
-		Config.get("db.user", "omegaup"),
-		Config.get("db.password", "")
+		serviceCtx.config.get("db.url", "jdbc:h2:file:omegaup"),
+		serviceCtx.config.get("db.user", "omegaup"),
+		serviceCtx.config.get("db.password", "")
 	)
 
 	def start() = {
@@ -42,7 +43,8 @@ class Grader(val options: GraderOptions) extends Object with GraderService with 
 
 		log.info("Recovering previous queue: {} runs re-added", pendingRuns.size)
 
-		pendingRuns foreach(run => grade(new RunContext(Some(this), run, false, false)))
+		pendingRuns foreach(run => grade(new RunContext(serviceCtx, Some(this),
+			run, false, false)))
 	}
 
 	def grade(ctx: RunContext): Unit = {
@@ -64,13 +66,14 @@ class Grader(val options: GraderOptions) extends Object with GraderService with 
 		for (id <- message.id) {
 			GraderData.getRun(id) match {
 				case None => throw new IllegalArgumentException("Id " + id + " not found")
-				case Some(run) => grade(new RunContext(Some(this), run, message.debug, message.rejudge))
+				case Some(run) => grade(new RunContext(serviceCtx, Some(this), run,
+					message.debug, message.rejudge))
 			}
 		}
 		RunGradeOutputMessage()
 	}
 
-	def updateVerdict(ctx: RunContext, run: Run): Run = {
+	def updateVerdict(run: Run)(implicit ctx: RunContext): Run = {
 		ctx.trace(EventCategory.UpdateVerdict) {
 			GraderData.update(run)
 		}
@@ -84,29 +87,29 @@ class Grader(val options: GraderOptions) extends Object with GraderService with 
 	}
 
 	def updateConfiguration(embeddedRunner: Boolean) = {
-		if (Config.get("grader.embedded_runner.enable", false) && !embeddedRunner) {
+		if (serviceCtx.config.get("grader.embedded_runner.enable", false) && !embeddedRunner) {
 			runnerDispatcher.addRunner(
 				new com.omegaup.runner.Runner(
 					"#embedded-runner",
-					Config.get("runner.sandbox", "minijail") match {
+					serviceCtx.config.get("runner.sandbox", "minijail") match {
 						case "null" => NullSandbox
 						case _ => Minijail
 					}
 				)
 			)
 		}
-		val source = Config.get("grader.routing.table", "")
+		val source = serviceCtx.config.get("grader.routing.table", "")
 		try {
 			runnerDispatcher.updateConfiguration(
-				Config.get("grader.routing.table", source),
-				Config.get("grader.routing.slow_threshold", 50)
+				serviceCtx.config.get("grader.routing.table", source),
+				serviceCtx.config.get("grader.routing.slow_threshold", 50)
 			)
 		} catch {
 			case ex: ParseException => {
 				log.error("Unable to parse {} at character {}", source, ex.getErrorOffset)
 			}
 		}
-		Config.get("grader.routing.registered_runners", "").split("\\s+").foreach({ endpoint => {
+		serviceCtx.config.get("grader.routing.registered_runners", "").split("\\s+").foreach({ endpoint => {
 			val tokens = endpoint.split(":")
 			if (tokens.length > 0 && tokens(0).trim.length > 0) {
 				if (tokens.length == 1) {

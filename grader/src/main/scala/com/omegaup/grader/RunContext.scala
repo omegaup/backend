@@ -1,6 +1,8 @@
 package com.omegaup.grader
 
+import com.omegaup.Config
 import com.omegaup.Log
+import com.omegaup.Context
 import com.omegaup.RunnerService
 import com.omegaup.data.Run
 
@@ -50,7 +52,9 @@ case class CompleteEvent(category: EventCategory, time: Long, duration: Long, ar
 	}
 }
 
-class RunContext(grader: Option[Grader], var run: Run, val debug: Boolean, val rejudge: Boolean) extends Object with Log {
+class RunContext(parent: Context, grader: Option[Grader], var run: Run,
+	val debug: Boolean, val rejudge: Boolean
+) extends Context(parent.config) with Log {
 	val creationTime = System.currentTimeMillis
 	val rejudges: Int = 0
 	val eventList = new scala.collection.mutable.MutableList[AnyRef]
@@ -95,12 +99,14 @@ class RunContext(grader: Option[Grader], var run: Run, val debug: Boolean, val r
 	def broadcastDequeued(): Unit = eventList += new Event(false, EventCategory.BroadcastQueue)
 
 	def finish() = {
+		implicit val ctx = this
 		eventList += new Event(false, EventCategory.Task, "run_id" -> run.id.toString)
 		log.info("[" + eventList.map(_.toString).mkString(",") + "]")
 	}
 
 	def updateVerdict(run: Run) = {
-		grader.map(_.updateVerdict(this, run))
+		implicit val ctx = this
+		grader.map(_.updateVerdict(run))
 	}
 }
 

@@ -16,9 +16,9 @@ trait RunCaseCallback {
 case class InputEntry(name: String, data: InputStream, length: Long, hash: String)
 
 trait RunnerService {
-	def compile(message: CompileInputMessage): CompileOutputMessage
-	def run(message: RunInputMessage, callback: RunCaseCallback): RunOutputMessage
-	def input(inputName: String, entries: Iterable[InputEntry]): InputOutputMessage
+	def compile(message: CompileInputMessage)(implicit ctx: Context): CompileOutputMessage
+	def run(message: RunInputMessage, callback: RunCaseCallback)(implicit ctx: Context): RunOutputMessage
+	def input(inputName: String, entries: Iterable[InputEntry])(implicit ctx: Context): InputOutputMessage
 	def name(): String
 	def port(): Int = 21681
 	override def toString() = "RunnerService(%s)".format(name)

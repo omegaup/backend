@@ -34,7 +34,7 @@ trait Sandbox {
                  errorFile: String = "",
                  metaFile: String = "",
                  target: String = "Main",
-                 extraFlags: TraversableOnce[String] = List()) (callback: Int => A): A
+                 extraFlags: TraversableOnce[String] = List())(callback: Int => A)(implicit ctx: Context): A
 
   def run(message: RunInputMessage,
           lang: String,
@@ -48,7 +48,7 @@ trait Sandbox {
           originalInputFile: Option[String] = None,
           runMetaFile: Option[String] = None,
           target: String = "Main",
-          extraMountPoints: List[(String, String)] = List[(String, String)]()): Unit
+          extraMountPoints: List[(String, String)] = List[(String, String)]())(implicit ctx: Context): Unit
 }
 
 object NullSandbox extends Object with Sandbox with Log with Using {
@@ -62,23 +62,23 @@ object NullSandbox extends Object with Sandbox with Log with Using {
                  errorFile: String = "",
                  metaFile: String = "",
                  target: String = "Main",
-                 extraFlags: TraversableOnce[String] = List()) (callback: Int => A): A = {
+                 extraFlags: TraversableOnce[String] = List()) (callback: Int => A)(implicit ctx: Context): A = {
     val params = (lang match {
       case "java" =>
-        List(Config.get("java.compiler.path", "/usr/bin/javac"), "-J-Xmx512M") ++
+        List(ctx.config.get("java.compiler.path", "/usr/bin/javac"), "-J-Xmx512M") ++
         inputFiles
       case "c" =>
-        List(Config.get("c.compiler.path", "/usr/bin/gcc"), "-std=c99", "-O2") ++
+        List(ctx.config.get("c.compiler.path", "/usr/bin/gcc"), "-std=c99", "-O2") ++
         inputFiles ++ List("-lm", "-o", target)
       case "cpp" =>
-        List(Config.get("cpp.compiler.path", "/usr/bin/g++"), "-O2") ++
+        List(ctx.config.get("cpp.compiler.path", "/usr/bin/g++"), "-O2") ++
         inputFiles ++ List("-lm", "-o", target)
       case "cpp11" =>
-        List(Config.get("cpp.compiler.path", "/usr/bin/g++"), "-O2", "-std=c++11", "-xc++") ++
+        List(ctx.config.get("cpp.compiler.path", "/usr/bin/g++"), "-O2", "-std=c++11", "-xc++") ++
         inputFiles ++ List("-lm", "-o", target)
       case "pas" =>
         List(
-          Config.get("p.compiler.path", "/usr/bin/fpc"),
+          ctx.config.get("p.compiler.path", "/usr/bin/fpc"),
           "-Tlinux",
           "-O2",
           "-Mobjfpc",
@@ -87,14 +87,14 @@ object NullSandbox extends Object with Sandbox with Log with Using {
         ) ++
         inputFiles ++ List("-o" + target)
       case "py" =>
-        List(Config.get("py.compiler.path", "/usr/bin/python"), "-m", "py_compile") ++
+        List(ctx.config.get("py.compiler.path", "/usr/bin/python"), "-m", "py_compile") ++
         inputFiles
       case "rb" =>
-        List(Config.get("rb.compiler.path", "/usr/bin/ruby"), "-wc") ++
+        List(ctx.config.get("rb.compiler.path", "/usr/bin/ruby"), "-wc") ++
         inputFiles
       case "kj" =>
         List(
-          Config.get("kcl.compiler.path", "/usr/bin/kcl"),
+          ctx.config.get("kcl.compiler.path", "/usr/bin/kcl"),
           "-lj",
           "-o",
           s"$target.kx",
@@ -103,7 +103,7 @@ object NullSandbox extends Object with Sandbox with Log with Using {
         inputFiles
       case "kp" =>
         List(
-          Config.get("kcl.compiler.path", "/usr/bin/kcl"),
+          ctx.config.get("kcl.compiler.path", "/usr/bin/kcl"),
           "-lp",
           "-o",
           s"$target.kx",
@@ -112,7 +112,7 @@ object NullSandbox extends Object with Sandbox with Log with Using {
         inputFiles
       case "hs" =>
         List(
-          Config.get("ghc.compiler.path", "/usr/lib/ghc/lib/ghc"), "-B/usr/lib/ghc",
+          ctx.config.get("ghc.compiler.path", "/usr/lib/ghc/lib/ghc"), "-B/usr/lib/ghc",
           "-O2",
           "-o",
           target
@@ -129,7 +129,7 @@ object NullSandbox extends Object with Sandbox with Log with Using {
     builder.redirectOutput(new File(outputFile))
 
     val t0 = System.currentTimeMillis
-    val status = runWithTimeout(builder, Config.get("java.compile.time_limit", 30) * 1000)
+    val status = runWithTimeout(builder, ctx.config.get("java.compile.time_limit", 30) * 1000)
     val t1 = System.currentTimeMillis
 
     val meta = Map(
@@ -171,7 +171,7 @@ object NullSandbox extends Object with Sandbox with Log with Using {
           originalInputFile: Option[String] = None,
           runMetaFile: Option[String] = None,
           target: String = "Main",
-          extraMountPoints: List[(String, String)] = List[(String, String)]()): Unit = {
+          extraMountPoints: List[(String, String)] = List[(String, String)]())(implicit ctx: Context): Unit = {
     val timeLimit = message.timeLimit + (lang match {
       case "java" => 1000
       case _ => 0
@@ -203,10 +203,10 @@ object NullSandbox extends Object with Sandbox with Log with Using {
       case "py" =>
         List("/usr/bin/python", s"$target.py")
       case "rb" =>
-        List(Config.get("rb.compiler.path", "/usr/bin/ruby"), s"$target.rb")
+        List(ctx.config.get("rb.compiler.path", "/usr/bin/ruby"), s"$target.rb")
       case "kp" =>
         List(
-          Config.get("karel.runtime.path", "/usr/bin/karel"),
+          ctx.config.get("karel.runtime.path", "/usr/bin/karel"),
           "/dev/stdin",
           "-oi",
           "-q",
@@ -215,7 +215,7 @@ object NullSandbox extends Object with Sandbox with Log with Using {
         )
       case "kj" =>
         List(
-          Config.get("karel.runtime.path", "/usr/bin/karel"),
+          ctx.config.get("karel.runtime.path", "/usr/bin/karel"),
           "/dev/stdin",
           "-oi",
           "-q",
@@ -278,20 +278,20 @@ object Minijail extends Object with Sandbox with Log with Using {
                  errorFile: String = "",
                  metaFile: String = "",
                  target: String = "Main",
-                 extraFlags: TraversableOnce[String] = List()) (callback: Int => A): A = {
-    val minijail = Config.get("runner.minijail.path", ".") + "/bin/minijail0"
-    val scripts = Config.get("runner.minijail.path", ".") + "/scripts"
+                 extraFlags: TraversableOnce[String] = List()) (callback: Int => A)(implicit ctx: Context): A = {
+    val minijail = ctx.config.get("runner.minijail.path", ".") + "/bin/minijail0"
+    val scripts = ctx.config.get("runner.minijail.path", ".") + "/scripts"
     val runtime = Runtime.getRuntime
 
     val commonParams = List(
-      "-C", Config.get("runner.minijail.path", ".") + "/root-compilers",
+      "-C", ctx.config.get("runner.minijail.path", ".") + "/root-compilers",
       "-d", "/home",
       "-b", chdir + ",/home,1",
       "-1", outputFile,
       "-2", errorFile,
       "-M", metaFile,
-      "-t", (Config.get("java.compile.time_limit", 30) * 1000).toString,
-      "-O", Config.get("runner.compile.output_limit", 64 * 1024 * 1024).toString
+      "-t", (ctx.config.get("java.compile.time_limit", 30) * 1000).toString,
+      "-O", ctx.config.get("runner.compile.output_limit", 64 * 1024 * 1024).toString
     )
 
     val chrootedInputFiles = inputFiles.map(file => {
@@ -306,32 +306,32 @@ object Minijail extends Object with Sandbox with Log with Using {
         List("/usr/bin/sudo", minijail, "-S", scripts + "/javac") ++
         commonParams ++
         List(
-          "-b", Config.get("runner.minijail.path", ".") + "/root-openjdk,/usr/lib/jvm",
+          "-b", ctx.config.get("runner.minijail.path", ".") + "/root-openjdk,/usr/lib/jvm",
           "-b", "/sys/,/sys"
         ) ++
-        List("--", Config.get("java.compiler.path", "/usr/bin/javac"), "-J-Xmx512M") ++
+        List("--", ctx.config.get("java.compiler.path", "/usr/bin/javac"), "-J-Xmx512M") ++
         chrootedInputFiles
       case "c" =>
         List("/usr/bin/sudo", minijail, "-S", scripts + "/gcc") ++
         commonParams ++
-        List("--", Config.get("c.compiler.path", "/usr/bin/gcc"), "-std=c99", "-O2") ++
+        List("--", ctx.config.get("c.compiler.path", "/usr/bin/gcc"), "-std=c99", "-O2") ++
         chrootedInputFiles ++ List("-lm", "-o", target)
       case "cpp" =>
         List("/usr/bin/sudo", minijail, "-S", scripts + "/gcc") ++
         commonParams ++
-        List("--", Config.get("cpp.compiler.path", "/usr/bin/g++"), "-O2") ++
+        List("--", ctx.config.get("cpp.compiler.path", "/usr/bin/g++"), "-O2") ++
         chrootedInputFiles ++ List("-lm", "-o", target)
       case "cpp11" =>
         List("/usr/bin/sudo", minijail, "-S", scripts + "/gcc") ++
         commonParams ++
-        List("--", Config.get("cpp.compiler.path", "/usr/bin/g++"), "-O2", "-std=c++11", "-xc++") ++
+        List("--", ctx.config.get("cpp.compiler.path", "/usr/bin/g++"), "-O2", "-std=c++11", "-xc++") ++
         chrootedInputFiles ++ List("-lm", "-o", target)
       case "pas" =>
         List("/usr/bin/sudo", minijail, "-S", scripts + "/fpc") ++
         commonParams ++
         List(
           "--",
-          "/usr/bin/ldwrapper", Config.get("p.compiler.path", "/usr/bin/fpc"),
+          "/usr/bin/ldwrapper", ctx.config.get("p.compiler.path", "/usr/bin/fpc"),
           "-Tlinux",
           "-O2",
           "-Mobjfpc",
@@ -342,21 +342,21 @@ object Minijail extends Object with Sandbox with Log with Using {
       case "py" =>
         List("/usr/bin/sudo", minijail, "-S", scripts + "/pyc") ++
         commonParams ++
-        List("-b", Config.get("runner.minijail.path", ".") + "/root-python,/usr/lib/python2.7") ++
-        List("--", Config.get("py.compiler.path", "/usr/bin/python"), "-m", "py_compile") ++
+        List("-b", ctx.config.get("runner.minijail.path", ".") + "/root-python,/usr/lib/python2.7") ++
+        List("--", ctx.config.get("py.compiler.path", "/usr/bin/python"), "-m", "py_compile") ++
         chrootedInputFiles
       case "rb" =>
         List("/usr/bin/sudo", minijail, "-S", scripts + "/ruby") ++
         commonParams ++
-        List("-b", Config.get("runner.minijail.path", ".") + "/root-ruby,/usr/lib/ruby") ++
-        List("--", Config.get("rb.compiler.path", "/usr/bin/ruby"), "-wc") ++
+        List("-b", ctx.config.get("runner.minijail.path", ".") + "/root-ruby,/usr/lib/ruby") ++
+        List("--", ctx.config.get("rb.compiler.path", "/usr/bin/ruby"), "-wc") ++
         chrootedInputFiles
       case "kj" =>
         List("/usr/bin/sudo", minijail, "-S", scripts + "/kcl") ++
         commonParams ++
         List(
           "--",
-          "/usr/bin/ldwrapper", Config.get("kcl.compiler.path", "/usr/bin/kcl"),
+          "/usr/bin/ldwrapper", ctx.config.get("kcl.compiler.path", "/usr/bin/kcl"),
           "-lj",
           "-o",
           s"$target.kx",
@@ -368,7 +368,7 @@ object Minijail extends Object with Sandbox with Log with Using {
         commonParams ++
         List(
           "--",
-          "/usr/bin/ldwrapper", Config.get("kcl.compiler.path", "/usr/bin/kcl"),
+          "/usr/bin/ldwrapper", ctx.config.get("kcl.compiler.path", "/usr/bin/kcl"),
           "-lp",
           "-o",
           s"$target.kx",
@@ -378,10 +378,10 @@ object Minijail extends Object with Sandbox with Log with Using {
       case "hs" =>
         List("/usr/bin/sudo", minijail, "-S", scripts + "/ghc") ++
         commonParams ++
-        List("-b", Config.get("runner.minijail.path", ".") + "/root-hs,/usr/lib/ghc") ++
+        List("-b", ctx.config.get("runner.minijail.path", ".") + "/root-hs,/usr/lib/ghc") ++
         List(
           "--",
-          Config.get("ghc.compiler.path", "/usr/lib/ghc/lib/ghc"), "-B/usr/lib/ghc",
+          ctx.config.get("ghc.compiler.path", "/usr/lib/ghc/lib/ghc"), "-B/usr/lib/ghc",
           "-O2",
           "-o",
           target
@@ -421,9 +421,9 @@ object Minijail extends Object with Sandbox with Log with Using {
           originalInputFile: Option[String] = None,
           runMetaFile: Option[String] = None,
           target: String = "Main",
-          extraMountPoints: List[(String, String)] = List[(String, String)]()) = {
-    val minijail = Config.get("runner.minijail.path", ".") + "/bin/minijail0"
-    val scripts = Config.get("runner.minijail.path", ".") + "/scripts"
+          extraMountPoints: List[(String, String)] = List[(String, String)]())(implicit ctx: Context) = {
+    val minijail = ctx.config.get("runner.minijail.path", ".") + "/bin/minijail0"
+    val scripts = ctx.config.get("runner.minijail.path", ".") + "/scripts"
     val runtime = Runtime.getRuntime
 
     val timeLimit = message.timeLimit + (lang match {
@@ -433,7 +433,7 @@ object Minijail extends Object with Sandbox with Log with Using {
     val extraWallTime = message.extraWallTime
 
     val commonParams = List(
-      "-C", Config.get("runner.minijail.path", ".") + "/root",
+      "-C", ctx.config.get("runner.minijail.path", ".") + "/root",
       "-d", "/home",
       "-b", chdir + ",/home",
       "-0", inputFile,
@@ -463,7 +463,7 @@ object Minijail extends Object with Sandbox with Log with Using {
     // "640MB should be enough for anybody"
     val hardLimit = Math.max(
       memoryLimit,
-      Config.get("runner.memory.limit", 640) * 1024 * 1024
+      ctx.config.get("runner.memory.limit", 640) * 1024 * 1024
     ).toString
 
     val params = (lang match {
@@ -471,7 +471,7 @@ object Minijail extends Object with Sandbox with Log with Using {
         List("/usr/bin/sudo", minijail, "-S", scripts + "/java") ++
         commonParams ++
         List(
-          "-b", Config.get("runner.minijail.path", ".") + "/root-openjdk,/usr/lib/jvm",
+          "-b", ctx.config.get("runner.minijail.path", ".") + "/root-openjdk,/usr/lib/jvm",
           "-b", "/sys/,/sys"
         ) ++
         List("--", "/usr/bin/java", "-Xmx" + memoryLimit, target)
@@ -494,19 +494,19 @@ object Minijail extends Object with Sandbox with Log with Using {
       case "py" =>
         List("/usr/bin/sudo", minijail, "-S", scripts + "/py") ++
         commonParams ++
-        List("-b", Config.get("runner.minijail.path", ".") + "/root-python,/usr/lib/python2.7") ++
+        List("-b", ctx.config.get("runner.minijail.path", ".") + "/root-python,/usr/lib/python2.7") ++
         List("-m", hardLimit, "--", "/usr/bin/python", s"$target.py")
       case "rb" =>
         List("/usr/bin/sudo", minijail, "-S", scripts + "/ruby") ++
         commonParams ++
-        List("-b", Config.get("runner.minijail.path", ".") + "/root-ruby,/usr/lib/ruby") ++
-        List("--", Config.get("rb.compiler.path", "/usr/bin/ruby"), s"$target.rb")
+        List("-b", ctx.config.get("runner.minijail.path", ".") + "/root-ruby,/usr/lib/ruby") ++
+        List("--", ctx.config.get("rb.compiler.path", "/usr/bin/ruby"), s"$target.rb")
       case "kp" =>
         List("/usr/bin/sudo", minijail, "-S", scripts + "/karel") ++
         commonParams ++
         List(
           "--",
-          "/usr/bin/ldwrapper", Config.get("karel.runtime.path", "/usr/bin/karel"),
+          "/usr/bin/ldwrapper", ctx.config.get("karel.runtime.path", "/usr/bin/karel"),
           "/dev/stdin",
           "-oi",
           "-q",
@@ -518,7 +518,7 @@ object Minijail extends Object with Sandbox with Log with Using {
         commonParams ++
         List(
           "--",
-          "/usr/bin/ldwrapper", Config.get("karel.runtime.path", "/usr/bin/karel"),
+          "/usr/bin/ldwrapper", ctx.config.get("karel.runtime.path", "/usr/bin/karel"),
           "/dev/stdin",
           "-oi",
           "-q",
@@ -528,7 +528,7 @@ object Minijail extends Object with Sandbox with Log with Using {
       case "hs" =>
         List("/usr/bin/sudo", minijail, "-S", scripts + "/hs") ++
         commonParams ++
-        List("-b", Config.get("runner.minijail.path", ".") + "/root-hs,/usr/lib/ghc") ++
+        List("-b", ctx.config.get("runner.minijail.path", ".") + "/root-hs,/usr/lib/ghc") ++
         List("-m", hardLimit, "--", s"./$target")
     }) ++ extraParams
 
@@ -537,8 +537,8 @@ object Minijail extends Object with Sandbox with Log with Using {
     patchMetaFile(lang, status, syscallName, Some(message), metaFile)
   }
 
-  private def runMinijail(params: List[String]): (Int, String) = {
-    val helperPath = Config.get("runner.minijail.path", ".") + "/bin/minijail_syscall_helper"
+  private def runMinijail(params: List[String])(implicit ctx: Context): (Int, String) = {
+    val helperPath = ctx.config.get("runner.minijail.path", ".") + "/bin/minijail_syscall_helper"
     val helperParams = List("/usr/bin/sudo", helperPath)
     val runtime = Runtime.getRuntime
     var status = -1
@@ -611,7 +611,7 @@ object Minijail extends Object with Sandbox with Log with Using {
     (status, syscallName)
   }
 
-  private def patchMetaFile(lang: String, status: Int, syscallName: String, message: Option[RunInputMessage], metaFile: String) = {
+  private def patchMetaFile(lang: String, status: Int, syscallName: String, message: Option[RunInputMessage], metaFile: String)(implicit ctx: Context) = {
     val meta = try {
       collection.mutable.Map(MetaFile.load(metaFile).toSeq: _*)
     } catch {

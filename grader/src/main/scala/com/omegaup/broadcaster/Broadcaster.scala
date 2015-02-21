@@ -40,7 +40,8 @@ class QueuedRun(contest: String, broadcast: Boolean, targetUser: Long, userOnly:
 class QueuedMessage(contest: String, broadcast: Boolean, targetUser: Long, userOnly: Boolean, val message: String)
 	extends QueuedElement(contest, broadcast, targetUser, userOnly) {}
 
-class Broadcaster extends Object with ServiceInterface with Runnable with Log with Using {
+class Broadcaster(implicit serviceCtx: Context) extends Object with
+ServiceInterface with Runnable with Log with Using {
 	private val PathRE = "^/([a-zA-Z0-9_-]+)/?".r
 	// A collection of subscribers.
 	private val subscribers = new mutable.HashMap[String, mutable.ArrayBuffer[BroadcasterSession]]
@@ -52,7 +53,7 @@ class Broadcaster extends Object with ServiceInterface with Runnable with Log wi
 
 	{
 		val broadcasterConnector = new org.eclipse.jetty.server.ServerConnector(server)
-		broadcasterConnector.setPort(Config.get("broadcaster.port", 39613))
+		broadcasterConnector.setPort(serviceCtx.config.get("broadcaster.port", 39613))
 		server.addConnector(broadcasterConnector)
 
 		val creator = new WebSocketCreator() {
@@ -112,7 +113,7 @@ class Broadcaster extends Object with ServiceInterface with Runnable with Log wi
 		return hexdigest.toString
 	}
 
-	def update(ctx: RunContext): Unit = {
+	def update()(implicit ctx: RunContext): Unit = {
 		ctx.run.contest match {
 			case Some(contest) => {
 				ctx.broadcastQueued
@@ -146,17 +147,17 @@ class Broadcaster extends Object with ServiceInterface with Runnable with Log wi
 				val run = m.ctx.run
 				implicit val formats = OmegaUpSerialization.formats
 
-				if (Config.get("grader.scoreboard_refresh.enable", true)) {
+				if (serviceCtx.config.get("grader.scoreboard_refresh.enable", true)) {
 					m.ctx.trace(EventCategory.GraderRefresh) {
 						try {
 							log.info("Scoreboard refresh {}",
 								Https.post[ScoreboardRefreshResponse](
-									Config.get(
+									serviceCtx.config.get(
 										"grader.scoreboard_refresh.url",
 										"http://localhost/api/scoreboard/refresh/"
 									),
 									Map(
-										"token" -> Config.get("grader.scoreboard_refresh.token", "secret"),
+										"token" -> serviceCtx.config.get("grader.scoreboard_refresh.token", "secret"),
 										"alias" -> elm.contest,
 										"run" -> run.id.toString
 									),
@@ -279,7 +280,7 @@ class Broadcaster extends Object with ServiceInterface with Runnable with Log wi
 			if (query.length != 2) return null
 			try {
 				val response = Https.post[ContestRoleResponse](
-					Config.get("grader.role.url", "http://localhost/api/contest/role/"),
+					serviceCtx.config.get("grader.role.url", "http://localhost/api/contest/role/"),
 					Map("token" -> query(1), "contest_alias" -> contest),
 					runner = false
 				)
@@ -311,7 +312,7 @@ class Broadcaster extends Object with ServiceInterface with Runnable with Log wi
 			val user = tokens(1)
 
 			val digest = hashdigest("SHA-256",
-				Config.get("omegaup.md5.salt", "omegaup") + user + entropy)
+				serviceCtx.config.get("omegaup.md5.salt", "omegaup") + user + entropy)
 			if (tokens(2) == digest) {
 				try {
 					(user.toInt, userId)
@@ -342,7 +343,7 @@ class Broadcaster extends Object with ServiceInterface with Runnable with Log wi
 			if (userId == -1) return null
 			try {
 				val response = Https.post[ContestRoleResponse](
-					Config.get("grader.role.url", "http://localhost/api/contest/role/"),
+					serviceCtx.config.get("grader.role.url", "http://localhost/api/contest/role/"),
 					Map("auth_token" -> token, "contest_alias" -> contest),
 					runner = false
 				)
@@ -390,10 +391,12 @@ class Broadcaster extends Object with ServiceInterface with Runnable with Log wi
 	}
 }
 
-object Manager extends Object with Log {
+object Service extends Object with Log {
 	def main(args: Array[String]) = {
+		implicit val ctx = new Context
+
 		// logger
-		Logging.init()
+		Logging.init
 
 		val server = new Broadcaster
 

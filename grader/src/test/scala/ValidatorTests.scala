@@ -1,10 +1,14 @@
 import com.omegaup.grader._
 
+import com.omegaup.Config
+import com.omegaup.Context
 import java.io._
 import org.scalatest.FlatSpec
 import org.scalatest.Matchers
 
 class ValidatorSpec extends FlatSpec with Matchers {
+	private implicit val ctx: Context = new Context
+
 	"Tokenizers" should "tokenize properly" in {
 		var tok = new Tokenizer(new File("grader/src/test/resources/token_test.txt"),
 				        !_.isWhitespace)

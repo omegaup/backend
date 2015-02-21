@@ -22,67 +22,78 @@ import javax.net.ssl.SSLSocketFactory
 import net.liftweb.json.Serialization
 
 object Https extends Object with Log with Using {
-	val defaultSocketFactory = SSLSocketFactory.getDefault().asInstanceOf[SSLSocketFactory]
-	val runnerSocketFactory: Option[SSLSocketFactory] =
-		Config.get("https.disable", false) match {
-			case true => None
-			case false => Some(new SSLSocketFactory {
-				private val sslContextFactory = new org.eclipse.jetty.util.ssl.SslContextFactory(
-					Config.get("ssl.keystore", "omegaup.jks"))
-				sslContextFactory.setKeyManagerPassword(Config.get("ssl.password", "omegaup"))
-				sslContextFactory.setKeyStorePassword(Config.get("ssl.keystore.password", "omegaup"))
-				sslContextFactory.setTrustStore(FileUtil.loadKeyStore(
-					Config.get("ssl.truststore", "omegaup.jks"),
-					Config.get("ssl.truststore.password", "omegaup")
-				))
-				sslContextFactory.setNeedClientAuth(true)
-				sslContextFactory.start
-				private val socketFactory = sslContextFactory.getSslContext.getSocketFactory
-
-				override def getDefaultCipherSuites(): Array[String] = defaultSocketFactory.getDefaultCipherSuites
-				override def getSupportedCipherSuites(): Array[String] = defaultSocketFactory.getSupportedCipherSuites
-
-				@throws(classOf[IOException])
-				override def createSocket(host: String, port: Int): Socket =
-					socketFactory.createSocket(host, port)
-
-				@throws(classOf[IOException])
-				override def createSocket(host: String, port: Int, clientAddress: InetAddress, clientPort: Int): Socket =
-					socketFactory.createSocket(host, port, clientAddress, clientPort)
-
-				@throws(classOf[IOException])
-				override def createSocket(address: InetAddress, port: Int): Socket =
-					socketFactory.createSocket(address, port)
-
-				@throws(classOf[IOException])
-				override def createSocket(address: InetAddress, port: Int, clientAddress: InetAddress, clientPort: Int): Socket =
-					socketFactory.createSocket(address, port, clientAddress, clientPort)
-
-				@throws(classOf[IOException])
-				override def createSocket(socket: Socket, host: String, port: Int, autoClose: Boolean): Socket =
-					socketFactory.createSocket(socket, host, port, autoClose)
-
-				@throws(classOf[IOException])
-				override def createSocket(): Socket = socketFactory.createSocket
-			})
+	private val defaultSocketFactory = SSLSocketFactory.getDefault().asInstanceOf[SSLSocketFactory]
+	private def runnerSocketFactory()(implicit ctx: Context) = {
+		if (!lazyFactoryInitialized) {
+			this.synchronized {
+				if (!lazyFactoryInitialized) {
+					lazyRunnerSocketFactory = createSocketFactory
+					lazyFactoryInitialized = true
+				}
+			}
 		}
+		lazyRunnerSocketFactory
+	}
 
-	private def connect(url: String, runner: Boolean) = {
+	@volatile private var lazyFactoryInitialized = false
+	private var lazyRunnerSocketFactory: SSLSocketFactory = null
+	private def createSocketFactory()(implicit ctx: Context) = new SSLSocketFactory {
+		private val sslContextFactory = new org.eclipse.jetty.util.ssl.SslContextFactory(
+			ctx.config.get("ssl.keystore", "omegaup.jks")
+		)
+		sslContextFactory.setKeyManagerPassword(ctx.config.get("ssl.password", "omegaup"))
+		sslContextFactory.setKeyStorePassword(ctx.config.get("ssl.keystore.password", "omegaup"))
+		sslContextFactory.setTrustStore(FileUtil.loadKeyStore(
+			ctx.config.get("ssl.truststore", "omegaup.jks"),
+			ctx.config.get("ssl.truststore.password", "omegaup")
+		))
+		sslContextFactory.setNeedClientAuth(true)
+		sslContextFactory.start
+		private val socketFactory = sslContextFactory.getSslContext.getSocketFactory
+
+		override def getDefaultCipherSuites(): Array[String] = defaultSocketFactory.getDefaultCipherSuites
+		override def getSupportedCipherSuites(): Array[String] = defaultSocketFactory.getSupportedCipherSuites
+
+		@throws(classOf[IOException])
+		override def createSocket(host: String, port: Int): Socket =
+			socketFactory.createSocket(host, port)
+
+		@throws(classOf[IOException])
+		override def createSocket(host: String, port: Int, clientAddress: InetAddress, clientPort: Int): Socket =
+			socketFactory.createSocket(host, port, clientAddress, clientPort)
+
+		@throws(classOf[IOException])
+		override def createSocket(address: InetAddress, port: Int): Socket =
+			socketFactory.createSocket(address, port)
+
+		@throws(classOf[IOException])
+		override def createSocket(address: InetAddress, port: Int, clientAddress: InetAddress, clientPort: Int): Socket =
+			socketFactory.createSocket(address, port, clientAddress, clientPort)
+
+		@throws(classOf[IOException])
+		override def createSocket(socket: Socket, host: String, port: Int, autoClose: Boolean): Socket =
+			socketFactory.createSocket(socket, host, port, autoClose)
+
+		@throws(classOf[IOException])
+		override def createSocket(): Socket = socketFactory.createSocket
+	}
+
+	private def connect(url: String, runner: Boolean)(implicit ctx: Context) = {
 		val conn = new URL(url).openConnection.asInstanceOf[HttpURLConnection]
 		if (url.startsWith("https://")) {
 			if (runner) {
-				runnerSocketFactory match {
-					case None =>
-						throw new IllegalStateException("Service was started with https.disable")
-					case Some(factory) =>
-						conn.asInstanceOf[HttpsURLConnection].setSSLSocketFactory(factory)
+				ctx.config.get("https.disable", false) match {
+					case true =>
+						throw new IllegalStateException("Cannot connect to https with https.disable")
+					case false =>
+						conn.asInstanceOf[HttpsURLConnection].setSSLSocketFactory(runnerSocketFactory)
 				}
 			}
 		}
 		conn
 	}
 
-	def get(url: String, runner: Boolean = true):String = {
+	def get(url: String, runner: Boolean = true)(implicit ctx: Context) :String = {
 		log.debug("GET {}", url)
 
 		using (connect(url, runner)) { conn => {
@@ -92,7 +103,7 @@ object Https extends Object with Log with Using {
 		}}
 	}
 
-	def post[T](url: String, data: scala.collection.Map[String, String], runner: Boolean = true)(implicit mf: Manifest[T]):T = {
+	def post[T](url: String, data: scala.collection.Map[String, String], runner: Boolean = true)(implicit mf: Manifest[T],  ctx: Context):T = {
 		log.debug("POST {}", url)
 
 		val postdata = data.map { case(key, value) =>
@@ -113,7 +124,7 @@ object Https extends Object with Log with Using {
 		}}
 	}
 
-  def send[T, W <: AnyRef](url:String, request:W, responseReader: InputStream=>T, runner: Boolean)(implicit mf: Manifest[T]):T = {
+	def send[T, W <: AnyRef](url:String, request:W, responseReader: InputStream=>T, runner: Boolean)(implicit mf: Manifest[T],  ctx: Context):T = {
 		log.debug("Requesting {}", url)
 
 		implicit val formats = OmegaUpSerialization.formats
@@ -129,7 +140,7 @@ object Https extends Object with Log with Using {
 		}}
 	}
 
-	def send[T, W <: AnyRef](url:String, request:W, runner: Boolean)(implicit mf: Manifest[T]):T = {
+	def send[T, W <: AnyRef](url:String, request:W, runner: Boolean)(implicit mf: Manifest[T],  ctx: Context):T = {
 		log.debug("Requesting {}", url)
 
 		implicit val formats = OmegaUpSerialization.formats
@@ -145,13 +156,13 @@ object Https extends Object with Log with Using {
 		}}
 	}
 
-	def zip_send[T](url:String, zipfile:String, zipname:String, runner: Boolean)(implicit mf: Manifest[T]): T = {
+	def zip_send[T](url:String, zipfile:String, zipname:String, runner: Boolean)(implicit mf: Manifest[T],  ctx: Context): T = {
 		val file = new File(zipfile)
 
 		zip_send(url, new FileInputStream(zipfile), file.length.toInt, zipname, runner)
 	}
 
-	def zip_send[T](url:String, inputStream:InputStream, zipSize:Int, zipname:String, runner: Boolean)(implicit mf: Manifest[T]): T = {
+	def zip_send[T](url:String, inputStream:InputStream, zipSize:Int, zipname:String, runner: Boolean)(implicit mf: Manifest[T],  ctx: Context): T = {
 		log.debug("Requesting {}", url)
 
 		implicit val formats = OmegaUpSerialization.formats
@@ -171,7 +182,7 @@ object Https extends Object with Log with Using {
 		}}
 	}
 
-	def stream_send[T](url:String, mimeType: String, filename: String, callback:OutputStream=>Unit, runner: Boolean = true)(implicit mf: Manifest[T]): T = {
+	def stream_send[T](url:String, mimeType: String, filename: String, callback:OutputStream=>Unit, runner: Boolean = true)(implicit mf: Manifest[T],  ctx: Context): T = {
 		log.debug("Requesting {}", url)
 
 		implicit val formats = OmegaUpSerialization.formats
@@ -190,7 +201,7 @@ object Https extends Object with Log with Using {
 		}}
 	}
 
-	def receive_zip[T, W <: AnyRef](url:String, request:W, file:String, runner: Boolean = true)(implicit mf: Manifest[T]): Option[T] = {
+	def receive_zip[T, W <: AnyRef](url:String, request:W, file:String, runner: Boolean = true)(implicit mf: Manifest[T],  ctx: Context): Option[T] = {
 		log.debug("Requesting {}", url)
 
 		implicit val formats = OmegaUpSerialization.formats
@@ -223,3 +234,4 @@ object Https extends Object with Log with Using {
 	}
 }
 
+/* vim: set noexpandtab: */

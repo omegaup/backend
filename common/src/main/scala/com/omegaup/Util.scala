@@ -226,7 +226,7 @@ object MetaFile extends Object with Using {
 }
 
 object DataUriStream extends Object with Log {
-	def apply(stream: InputStream) = {
+	def apply(stream: InputStream)(implicit ctx: Context) = {
 		log.debug("Reading data URI")
 
 		val buffer = Array.ofDim[Byte](1024)
@@ -260,7 +260,8 @@ object DataUriStream extends Object with Log {
 	}
 }
 
-class DataUriInputStream(stream: InputStream) extends FilterInputStream(DataUriStream(stream)) with Log {}
+class DataUriInputStream(stream: InputStream)(implicit ctx: Context)
+	extends FilterInputStream(DataUriStream(stream)) with Log {}
 
 class ChunkInputStream(stream: InputStream, length: Long) extends InputStream {
 	var remaining = length
@@ -269,7 +270,8 @@ class ChunkInputStream(stream: InputStream, length: Long) extends InputStream {
 	override def close(): Unit = {
 		while (remaining > 0) {
 			if (skip(remaining) == 0) {
-				throw new IOException("Cannot close current chunk: " + remaining + " bytes remaining")
+				throw new IOException("Cannot close current chunk: " + remaining +
+					" bytes remaining")
 			}
 		}
 	}
@@ -282,7 +284,8 @@ class ChunkInputStream(stream: InputStream, length: Long) extends InputStream {
 		}	else {
 			val r = stream.read
 			if (r == -1) {
-				throw new IOException("Premature EOF while reading a chunk with " + remaining + " bytes remaining")
+				throw new IOException("Premature EOF while reading a chunk with " +
+					remaining + " bytes remaining")
 			}
 			remaining -= 1
 			r
@@ -293,7 +296,8 @@ class ChunkInputStream(stream: InputStream, length: Long) extends InputStream {
 		if (remaining == 0) return -1
 		val r = stream.read(b, off, Math.min(remaining.toInt, len))
 		if (r == -1) {
-			throw new IOException("Premature EOF while reading a chunk with " + remaining + " bytes remaining")
+			throw new IOException("Premature EOF while reading a chunk with " +
+				remaining + " bytes remaining")
 		}
 		remaining -= r
 		r

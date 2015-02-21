@@ -12,9 +12,9 @@ import com.omegaup.data._
 import Verdict._
 
 trait OutputValidator extends Object with Log with Using {
-	def validateRun(ctx: RunContext, run: Run): Run = {
+	def validateRun(run: Run)(implicit ctx: RunContext): Run = {
 		val alias = run.problem.alias
-		val dataDirectory = new File(Config.get("grader.root", "./grade") + "/" + run.id)
+		val dataDirectory = new File(ctx.config.get("grader.root", "./grade") + "/" + run.id)
 
 		log.info("Validating {} {} with {}", alias, run.id, run.problem.validator)
 
@@ -22,24 +22,24 @@ trait OutputValidator extends Object with Log with Using {
 		run.verdict = Verdict.Accepted
 		run.runtime = 0
 		run.memory = 0
-		
+
 		val metas = dataDirectory.listFiles
 			.filter { _.getName.endsWith(".meta") }
 			.map{ f => f.getName.substring(0, f.getName.length - 5)->(f, MetaFile.load(f.getCanonicalPath)) }
 			.toMap
-		
-		val weightsFile = new File(Config.get("problems.root", "./problems") + "/" + alias + "/testplan")
+
+		val weightsFile = new File(ctx.config.get("problems.root", "./problems") + "/" + alias + "/testplan")
 
 		log.trace("Finding Weights file in {}", weightsFile.getCanonicalPath)
-		
+
 		val weights:scala.collection.Map[String,scala.collection.Map[String,Double]] = if (weightsFile.exists) {
 			val weights = new mutable.ListMap[String,mutable.ListMap[String,Double]]
 			val fileReader = new BufferedReader(new FileReader(weightsFile))
 			var line: String = null
-	
+
 			while( { line = fileReader.readLine(); line != null} ) {
 				val tokens = line.split("\\s+")
-			
+
 				if(tokens.length == 2 && !tokens(0).startsWith("#")) {
 					val idx = tokens(0).indexOf(".")
 
@@ -56,14 +56,14 @@ trait OutputValidator extends Object with Log with Using {
 					weights(group) += (tokens(0) -> tokens(1).toDouble)
 				}
 			}
-		
+
 			fileReader.close()
-		
+
 			weights
 		} else {
 			val weights = new mutable.ListMap[String,mutable.ListMap[String,Double]]
 
-			val inputs = new File(Config.get("problems.root", "./problems"), alias + "/cases/in/")
+			val inputs = new File(ctx.config.get("problems.root", "./problems"), alias + "/cases/in/")
 				.listFiles
 				.filter { _.getName.endsWith(".in") }
 
@@ -128,7 +128,7 @@ trait OutputValidator extends Object with Log with Using {
 		    run.runtime > run.problem.overall_wall_time_limit.get) {
 			run.runtime = run.problem.overall_wall_time_limit.get
 		}
-		
+
 		val caseScores = weights.map { case (group, data) => {
 			val scores = data.map { case (name, weight) => {
 				var verdict = if (metas.contains(name)) {
@@ -144,7 +144,7 @@ trait OutputValidator extends Object with Log with Using {
 						run,
 						name,
 						new File(f.getCanonicalPath.replace(".meta", ".out")),
-						new File(Config.get("problems.root", "./problems"),
+						new File(ctx.config.get("problems.root", "./problems"),
 							alias + "/cases/out/" + f.getName.replace(".meta", ".out")),
 						metas(name)._2
 					)
@@ -182,7 +182,7 @@ trait OutputValidator extends Object with Log with Using {
 
 		implicit val formats = OmegaUpSerialization.formats
 
-		val details = new File(Config.get("grader.root", "./grade") + "/" + run.id + "/details.json")
+		val details = new File(ctx.config.get("grader.root", "./grade") + "/" + run.id + "/details.json")
 		log.debug("Writing details into {}.", details.getCanonicalPath)
 		Serialization.write(caseScores, new FileWriter(details))
 
@@ -207,15 +207,17 @@ trait OutputValidator extends Object with Log with Using {
 
 		run.score = scala.math.round(run.score * 1024 * 1024) / (1024.0 * 1024.0)
 
-		if(run.score == 0 && run.verdict < Verdict.WrongAnswer) run.verdict = Verdict.WrongAnswer
-		else if(run.score < (1-1e-9) && run.verdict < Verdict.PartialAccepted) run.verdict = Verdict.PartialAccepted
+		if(run.score == 0 && run.verdict < Verdict.WrongAnswer)
+			run.verdict = Verdict.WrongAnswer
+		else if(run.score < (1-1e-9) && run.verdict < Verdict.PartialAccepted)
+			run.verdict = Verdict.PartialAccepted
 
 		if (run.verdict == Verdict.JudgeError) {
 			run.score = 0
 			run.memory = 0
 			run.runtime = 0
 		}
-		
+
 		run.contest_score = run.problem.points match {
 			case None => None
 			case Some(factor) => Some(run.score * factor)
@@ -223,12 +225,17 @@ trait OutputValidator extends Object with Log with Using {
 
 		run
 	}
-	
-	def validateCase(run: Run, caseName: String, runOut: File, problemOut: File, meta: scala.collection.Map[String,String]): Double
+
+	def validateCase(run: Run, caseName: String, runOut: File, problemOut: File,
+		meta: scala.collection.Map[String,String])(implicit ctx: Context):
+	Double
 }
 
 object CustomValidator extends OutputValidator {
-	override def validateCase(run: Run, caseName: String, runOut: File, problemOut: File, meta: scala.collection.Map[String,String]): Double = {
+	override def validateCase(run: Run, caseName: String, runOut: File,
+		problemOut: File, meta: scala.collection.Map[String,String])
+		(implicit ctx: Context):
+	Double = {
 		if (meta.contains("score")) {
 			meta("score").toDouble
 		} else {
@@ -238,7 +245,10 @@ object CustomValidator extends OutputValidator {
 }
 
 object LiteralValidator extends OutputValidator {
-	override def validateCase(run: Run, caseName: String, runOut: File, problemOut: File, meta: scala.collection.Map[String,String]): Double = {
+	override def validateCase(run: Run, caseName: String, runOut: File,
+		problemOut: File, meta: scala.collection.Map[String,String])
+		(implicit ctx: Context):
+	Double = {
 		val score = (if (runOut.exists) {
 			FileUtil.read(runOut).trim
 		} else {
@@ -252,7 +262,8 @@ object LiteralValidator extends OutputValidator {
 	}
 }
 
-class Token(var nextChar: Int, reader: Reader, containedInTokenClass: (Char) => Boolean) extends Iterator[Char] {
+class Token(var nextChar: Int, reader: Reader,
+		containedInTokenClass: (Char) => Boolean) extends Iterator[Char] {
 	def hasNext(): Boolean = {
 		return !eof && containedInTokenClass(nextChar.asInstanceOf[Char])
 	}
@@ -326,7 +337,8 @@ class CharTokenValidator(equals: (Char, Char) => Boolean) extends TokenValidator
 	}
 }
 
-class Tokenizer(file: File, containedInTokenClass: (Char) => Boolean) extends Iterator[Token] {
+class Tokenizer(file: File, containedInTokenClass: (Char) => Boolean)
+		extends Iterator[Token] {
 	val reader = new BufferedReader(new FileReader(file))
 	var eof: Boolean = false
 	var nextToken: Token = null
@@ -359,7 +371,9 @@ class Tokenizer(file: File, containedInTokenClass: (Char) => Boolean) extends It
 }
 
 trait TokenizerValidator extends Object with Log {
-	def validateCase(run: Run, caseName: String, inA: Tokenizer, inB: Tokenizer, tc: TokenValidator): Double = {
+	def validateCase(run: Run, caseName: String, inA: Tokenizer, inB: Tokenizer,
+		tc: TokenValidator)(implicit ctx: Context):
+	Double = {
 		log.debug("Validating {}, case {}", run, caseName)
 
 		try {
@@ -371,18 +385,18 @@ trait TokenizerValidator extends Object with Log {
 					points = 0
 				}
 			}
-			
+
 			if (inA.hasNext || inB.hasNext) {
 				log.debug("Unfinished input {} {} {}", caseName, inA.path, inB.path)
 				points = 0
 			}
-			
+
 			log.debug("Validating {}, case {}. Reporting {} points", run, caseName, points)
 			points
 		} catch {
 			case e: Exception => {
 				log.error(e, "Error grading")
-				
+
 				0
 			}
 		} finally {
@@ -394,7 +408,9 @@ trait TokenizerValidator extends Object with Log {
 }
 
 object TokenValidator extends OutputValidator with TokenizerValidator {
-	def validateCase(run: Run, caseName: String, runOut: File, problemOut: File, meta: scala.collection.Map[String,String]): Double = {
+	def validateCase(run: Run, caseName: String, runOut: File, problemOut: File,
+		meta: scala.collection.Map[String,String])(implicit ctx: Context):
+	Double = {
 		val charClass = (c: Char) => !c.isWhitespace
 		validateCase(
 			run,
@@ -406,7 +422,9 @@ object TokenValidator extends OutputValidator with TokenizerValidator {
 }
 
 object TokenCaselessValidator extends OutputValidator with TokenizerValidator {
-	def validateCase(run: Run, caseName: String, runOut: File, problemOut: File, meta: scala.collection.Map[String,String]): Double = {
+	def validateCase(run: Run, caseName: String, runOut: File, problemOut: File,
+		meta: scala.collection.Map[String,String])(implicit ctx: Context):
+	Double = {
 		val charClass = (c: Char) => !c.isWhitespace
 		validateCase(
 			run,
@@ -418,7 +436,9 @@ object TokenCaselessValidator extends OutputValidator with TokenizerValidator {
 }
 
 object TokenNumericValidator extends OutputValidator with TokenizerValidator {
-	def validateCase(run: Run, caseName: String, runOut: File, problemOut: File, meta: scala.collection.Map[String,String]): Double = {
+	def validateCase(run: Run, caseName: String, runOut: File, problemOut: File,
+		meta: scala.collection.Map[String,String])(implicit ctx: Context):
+	Double = {
 		val charClass = (c: Char) => c.isDigit || c == '.' || c == '-'
 		validateCase(
 			run,

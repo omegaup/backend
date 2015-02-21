@@ -1,8 +1,10 @@
 package com.omegaup.grader
 
 import com.omegaup.Config
+import com.omegaup.Https
 import com.omegaup.Log
 import com.omegaup.Logging
+import com.omegaup.Context
 
 object Service extends Object with Log {
 	def parseOptions(args: Array[String]): GraderOptions = {
@@ -12,7 +14,6 @@ object Service extends Object with Log {
 			if (args(i) == "--config" && i + 1 < args.length) {
 				i += 1
 				options = options.copy(configPath = args(i))
-				Config.load(options.configPath)
 			} else if (args(i) == "--output" && i + 1 < args.length) {
 				i += 1
 				val redirect = new java.io.PrintStream(
@@ -28,6 +29,8 @@ object Service extends Object with Log {
 
 	def main(args: Array[String]) = {
 		val options = parseOptions(args)
+
+		implicit val ctx = new Context(new Config(options.configPath))
 
 		// logger
 		Logging.init

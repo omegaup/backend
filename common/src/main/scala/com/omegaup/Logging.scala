@@ -19,28 +19,33 @@ class Logger(name: String) {
 	private val isWarnEnabled = log.isWarnEnabled
 	private val isErrorEnabled = log.isErrorEnabled
 
-	private def traceImpl(message: String, throwable: Throwable) = {
+	private def traceImpl(message: String, throwable: Throwable)
+			(implicit ctx: Context) = {
 		log.trace(message, throwable)
 	}
-	private def debugImpl(message: String, throwable: Throwable) = {
+	private def debugImpl(message: String, throwable: Throwable)
+			(implicit ctx: Context) = {
 		log.debug(message, throwable)
 	}
-	private def infoImpl(message: String, throwable: Throwable) = {
+	private def infoImpl(message: String, throwable: Throwable)
+			(implicit ctx: Context) = {
 		log.info(message, throwable)
 	}
-	private def warnImpl(message: String, throwable: Throwable) = {
+	private def warnImpl(message: String, throwable: Throwable)
+			(implicit ctx: Context) = {
 		log.warn(message, throwable)
 	}
-	private def errorImpl(message: String, throwable: Throwable) = {
+	private def errorImpl(message: String, throwable: Throwable)
+			(implicit ctx: Context) = {
 		log.error(message, throwable)
 	}
 
-	def trace(message: String) = {
+	def trace(message: String)(implicit ctx: Context) = {
 		if (isTraceEnabled) {
 			traceImpl(message, null)
 		}
 	}
-	def trace(message: String, values: Any*) = {
+	def trace(message: String, values: Any*)(implicit ctx: Context) = {
 		if (isTraceEnabled) {
 			traceImpl(
 				MessageFormatter.arrayFormat(
@@ -50,12 +55,13 @@ class Logger(name: String) {
 			)
 		}
 	}
-	def trace(throwable: Throwable, message: String) = {
+	def trace(throwable: Throwable, message: String)(implicit ctx: Context) = {
 		if (isTraceEnabled) {
 			traceImpl(message, throwable)
 		}
 	}
-	def trace(throwable: Throwable, message: String, values: Object*) = {
+	def trace(throwable: Throwable, message: String, values: Object*)
+			(implicit ctx: Context) = {
 		if (isTraceEnabled) {
 			traceImpl(
 				MessageFormatter.arrayFormat(
@@ -66,12 +72,12 @@ class Logger(name: String) {
 		}
 	}
 
-	def debug(message: String) = {
+	def debug(message: String)(implicit ctx: Context) = {
 		if (isDebugEnabled) {
 			debugImpl(message, null)
 		}
 	}
-	def debug(message: String, values: Any*) = {
+	def debug(message: String, values: Any*)(implicit ctx: Context) = {
 		if (isDebugEnabled) {
 			debugImpl(
 				MessageFormatter.arrayFormat(
@@ -81,12 +87,13 @@ class Logger(name: String) {
 			)
 		}
 	}
-	def debug(throwable: Throwable, message: String) = {
+	def debug(throwable: Throwable, message: String)(implicit ctx: Context) = {
 		if (isDebugEnabled) {
 			debugImpl(message, throwable)
 		}
 	}
-	def debug(throwable: Throwable, message: String, values: Object*) = {
+	def debug(throwable: Throwable, message: String, values: Object*)
+			(implicit ctx: Context) = {
 		if (isDebugEnabled) {
 			debugImpl(
 				MessageFormatter.arrayFormat(
@@ -97,12 +104,12 @@ class Logger(name: String) {
 		}
 	}
 
-	def info(message: String) = {
+	def info(message: String)(implicit ctx: Context) = {
 		if (isInfoEnabled) {
 			infoImpl(message, null)
 		}
 	}
-	def info(message: String, values: Any*) = {
+	def info(message: String, values: Any*)(implicit ctx: Context) = {
 		if (isInfoEnabled) {
 			infoImpl(
 				MessageFormatter.arrayFormat(
@@ -112,12 +119,13 @@ class Logger(name: String) {
 			)
 		}
 	}
-	def info(throwable: Throwable, message: String) = {
+	def info(throwable: Throwable, message: String)(implicit ctx: Context) = {
 		if (isInfoEnabled) {
 			infoImpl(message, throwable)
 		}
 	}
-	def info(throwable: Throwable, message: String, values: Object*) = {
+	def info(throwable: Throwable, message: String, values: Object*)
+			(implicit ctx: Context) = {
 		if (isInfoEnabled) {
 			infoImpl(
 				MessageFormatter.arrayFormat(
@@ -128,12 +136,12 @@ class Logger(name: String) {
 		}
 	}
 
-	def warn(message: String) = {
+	def warn(message: String)(implicit ctx: Context) = {
 		if (isWarnEnabled) {
 			warnImpl(message, null)
 		}
 	}
-	def warn(message: String, values: Any*) = {
+	def warn(message: String, values: Any*)(implicit ctx: Context) = {
 		if (isWarnEnabled) {
 			warnImpl(
 				MessageFormatter.arrayFormat(
@@ -143,12 +151,13 @@ class Logger(name: String) {
 			)
 		}
 	}
-	def warn(throwable: Throwable, message: String) = {
+	def warn(throwable: Throwable, message: String)(implicit ctx: Context) = {
 		if (isWarnEnabled) {
 			warnImpl(message, throwable)
 		}
 	}
-	def warn(throwable: Throwable, message: String, values: Object*) = {
+	def warn(throwable: Throwable, message: String, values: Object*)
+			(implicit ctx: Context) = {
 		if (isWarnEnabled) {
 			warnImpl(
 				MessageFormatter.arrayFormat(
@@ -159,12 +168,12 @@ class Logger(name: String) {
 		}
 	}
 
-	def error(message: String) = {
+	def error(message: String)(implicit ctx: Context) = {
 		if (isErrorEnabled) {
 			errorImpl(message, null)
 		}
 	}
-	def error(message: String, values: Any*) = {
+	def error(message: String, values: Any*)(implicit ctx: Context) = {
 		if (isErrorEnabled) {
 			errorImpl(
 				MessageFormatter.arrayFormat(
@@ -174,12 +183,13 @@ class Logger(name: String) {
 			)
 		}
 	}
-	def error(throwable: Throwable, message: String) = {
+	def error(throwable: Throwable, message: String)(implicit ctx: Context) = {
 		if (isErrorEnabled) {
 			errorImpl(message, throwable)
 		}
 	}
-	def error(throwable: Throwable, message: String, values: Object*) = {
+	def error(throwable: Throwable, message: String, values: Object*)
+			(implicit ctx: Context) = {
 		if (isErrorEnabled) {
 			errorImpl(
 				MessageFormatter.arrayFormat(
@@ -191,9 +201,9 @@ class Logger(name: String) {
 	}
 }
 
-object Logging extends Object with Log {
+object Logging extends Object {
 	private val encoderPattern = "%date [%thread] %-5level %logger{35} - %msg%n"
-	def init(): Unit = {
+	def init()(implicit ctx: Context): Unit = {
 		import logback.classic.Logger
 		import logback.classic.Level._
 		import logback.core.filter._
@@ -203,7 +213,7 @@ object Logging extends Object with Log {
 		val rootLogger = LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME)
 			.asInstanceOf[logback.classic.Logger]
 
-		val logLevel = Config.get("logging.level", "info") match {
+		val logLevel = ctx.config.get("logging.level", "info") match {
 			case "all" => TRACE
 			case "finest" => TRACE
 			case "finer" => TRACE
@@ -220,7 +230,7 @@ object Logging extends Object with Log {
 
 		createAppender(
 			rootLogger,
-			Config.get("logging.file", ""),
+			ctx.config.get("logging.file", ""),
 			new Filter[ILoggingEvent]() {
 				override def decide(event: ILoggingEvent): FilterReply = {
 					val throwable = event.getThrowableProxy()
@@ -249,7 +259,7 @@ object Logging extends Object with Log {
 
 		rootLogger.setLevel(logLevel)
 
-		val perfLog = Config.get("logging.perf.file", "")
+		val perfLog = ctx.config.get("logging.perf.file", "")
 		if (perfLog != "") {
 			val perfLogger = LoggerFactory.getLogger("omegaup.grader.RunContext")
 				.asInstanceOf[logback.classic.Logger]
@@ -259,8 +269,6 @@ object Logging extends Object with Log {
 			perfLogger.setAdditive(false)
 			perfLogger.setLevel(INFO)
 		}
-
-		log.info("Logger loaded for {}", Config.get("logging.file", ""))
 	}
 
 	private def createAppender(

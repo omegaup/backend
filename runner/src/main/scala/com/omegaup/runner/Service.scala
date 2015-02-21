@@ -11,7 +11,8 @@ import com.omegaup.data._
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorOutputStream
 import org.apache.commons.compress.archivers.tar.{TarArchiveInputStream, TarArchiveEntry}
 
-class OmegaUpRunstreamWriter(outputStream: OutputStream) extends Closeable with RunCaseCallback with Log {
+class OmegaUpRunstreamWriter(outputStream: OutputStream)(implicit ctx: Context)
+		extends Closeable with RunCaseCallback with Log {
   private val bzip2 = new BZip2CompressorOutputStream(outputStream)
   private val dos = new DataOutputStream(bzip2)
   private var finalized = false
@@ -46,7 +47,8 @@ class OmegaUpRunstreamWriter(outputStream: OutputStream) extends Closeable with 
   }
 }
 
-class RegisterThread(hostname: String, port: Int) extends Thread("RegisterThread") with Log {
+class RegisterThread(hostname: String, port: Int)(implicit ctx: Context)
+		extends Thread("RegisterThread") with Log {
   private var deadline = 0L
   private var alive = true
   private var active = true
@@ -61,7 +63,7 @@ class RegisterThread(hostname: String, port: Int) extends Thread("RegisterThread
     try {
       // well, at least try to de-register
       Https.send[EndpointRegisterOutputMessage, EndpointRegisterInputMessage](
-				Config.get("grader.deregister.url",
+				ctx.config.get("grader.deregister.url",
 					"https://localhost:21680/endpoint/deregister/"),
         new EndpointRegisterInputMessage(hostname, port),
         true
@@ -92,7 +94,7 @@ class RegisterThread(hostname: String, port: Int) extends Thread("RegisterThread
     while (alive) {
       val time = System.currentTimeMillis
       if (time >= deadline) return
-      
+
       try {
         lock.synchronized {
           lock.wait(deadline - time)
@@ -110,7 +112,7 @@ class RegisterThread(hostname: String, port: Int) extends Thread("RegisterThread
       if (active) {
         try {
           Https.send[EndpointRegisterOutputMessage, EndpointRegisterInputMessage](
-						Config.get("grader.register.url",
+						ctx.config.get("grader.register.url",
 							"https://localhost:21680/endpoint/register/"),
             new EndpointRegisterInputMessage(hostname, port),
             true
@@ -154,27 +156,27 @@ object Service extends Object with Log with Using {
       i += 1
     }
 
-    Config.load(configPath)
+		implicit val ctx = new Context(new Config(configPath))
 
     // Get local hostname
-    val hostname = Config.get("runner.hostname", "")
+    val hostname = ctx.config.get("runner.hostname", "")
 
     if (hostname == "") {
       throw new IllegalArgumentException("runner.hostname configuration must be set")
     }
 
-		new File(Config.get("input.root", "input")).mkdirs
-		new File(Config.get("compile.root", "compile")).mkdirs
+		new File(ctx.config.get("input.root", "input")).mkdirs
+		new File(ctx.config.get("compile.root", "compile")).mkdirs
 
     var registerThread: RegisterThread = null
-    
+
     // logger
     Logging.init
 
     // And build a runner instance
     val runner = new Runner(
 			hostname,
-			Config.get("runner.sandbox", "minijail") match {
+			ctx.config.get("runner.sandbox", "minijail") match {
 				case "null" => NullSandbox
 				case _ => Minijail
 			}
@@ -189,7 +191,7 @@ object Service extends Object with Log with Using {
                           request: HttpServletRequest,
                           response: HttpServletResponse) = {
         implicit val formats = OmegaUpSerialization.formats
-        
+
         request.getPathInfo() match {
           case "/run/" => lock[Unit](registerThread) ({
             var token: String = null
@@ -200,8 +202,8 @@ object Service extends Object with Log with Using {
               val message = try {
                 val req = Serialization.read[RunInputMessage](request.getReader)
                 token = req.token
-                
-                val zipFile = new File(Config.get("compile.root", "./compile"), token + "/output.zip")
+
+                val zipFile = new File(ctx.config.get("compile.root", "./compile"), token + "/output.zip")
                 runner.run(req, callbackProxy)
               } catch {
                 case e: Exception => {
@@ -241,7 +243,7 @@ object Service extends Object with Log with Using {
               case "/input/" => lock(registerThread) ({
                 try {
                   log.info("/input/")
-                  
+
                   response.setStatus(HttpServletResponse.SC_OK)
                   if(request.getContentType() != "application/x-tar" ||
                      request.getHeader("Content-Disposition") == null) {
@@ -255,15 +257,15 @@ object Service extends Object with Log with Using {
                   } else {
                     val ContentDispositionRegex =
                       "attachment; filename=([a-zA-Z0-9_-][a-zA-Z0-9_.-]*);.*".r
-      
+
                     val ContentDispositionRegex(inputName) =
                       request.getHeader("Content-Disposition")
 
                     var tarStream: InputStream = request.getInputStream
 
                     // Some debugging code to diagnose input transmission problems.
-                    if (Config.get("runner.tar.preserve", false)) {
-                      var tarFile = new File(Config.get("input.root", "./input"), inputName + ".tar")
+                    if (ctx.config.get("runner.tar.preserve", false)) {
+                      var tarFile = new File(ctx.config.get("input.root", "./input"), inputName + ".tar")
                       using (new FileOutputStream(tarFile)) {
                         FileUtil.copy(tarStream, _)
                       }
@@ -307,32 +309,32 @@ object Service extends Object with Log with Using {
             }, response.getWriter())
           }
         }
-        
+
         baseRequest.setHandled(true)
       }
     };
 
 		val server = new org.eclipse.jetty.server.Server()
-		val runnerConnector = (if (Config.get("https.disable", false)) {
+		val runnerConnector = (if (ctx.config.get("https.disable", false)) {
 			new org.eclipse.jetty.server.ServerConnector(server)
 		} else {
-			// boilerplate code for jetty with https support  
-			
+			// boilerplate code for jetty with https support
+
 			val sslContext =
 				new org.eclipse.jetty.util.ssl.SslContextFactory(
-					Config.get("ssl.keystore", "omegaup.jks")
+					ctx.config.get("ssl.keystore", "omegaup.jks")
 				)
-			sslContext.setKeyManagerPassword(Config.get("ssl.password", "omegaup"))
-			sslContext.setKeyStorePassword(Config.get("ssl.keystore.password", "omegaup"))
+			sslContext.setKeyManagerPassword(ctx.config.get("ssl.password", "omegaup"))
+			sslContext.setKeyStorePassword(ctx.config.get("ssl.keystore.password", "omegaup"))
 			sslContext.setTrustStore(FileUtil.loadKeyStore(
-				Config.get("ssl.truststore", "omegaup.jks"),
-				Config.get("ssl.truststore.password", "omegaup")
+				ctx.config.get("ssl.truststore", "omegaup.jks"),
+				ctx.config.get("ssl.truststore.password", "omegaup")
 			))
 			sslContext.setNeedClientAuth(true)
 
 			new org.eclipse.jetty.server.ServerConnector(server, sslContext)
 		})
-    runnerConnector.setPort(Config.get("runner.port", 0))
+    runnerConnector.setPort(ctx.config.get("runner.port", 0))
 
     server.setConnectors(List(runnerConnector).toArray)
     server.setHandler(handler)
@@ -341,14 +343,14 @@ object Service extends Object with Log with Using {
 
     log.info("Runner {} registering port {}", hostname, runnerConnector.getLocalPort)
     registerThread = new RegisterThread(hostname, runnerConnector.getLocalPort)
-    
+
     Runtime.getRuntime.addShutdownHook(new Thread() {
       override def run() = {
         server.stop
         registerThread.shutdown
       }
     })
-		
+
     // Send a heartbeat every 5 minutes to register
     registerThread.start
 

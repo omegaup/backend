@@ -28,15 +28,15 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
   private def compileStatus(
       lang: String, runDirectory: File, target: String, sourceFiles: Iterable[String],
       previousError: String, errorString: String,
-      status: Int): CompileOutputMessage = {
+      status: Int)(implicit ctx: Context): CompileOutputMessage = {
     var compileError = "Compiler failed to run"
 
     if(status >= 0) {
       val targetFile = new File(runDirectory, sandbox.targetFileName(lang, target))
       val missingTarget = !targetFile.exists
-    
+
       if (previousError == null && status == 0 && !missingTarget) {
-        if (!Config.get("runner.preserve", false)) {
+        if (!ctx.config.get("runner.preserve", false)) {
           new File(runDirectory, "compile.meta").delete
           new File(runDirectory, "compile.out").delete
           new File(runDirectory, "compile.err").delete
@@ -51,14 +51,14 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
             }
           }
         }
-    
+
         log.info("compile finished successfully")
         return new CompileOutputMessage(
           token = Some(runDirectory.getParentFile.getName))
       }
 
       val meta = MetaFile.load(runDirectory.getCanonicalPath + "/compile.meta")
-  
+
       compileError =
         if (previousError != null)
           previousError
@@ -80,10 +80,10 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
       }
     }
 
-    if (!Config.get("runner.preserve", false)) {
+    if (!ctx.config.get("runner.preserve", false)) {
       FileUtil.deleteDirectory(runDirectory.getParentFile.getCanonicalPath)
     }
-  
+
     log.error("compile finished with errors: {}", compileError)
     new CompileOutputMessage(errorString, error = Some(compileError))
   }
@@ -91,11 +91,11 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
   def compile(runDirectory: File,
               lang: String,
               codes: List[(String, String)],
-              error_string: String): CompileOutputMessage = {
+              error_string: String)(implicit ctx: Context): CompileOutputMessage = {
     runDirectory.mkdirs
-    
+
     val inputFiles = new mutable.ListBuffer[String]
-    
+
     for ((name, code) <- codes) {
       if (name.contains("/")) {
         return new CompileOutputMessage(error_string, error=Some("invalid filenames"))
@@ -114,7 +114,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
 
     // Store the first compilation error for multi-file Pascal.
     var previousError: String = null
-  
+
     // Workaround for fpc's weird rules regarding compilation order.
     var pascalMain = runDirectory.getCanonicalPath + "/" + "Main.pas"
     if (inputFiles.contains(pascalMain) && inputFiles.size > 1) {
@@ -135,7 +135,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
             val meta = MetaFile.load(runDirectory.getCanonicalPath + "/compile.meta")
 
             if (status != 0 && previousError == null) {
-              previousError = 
+              previousError =
                 if (meta("status") == "TO")
                   "Compilation time exceeded"
                 else
@@ -152,7 +152,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
       inputFiles.clear
       inputFiles += pascalMain
     }
- 
+
     sandbox.compile(
       lang,
       inputFiles,
@@ -170,7 +170,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
               parent: (String, String),
               child: (String, String),
               interactive: InteractiveDescription,
-              debug: Boolean): CompileOutputMessage = {
+              debug: Boolean)(implicit ctx: Context): CompileOutputMessage = {
     runDirectory.mkdirs
     val parser = new Parser
 
@@ -236,16 +236,16 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
 
     new CompileOutputMessage(token = Some(runDirectory.getParentFile.getName))
   }
-  
-  def compile(message: CompileInputMessage): CompileOutputMessage = {
+
+  def compile(message: CompileInputMessage)(implicit ctx: Context): CompileOutputMessage = {
     log.info("compile {}", message.lang)
-    
-    val compileDirectory = new File(Config.get("compile.root", "./compile"))
+
+    val compileDirectory = new File(ctx.config.get("compile.root", "./compile"))
     compileDirectory.mkdirs
-    
+
     var runDirectoryFile = File.createTempFile(System.nanoTime.toString, null, compileDirectory)
     runDirectoryFile.delete
-    
+
     val runRoot =
       runDirectoryFile
         .getCanonicalPath
@@ -259,11 +259,11 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
                                         master_lang,
                                         master_code,
                                         "judge error")
-            
+
             if (master_result.status != "ok") {
               return master_result
             }
-           
+
             FileUtil.write(new File(runRoot, "validator/lang"), master_lang)
           }
           case None => {
@@ -273,7 +273,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
       }
       case None => {}
     }
-   
+
     message.interactive match {
       case None =>
         compile(new File(runRoot, "bin"), message.lang, message.code, "compile error")
@@ -288,31 +288,31 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
     }
   }
 
-  def run(message: RunInputMessage, callback: RunCaseCallback) : RunOutputMessage = {
+  def run(message: RunInputMessage, callback: RunCaseCallback)(implicit ctx: Context) : RunOutputMessage = {
     log.info("run {}", message)
     val casesDirectory:File = message.input match {
       case Some(in) => {
         if (in.contains(".") || in.contains("/")) {
           return new RunOutputMessage(status="error", error=Some("Invalid input"))
         }
-        new File (Config.get("input.root", "./input"), in)
+        new File (ctx.config.get("input.root", "./input"), in)
       }
       case None => null
     }
-    
+
     if(message.token.contains("..") || message.token.contains("/")) {
       return new RunOutputMessage(status="error", error=Some("Invalid token"))
     }
-    
+
     if(casesDirectory != null && !casesDirectory.exists) {
       new RunOutputMessage(status="error", error=Some("missing input"))
     } else {
-      val runDirectory = new File(Config.get("compile.root", "./compile"), message.token)
-    
+      val runDirectory = new File(ctx.config.get("compile.root", "./compile"), message.token)
+
       if(!runDirectory.exists) return new RunOutputMessage(status="error", error=Some("Invalid token"))
-    
+
       val binDirectory = new File(runDirectory.getCanonicalPath, "bin")
-    
+
       val lang = message.token.substring(message.token.indexOf(".")+1)
 
       if (lang == "cat") {
@@ -326,7 +326,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
                                              .filter {_.getName.endsWith(".in")}
                                              .map { _.getName }
               var entry: ZipEntry = stream.getNextEntry
-      
+
               while(entry != null) {
                 log.debug("Literal stream: {}", entry.getName)
                 val caseName = FileUtil.removeExtension(FileUtil.basename(entry.getName))
@@ -366,7 +366,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
             extra.map { x => {
               val caseName = x.name
               val casePath = new File(runDirectory, caseName).getCanonicalPath
-            
+
               FileUtil.write(casePath + ".in", x.data)
               casePath
             }}
@@ -407,14 +407,14 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
             new File(outputPath + ".meta"), callback)
         }
       }
-    
+
       log.info("run finished token={}", message.token)
-      
+
       new RunOutputMessage()
     }
   }
 
-  def interactiveRun(message: RunInputMessage, interactive: InteractiveRuntimeDescription, lang: String, binDirectory: File, casePath: String) = {
+  def interactiveRun(message: RunInputMessage, interactive: InteractiveRuntimeDescription, lang: String, binDirectory: File, casePath: String)(implicit ctx: Context) = {
     val runtime = Runtime.getRuntime
     val main = interactive.main
 
@@ -580,11 +580,11 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
   }
 
   def process(message: RunInputMessage, runDirectory: File, casesDirectory: File, lang: String,
-      metaFile: File, callback: RunCaseCallback): Unit = {
+      metaFile: File, callback: RunCaseCallback)(implicit ctx: Context): Unit = {
     val meta = MetaFile.load(metaFile.getCanonicalPath)
     var addedErr = false
     var addedOut = false
-  
+
     if(meta("status") == "OK") {
       val validatorDirectory = new File(runDirectory, "validator")
       if (validatorDirectory.exists) {
@@ -594,7 +594,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
         if (!inputFile.exists) {
           inputFile = new File(casesDirectory, caseName + ".in")
         }
-        
+
         val validator_lang = FileUtil.read(new File(validatorDirectory, "lang"))
 
         sandbox.run(message,
@@ -615,7 +615,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
           publish(callback, new File(caseFile + ".out"), "validator/")
           publish(callback, new File(caseFile + ".err"), "validator/")
         }
-        
+
         val metaAddendum = try {
           using (new BufferedReader(new FileReader(caseFile + ".out"))) { reader => {
             List(
@@ -628,10 +628,10 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
             List(("status", "JE"), ("error", "file `validator/" + caseName + ".out' missing or empty"))
           }
         }
-        
+
         MetaFile.save(metaFile.getCanonicalPath, meta ++ metaAddendum)
       }
-      
+
       publish(callback, new File(metaFile.getCanonicalPath.replace(".meta", ".out")))
       addedOut = true
     } else if((meta("status") == "RE" && lang == "java") ||
@@ -640,7 +640,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
       publish(callback, new File(metaFile.getCanonicalPath.replace(".meta", ".err")))
       addedErr = true
     }
-    
+
     publish(callback, metaFile)
 
     if (message.debug) {
@@ -653,26 +653,26 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
     }
   }
 
-  def publish(callback: RunCaseCallback, file: File, prefix: String = "") = {
+  def publish(callback: RunCaseCallback, file: File, prefix: String = "")(implicit ctx: Context) = {
     using (new FileInputStream(file)) {
       log.debug("Publishing {} {}", file, file.length)
       callback(prefix + file.getName, file.length, _)
     }
   }
-  
-  def removeCompileDir(token: String): Unit = {
-    val runDirectory = new File(Config.get("compile.root", "./compile") + "/" + token)
-   
+
+  def removeCompileDir(token: String)(implicit ctx: Context): Unit = {
+    val runDirectory = new File(ctx.config.get("compile.root", "./compile") + "/" + token)
+
     if (!runDirectory.exists) throw new IllegalArgumentException("Invalid token")
 
-    if (!Config.get("runner.preserve", false)) {
+    if (!ctx.config.get("runner.preserve", false)) {
       log.error("Removing directory {}", runDirectory)
       FileUtil.deleteDirectory(runDirectory)
     }
   }
 
-  def input(inputName: String, entries: Iterable[InputEntry]): InputOutputMessage = {
-    val inputDirectory = new File(Config.get("input.root", "./input"), inputName)
+  def input(inputName: String, entries: Iterable[InputEntry])(implicit ctx: Context): InputOutputMessage = {
+    val inputDirectory = new File(ctx.config.get("input.root", "./input"), inputName)
     inputDirectory.mkdirs
 
     try {

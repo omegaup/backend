@@ -1,4 +1,5 @@
 import com.omegaup.Config
+import com.omegaup.Context
 import com.omegaup.Database
 import com.omegaup.FileUtil
 import com.omegaup.Logging
@@ -15,6 +16,7 @@ import org.scalatest.Matchers
 
 class GraderSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
   private var grader: Grader = null
+  private implicit val ctx: Context = new Context
 
   override def beforeAll() {
     import java.io._
@@ -27,38 +29,38 @@ class GraderSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     root.mkdir()
 
     // populate temp database for problems and contests
-    Config.set("db.driver", "org.h2.Driver")
-    Config.set(
+    ctx.config.set("db.driver", "org.h2.Driver")
+    ctx.config.set(
       "db.url",
       "jdbc:h2:file:" + root.getCanonicalPath + "/omegaup"
     )
-    Config.set("db.user", "sa")
-    Config.set("db.password", "")
+    ctx.config.set("db.user", "sa")
+    ctx.config.set("db.password", "")
 
-    Config.set("ssl.keystore", "grader/omegaup.jks")
-    Config.set("grader.standalone", "true")
-    Config.set("grader.runner.timeout", "10")
-    Config.set("grader.port", "21681")
-    Config.set("grader.embedded_runner.enable", "true")
-    Config.set("grader.scoreboard_refresh.enable", "false")
-    Config.set("grader.root", root.getCanonicalPath + "/grader")
-    Config.set("runner.sandbox.path", new File("../sandbox").getCanonicalPath)
-    Config.set("runner.minijail.path", "/var/lib/minijail")
-    Config.set(
+    ctx.config.set("ssl.keystore", "grader/omegaup.jks")
+    ctx.config.set("grader.standalone", "true")
+    ctx.config.set("grader.runner.timeout", "10")
+    ctx.config.set("grader.port", "21681")
+    ctx.config.set("grader.embedded_runner.enable", "true")
+    ctx.config.set("grader.scoreboard_refresh.enable", "false")
+    ctx.config.set("grader.root", root.getCanonicalPath + "/grader")
+    ctx.config.set("runner.sandbox.path", new File("../sandbox").getCanonicalPath)
+    ctx.config.set("runner.minijail.path", "/var/lib/minijail")
+    ctx.config.set(
       "runner.sandbox.profiles.path",
       new File("grader/src/test/resources/sandbox-profiles").getCanonicalPath
     )
-    Config.set("submissions.root", root.getCanonicalPath + "/submissions")
+    ctx.config.set("submissions.root", root.getCanonicalPath + "/submissions")
     for (i <- 0 until 256) {
       new File(root, f"submissions/$i%02x").mkdirs
     }
-    Config.set("problems.root", root.getCanonicalPath + "/problems")
-    Config.set("compile.root", root.getCanonicalPath + "/compile")
-    Config.set("input.root", root.getCanonicalPath + "/input")
-    Config.set("runner.sandbox", "minijail")
-    Config.set("runner.preserve", "true")
-    Config.set("logging.level", "debug")
-    Config.set("logging.file", "")
+    ctx.config.set("problems.root", root.getCanonicalPath + "/problems")
+    ctx.config.set("compile.root", root.getCanonicalPath + "/compile")
+    ctx.config.set("input.root", root.getCanonicalPath + "/input")
+    ctx.config.set("runner.sandbox", "minijail")
+    ctx.config.set("runner.preserve", "true")
+    ctx.config.set("logging.level", "debug")
+    ctx.config.set("logging.file", "")
 
     Logging.init
 
@@ -86,11 +88,11 @@ class GraderSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
 
     input.close
 
-    Class.forName(Config.get("db.driver", "org.h2.Driver"))
+    Class.forName(ctx.config.get("db.driver", "org.h2.Driver"))
     implicit val conn = java.sql.DriverManager.getConnection(
-      Config.get("db.url", "jdbc:h2:file:omegaup"),
-      Config.get("db.user", "omegaup"),
-      Config.get("db.password", "")
+      ctx.config.get("db.url", "jdbc:h2:file:omegaup"),
+      ctx.config.get("db.user", "omegaup"),
+      ctx.config.get("db.password", "")
     )
     try {
       FileUtil.read("grader/src/main/resources/h2.sql").split("\n\n").foreach { Database.execute(_) }

@@ -1,6 +1,7 @@
 package com.omegaup.grader
 
 import java.sql._
+import com.omegaup.Context
 import com.omegaup.FileUtil
 import com.omegaup.data._
 import com.omegaup.Database._
@@ -85,7 +86,7 @@ object GraderData {
 			slow = rs.getInt("slow") == 1
 		)
 
-	def getRun(id: String)(implicit connection: Connection): Option[Run] =
+	def getRun(id: String)(implicit connection: Connection, ctx: Context): Option[Run] =
 		query("""
 			SELECT
 				r.*, p.*, u.username, cp.points, c.alias AS contest_alias,
@@ -112,7 +113,7 @@ object GraderData {
 			id
 		) { hydrateRun }
 
-	def getProblem(id: String)(implicit connection: Connection): Option[Problem] =
+	def getProblem(id: String)(implicit connection: Connection, ctx: Context): Option[Problem] =
 		query("""
 			SELECT
 				p.*, NULL as points
@@ -124,7 +125,7 @@ object GraderData {
 			id
 		) { hydrateProblem }
 
-	def getProblems()(implicit connection: Connection): Iterable[Problem] =
+	def getProblems()(implicit connection: Connection, ctx: Context): Iterable[Problem] =
 		queryEach("""
 			SELECT
 				p.*, NULL as points
@@ -134,7 +135,7 @@ object GraderData {
 		) { hydrateProblem }
 
 
-	def getRuns()(implicit connection: Connection): Iterable[Run] =
+	def getRuns()(implicit connection: Connection, ctx: Context): Iterable[Run] =
 		queryEach("""
 			SELECT
 				r.*, p.*, u.username, cp.points, c.alias AS contest_alias,
@@ -160,7 +161,7 @@ object GraderData {
 			"""
 		) { hydrateRun }
 
-	def pendingRuns()(implicit connection: Connection): Iterable[Run] =
+	def pendingRuns()(implicit connection: Connection, ctx: Context): Iterable[Run] =
 		queryEach("""
 			SELECT
 				r.*, p.*, u.username, cp.points, c.alias AS contest_alias,
@@ -186,7 +187,7 @@ object GraderData {
 			"""
 		) { hydrateRun }
 
-	def update(run: Run)(implicit connection: Connection): Run = {
+	def update(run: Run)(implicit connection: Connection, ctx: Context): Run = {
 		execute("""
 			UPDATE
 				Runs
@@ -208,7 +209,8 @@ object GraderData {
 		run
 	}
 
-	def insertProblem(problem: Problem)(implicit connection: Connection): Problem = {
+	def insertProblem(problem: Problem)
+	(implicit connection: Connection, ctx: Context): Problem = {
 		execute(
 			"INSERT INTO Problems (alias, title, validator, time_limit, overall_wall_time_limit, extra_wall_time, memory_limit, output_limit, stack_limit) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?);",
 			problem.alias,
@@ -225,7 +227,7 @@ object GraderData {
 		problem
 	}
 
-	def insertRun(run: Run)(implicit connection: Connection): Run = {
+	def insertRun(run: Run)(implicit connection: Connection, ctx: Context): Run = {
 		execute(
 			"INSERT INTO Runs (user_id, problem_id, contest_id, guid, language, verdict, ip, time) VALUES(?, ?, ?, ?, ?, ?, ?, ?);",
 			run.user.map(_.id),
@@ -241,7 +243,7 @@ object GraderData {
 		run
 	}
 
-	def init()(implicit connection: Connection): Unit = {
+	def init()(implicit connection: Connection, ctx: Context): Unit = {
 		execute(FileUtil.read(getClass.getResourceAsStream("/h2.sql")))
 	}
 }

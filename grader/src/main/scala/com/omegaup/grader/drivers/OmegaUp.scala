@@ -16,8 +16,10 @@ import Status._
 import Validator._
 
 object OmegaUpDriver extends Driver with Log with Using {
-  def getInputEntries(treeHashes: Iterable[(String, String)], alias: String): Iterable[InputEntry] = {
-    val path = new File(Config.get("problems.root", "problems"), alias)
+  def getInputEntries(treeHashes: Iterable[(String, String)], alias:
+    String)(implicit ctx: Context):
+  Iterable[InputEntry] = {
+    val path = new File(ctx.config.get("problems.root", "problems"), alias)
     val objectsPath = new File(path, ".git/objects")
     val casesPath = new File(path, "cases/in")
 
@@ -44,11 +46,11 @@ object OmegaUpDriver extends Driver with Log with Using {
     }}
   }
 
-  override def run(ctx: RunContext, run: Run): Run = {
+  override def run(run: Run)(implicit ctx: RunContext): Run = {
     val id = run.id
     val alias = run.problem.alias
     val lang = run.language
-    val errorFile = new File(Config.get("grader.root", "grader"), + id + ".err")
+    val errorFile = new File(ctx.config.get("grader.root", "grader"), + id + ".err")
 
     log.info("Compiling {} {} on {}", alias, id, ctx.service.name)
 
@@ -61,9 +63,9 @@ object OmegaUpDriver extends Driver with Log with Using {
     ctx.updateVerdict(run)
 
     val code = FileUtil.read(
-      Config.get("submissions.root", "submissions") + "/" +
+      ctx.config.get("submissions.root", "submissions") + "/" +
       run.guid.substring(0, 2) + "/" + run.guid.substring(2))
-    val compileMessage = createCompileMessage(ctx, run, code)
+    val compileMessage = createCompileMessage(run, code)
     val output = ctx.trace(EventCategory.Compile) {
       ctx.service.compile(compileMessage)
     }
@@ -80,7 +82,7 @@ object OmegaUpDriver extends Driver with Log with Using {
       return run
     }
 
-    val git = new Git(new File(Config.get("problems.root", "problems"), alias))
+    val git = new Git(new File(ctx.config.get("problems.root", "problems"), alias))
     val input = git.getTreeHash("cases/in")
     val msg = new RunInputMessage(
       output.token.get,
@@ -125,7 +127,7 @@ object OmegaUpDriver extends Driver with Log with Using {
     run.status = Status.Running
     ctx.updateVerdict(run)
 
-    val target = new File(Config.get("grader.root", "grader"), id.toString)
+    val target = new File(ctx.config.get("grader.root", "grader"), id.toString)
     FileUtil.deleteDirectory(target)
     target.mkdir
     val placer = new CasePlacer(target)
@@ -161,7 +163,7 @@ object OmegaUpDriver extends Driver with Log with Using {
     run
   }
 
-  class CasePlacer(directory: File) extends Object with RunCaseCallback with Using with Log {
+  class CasePlacer(directory: File)(implicit ctx: Context) extends Object with RunCaseCallback with Using with Log {
     def apply(filename: String, length: Long, stream: InputStream): Unit = {
       log.debug("Placing file {}({}) into {}", filename, length, directory)
       val target = new File(directory, filename)
@@ -174,21 +176,21 @@ object OmegaUpDriver extends Driver with Log with Using {
     }
   }
 
-  override def validateOutput(ctx: RunContext, run: Run): Run = {
+  override def validateOutput(run: Run)(implicit ctx: RunContext): Run = {
     ctx.trace(EventCategory.Validate) {
       run.problem.validator match {
-        case Validator.Custom => CustomValidator.validateRun(ctx, run)
-        case Validator.Literal => LiteralValidator.validateRun(ctx, run)
-        case Validator.Token => TokenValidator.validateRun(ctx, run)
-        case Validator.TokenCaseless => TokenCaselessValidator.validateRun(ctx, run)
-        case Validator.TokenNumeric => TokenNumericValidator.validateRun(ctx, run)
+        case Validator.Custom => CustomValidator.validateRun(run)
+        case Validator.Literal => LiteralValidator.validateRun(run)
+        case Validator.Token => TokenValidator.validateRun(run)
+        case Validator.TokenCaseless => TokenCaselessValidator.validateRun(run)
+        case Validator.TokenNumeric => TokenNumericValidator.validateRun(run)
         case _ => throw new IllegalArgumentException("Validator " + run.problem.validator + " not found")
       }
     }
   }
 
   @throws(classOf[FileNotFoundException])
-  private def createCompileMessage(ctx: RunContext, run: Run, code: String):
+  private def createCompileMessage(run: Run, code: String)(implicit ctx: RunContext):
       CompileInputMessage = {
     var validatorLang: Option[String] = None
     var validatorCode: Option[List[(String, String)]] = None
@@ -196,7 +198,7 @@ object OmegaUpDriver extends Driver with Log with Using {
     if (run.problem.validator == Validator.Custom) {
       List("c", "cpp", "py", "pas", "rb").map(lang => {
         (lang -> new File(
-          Config.get("problems.root", "problems"),
+          ctx.config.get("problems.root", "problems"),
           run.problem.alias + "/validator." + lang)
         )
       }).find(_._2.exists) match {
@@ -220,7 +222,7 @@ object OmegaUpDriver extends Driver with Log with Using {
 
     val codes = new ListBuffer[(String,String)]
     val interactiveRoot = new File(
-      Config.get("problems.root", "problems"),
+      ctx.config.get("problems.root", "problems"),
       run.problem.alias + "/interactive"
     )
     var interactive: Option[InteractiveDescription] = None

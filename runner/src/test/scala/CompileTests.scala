@@ -87,6 +87,8 @@ object NullRunCaseCallback extends Object with RunCaseCallback {
 
 class CompileSpec extends FlatSpec with Matchers with CaseMatchers
     with BeforeAndAfterAll {
+  private implicit var ctx: Context = null
+
   override def beforeAll() = {
     import java.util.zip._
 
@@ -99,13 +101,14 @@ class CompileSpec extends FlatSpec with Matchers with CaseMatchers
     root.mkdir()
     new File(root.getCanonicalPath + "/compile").mkdir()
 
-    Config.set("runner.preserve", true)
-    Config.set("compile.root", root.getCanonicalPath + "/compile")
-    Config.set("runner.sandbox.path", new File("../sandbox").getCanonicalPath)
-    Config.set("runner.minijail.path", new File("/var/lib/minijail").getCanonicalPath)
-    Config.set("logging.level", "debug")
+    ctx = new Context
+    ctx.config.set("runner.preserve", true)
+    ctx.config.set("compile.root", root.getCanonicalPath + "/compile")
+    ctx.config.set("runner.sandbox.path", new File("../sandbox").getCanonicalPath)
+    ctx.config.set("runner.minijail.path", new File("/var/lib/minijail").getCanonicalPath)
+    ctx.config.set("logging.level", "debug")
 
-    Logging.init()
+    Logging.init
   }
 
   def compileTest(message: CompileInputMessage) (expectations: CompileOutputMessage => Unit) (implicit runner: Runner) = {
