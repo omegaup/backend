@@ -1,13 +1,18 @@
+import com.omegaup.Logging
 import com.omegaup.grader._
 
-import com.omegaup.Config
-import com.omegaup.Context
 import java.io._
+import org.scalatest.BeforeAndAfterAll
 import org.scalatest.FlatSpec
 import org.scalatest.Matchers
 
-class ValidatorSpec extends FlatSpec with Matchers {
-	private implicit val ctx: Context = new Context
+class ValidatorSpec extends FlatSpec with Matchers with ContextMixin
+		with BeforeAndAfterAll {
+
+  override def beforeAll() {
+    config.set("logging.level", "off")
+    Logging.init
+	}
 
 	"Tokenizers" should "tokenize properly" in {
 		var tok = new Tokenizer(new File("grader/src/test/resources/token_test.txt"),

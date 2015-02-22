@@ -32,21 +32,21 @@ lazy val common_macros = project
 	)
 
 lazy val common = project
-  .dependsOn(common_macros)
+	.dependsOn(common_macros)
 	.settings(commonSettings: _*)
 	.settings(
 		name := "common"
 	)
 
 lazy val runner = project
-	.dependsOn(common)
+	.dependsOn(common % "compile->compile;test->test")
 	.settings(commonSettings: _*)
 	.settings(
 		name := "runner"
 	)
 
 lazy val grader = project
-	.dependsOn(common, runner)
+	.dependsOn(common % "compile->compile;test->test", runner)
 	.settings(commonSettings: _*)
 	.settings(
 		name := "grader"
