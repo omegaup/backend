@@ -122,6 +122,15 @@ object FileUtil extends Object with Using {
 		false
 	}
 
+	def splitExtension(name: String): (String, String) = {
+		val pos = name.lastIndexOf('.')
+		if (pos != -1) {
+			name.substring(pos) -> name.substring(pos + 1)
+		} else {
+			name -> ""
+		}
+	}
+
 	def extension(name: String): String = {
 		val pos = name.lastIndexOf('.')
 		if (pos != -1) {

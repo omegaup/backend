@@ -252,6 +252,7 @@ object Logging extends Object {
 	import logback.core.spi.FilterReply
 
 	val layoutPattern = "%date [%thread] %-5level %logger{35} - %msg%n"
+	val perfLayoutPattern = "%msg%n"
 	val rootLogger = LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME)
 		.asInstanceOf[logback.classic.Logger]
 
@@ -261,6 +262,7 @@ object Logging extends Object {
 		createAppender(
 			rootLogger,
 			ctx.config.get("logging.file", ""),
+			layoutPattern,
 			new Filter[ILoggingEvent]() {
 				override def decide(event: ILoggingEvent): FilterReply = {
 					val throwable = event.getThrowableProxy()
@@ -294,7 +296,7 @@ object Logging extends Object {
 			val perfLogger = LoggerFactory.getLogger("omegaup.grader.RunContext")
 				.asInstanceOf[logback.classic.Logger]
 
-			createAppender(perfLogger, perfLog)
+			createAppender(perfLogger, perfLog, perfLayoutPattern)
 
 			perfLogger.setAdditive(false)
 			perfLogger.setLevel(INFO)
@@ -321,31 +323,51 @@ object Logging extends Object {
 
 	private def createAppender(
 		logger: logback.classic.Logger,
-		file: String,
+		fileName: String,
+		layoutPattern: String,
 		filter: logback.core.filter.Filter[logback.classic.spi.ILoggingEvent] = null
-	) = {
+	)(implicit ctx: Context) = {
 		import logback.core.{FileAppender, ConsoleAppender}
+		import logback.core.rolling.FixedWindowRollingPolicy
+		import logback.core.rolling.RollingFileAppender
+		import logback.core.rolling.SizeBasedTriggeringPolicy
 		import logback.classic.net._
 		import logback.classic.encoder._
 		import logback.classic.spi.ILoggingEvent
 
 		logger.detachAndStopAllAppenders
 		val context = logger.getLoggerContext
-		val appender = if (file == "syslog") {
+		val appender = if (fileName == "syslog") {
 			val syslogAppender = new SyslogAppender
 			syslogAppender.setFacility("SYSLOG")
 
 			syslogAppender
-		} else if (file != "") {
+		} else if (fileName != "") {
 			val encoder = new PatternLayoutEncoder
 			encoder.setContext(context)
 			encoder.setPattern(layoutPattern)
-			encoder.start()
+			encoder.start
 
-			val fileAppender = new FileAppender[ILoggingEvent]
+			val rollingPolicy = new FixedWindowRollingPolicy
+			val nameTuple = FileUtil.splitExtension(FileUtil.basename(fileName))
+			rollingPolicy.setContext(context)
+			rollingPolicy.setFileNamePattern(
+				"%s.%%i.%s" format (nameTuple.productIterator.toList: _*))
+			rollingPolicy.setMinIndex(1)
+			rollingPolicy.setMaxIndex(ctx.config.get("logging.count", 10))
+
+			val triggeringPolicy = new SizeBasedTriggeringPolicy[ILoggingEvent]
+			triggeringPolicy.setMaxFileSize(ctx.config.get("logging.max_size", "25MB"))
+
+			val fileAppender = new RollingFileAppender[ILoggingEvent]
 			fileAppender.setAppend(true)
-			fileAppender.setFile(file)
+			fileAppender.setFile(fileName)
 			fileAppender.setEncoder(encoder)
+			fileAppender.setRollingPolicy(rollingPolicy)
+			fileAppender.setTriggeringPolicy(triggeringPolicy)
+			rollingPolicy.setParent(fileAppender)
+			rollingPolicy.start
+			triggeringPolicy.start
 
 			fileAppender
 		} else {
