@@ -8,13 +8,7 @@ import org.scalatest._
 import org.scalatest.matchers._
 import Matchers._
 
-class RunstreamSpec extends FlatSpec with Using with ContextMixin
-		with BeforeAndAfterAll {
-
-  override def beforeAll() {
-    config.set("logging.level", "off")
-    Logging.init
-	}
+class RunstreamSpec extends FlatSpec with Using with ContextMixin {
 
 	"Runstream proxy" should "pass stuff correctly" in {
     val cases = List(

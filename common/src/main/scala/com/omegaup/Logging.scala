@@ -257,11 +257,11 @@ object Logging extends Object {
 		.asInstanceOf[logback.classic.Logger]
 
 	def init()(implicit ctx: Context): Unit = {
-		val logLevel = parseLevel(ctx.config.get("logging.level", "info"))
+		val logLevel = parseLevel(ctx.config.logging.level)
 
 		createAppender(
 			rootLogger,
-			ctx.config.get("logging.file", ""),
+			ctx.config.logging.file,
 			layoutPattern,
 			new Filter[ILoggingEvent]() {
 				override def decide(event: ILoggingEvent): FilterReply = {
@@ -291,7 +291,7 @@ object Logging extends Object {
 
 		rootLogger.setLevel(logLevel)
 
-		val perfLog = ctx.config.get("logging.perf.file", "")
+		val perfLog = ctx.config.logging.perf_file
 		if (perfLog != "") {
 			val perfLogger = LoggerFactory.getLogger("omegaup.grader.RunContext")
 				.asInstanceOf[logback.classic.Logger]
@@ -354,10 +354,10 @@ object Logging extends Object {
 			rollingPolicy.setFileNamePattern(
 				"%s.%%i.%s" format (nameTuple.productIterator.toList: _*))
 			rollingPolicy.setMinIndex(1)
-			rollingPolicy.setMaxIndex(ctx.config.get("logging.count", 10))
+			rollingPolicy.setMaxIndex(ctx.config.logging.rolling_count)
 
 			val triggeringPolicy = new SizeBasedTriggeringPolicy[ILoggingEvent]
-			triggeringPolicy.setMaxFileSize(ctx.config.get("logging.max_size", "25MB"))
+			triggeringPolicy.setMaxFileSize(ctx.config.logging.max_size)
 
 			val fileAppender = new RollingFileAppender[ILoggingEvent]
 			fileAppender.setAppend(true)

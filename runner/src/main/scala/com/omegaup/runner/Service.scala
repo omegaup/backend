@@ -63,8 +63,7 @@ class RegisterThread(hostname: String, port: Int)(implicit ctx: Context)
     try {
       // well, at least try to de-register
       Https.send[EndpointRegisterOutputMessage, EndpointRegisterInputMessage](
-				ctx.config.get("grader.deregister.url",
-					"https://localhost:21680/endpoint/deregister/"),
+				ctx.config.runner.deregister_url,
         new EndpointRegisterInputMessage(hostname, port),
         true
       )
@@ -112,8 +111,7 @@ class RegisterThread(hostname: String, port: Int)(implicit ctx: Context)
       if (active) {
         try {
           Https.send[EndpointRegisterOutputMessage, EndpointRegisterInputMessage](
-						ctx.config.get("grader.register.url",
-							"https://localhost:21680/endpoint/register/"),
+						ctx.config.runner.register_url,
             new EndpointRegisterInputMessage(hostname, port),
             true
           )
@@ -156,17 +154,18 @@ object Service extends Object with Log with Using {
       i += 1
     }
 
-		implicit val ctx = new Context(new Config(configPath))
+		implicit val ctx = new Context(ConfigMerge(Config(),
+			net.liftweb.json.parse(FileUtil.read(configPath))))
 
     // Get local hostname
-    val hostname = ctx.config.get("runner.hostname", "")
+    val hostname = ctx.config.runner.hostname
 
     if (hostname == "") {
       throw new IllegalArgumentException("runner.hostname configuration must be set")
     }
 
-		new File(ctx.config.get("input.root", "input")).mkdirs
-		new File(ctx.config.get("compile.root", "compile")).mkdirs
+		new File(ctx.config.common.roots.input).mkdirs
+		new File(ctx.config.common.roots.compile).mkdirs
 
     var registerThread: RegisterThread = null
 
@@ -176,7 +175,7 @@ object Service extends Object with Log with Using {
     // And build a runner instance
     val runner = new Runner(
 			hostname,
-			ctx.config.get("runner.sandbox", "minijail") match {
+			ctx.config.runner.sandbox match {
 				case "null" => NullSandbox
 				case _ => Minijail
 			}
@@ -203,7 +202,7 @@ object Service extends Object with Log with Using {
                 val req = Serialization.read[RunInputMessage](request.getReader)
                 token = req.token
 
-                val zipFile = new File(ctx.config.get("compile.root", "./compile"), token + "/output.zip")
+                val zipFile = new File(ctx.config.common.roots.compile, token + "/output.zip")
                 runner.run(req, callbackProxy)
               } catch {
                 case e: Exception => {
@@ -264,8 +263,8 @@ object Service extends Object with Log with Using {
                     var tarStream: InputStream = request.getInputStream
 
                     // Some debugging code to diagnose input transmission problems.
-                    if (ctx.config.get("runner.tar.preserve", false)) {
-                      var tarFile = new File(ctx.config.get("input.root", "./input"), inputName + ".tar")
+                    if (ctx.config.runner.preserve_tar) {
+                      var tarFile = new File(ctx.config.common.roots.input, inputName + ".tar")
                       using (new FileOutputStream(tarFile)) {
                         FileUtil.copy(tarStream, _)
                       }
@@ -315,26 +314,26 @@ object Service extends Object with Log with Using {
     };
 
 		val server = new org.eclipse.jetty.server.Server()
-		val runnerConnector = (if (ctx.config.get("https.disable", false)) {
+		val runnerConnector = (if (ctx.config.ssl.disabled) {
 			new org.eclipse.jetty.server.ServerConnector(server)
 		} else {
 			// boilerplate code for jetty with https support
 
 			val sslContext =
 				new org.eclipse.jetty.util.ssl.SslContextFactory(
-					ctx.config.get("ssl.keystore", "omegaup.jks")
+					ctx.config.ssl.keystore_path
 				)
-			sslContext.setKeyManagerPassword(ctx.config.get("ssl.password", "omegaup"))
-			sslContext.setKeyStorePassword(ctx.config.get("ssl.keystore.password", "omegaup"))
+			sslContext.setKeyManagerPassword(ctx.config.ssl.password)
+			sslContext.setKeyStorePassword(ctx.config.ssl.keystore_password)
 			sslContext.setTrustStore(FileUtil.loadKeyStore(
-				ctx.config.get("ssl.truststore", "omegaup.jks"),
-				ctx.config.get("ssl.truststore.password", "omegaup")
+				ctx.config.ssl.truststore_path,
+				ctx.config.ssl.truststore_password
 			))
 			sslContext.setNeedClientAuth(true)
 
 			new org.eclipse.jetty.server.ServerConnector(server, sslContext)
 		})
-    runnerConnector.setPort(ctx.config.get("runner.port", 0))
+    runnerConnector.setPort(ctx.config.runner.port)
 
     server.setConnectors(List(runnerConnector).toArray)
     server.setHandler(handler)

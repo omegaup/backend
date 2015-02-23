@@ -12,9 +12,6 @@ class RoutingSpec extends FreeSpec with ContextMixin with BeforeAndAfterAll {
   var router: RunRouter = null
 
   override def beforeAll() {
-    config.set("logging.level", "off")
-    Logging.init
-
     router = RoutingDescription.parse("""
       contest: problem == "problem";
       urgent: !rejudge && contest == "test_contest" && user in ["test_user"];

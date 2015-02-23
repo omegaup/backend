@@ -181,8 +181,8 @@ class RunnerDispatcher(implicit serviceCtx: Context) extends ServiceInterface wi
 		new java.util.TimerTask() {
 			override def run(): Unit = pruneFlights
 		},
-		serviceCtx.config.get("grader.flight_pruner.interval", 60) * 1000,
-		serviceCtx.config.get("grader.flight_pruner.interval", 60) * 1000
+		serviceCtx.config.grader.flight_pruner_interval * 1000,
+		serviceCtx.config.grader.flight_pruner_interval * 1000
 	)
 
 	for (i <- 0 until runQueue.length) runQueue(i) = scala.collection.mutable.Queue.empty[RunContext]
@@ -286,7 +286,7 @@ class RunnerDispatcher(implicit serviceCtx: Context) extends ServiceInterface wi
 			})
 
 			ctx.run = try {
-				future.get(serviceCtx.config.get("grader.runner.timeout", 10 * 60) * 1000, TimeUnit.MILLISECONDS)
+				future.get(serviceCtx.config.grader.runner_timeout, TimeUnit.SECONDS)
 			} catch {
 				case e: ExecutionException => {
 					log.error("Submission {} {} failed - {} {}",
@@ -366,7 +366,8 @@ class RunnerDispatcher(implicit serviceCtx: Context) extends ServiceInterface wi
 	}
 
 	private def pruneFlights() = lock.synchronized {
-		var cutoffTime = System.currentTimeMillis - serviceCtx.config.get("grader.runner.timeout", 10 * 60) * 1000
+		var cutoffTime = System.currentTimeMillis -
+			serviceCtx.config.grader.runner_timeout * 1000
 		var pruned = false
 		runsInFlight.foreach { case (i, ctx) => {
 			if (ctx.flightTime < cutoffTime) {
@@ -419,7 +420,7 @@ class RunnerDispatcher(implicit serviceCtx: Context) extends ServiceInterface wi
 		// Prune any runners that are not registered or haven't communicated in a while.
 		log.debug("Before pruning the queue {}", status)
 		var cutoffTime = System.currentTimeMillis -
-			serviceCtx.config.get("grader.runner.queue_timeout", 10 * 60 * 1000)
+			serviceCtx.config.grader.runner_queue_timeout * 1000
 		runnerQueue.dequeueAll (
 			_ match {
 				case proxy: com.omegaup.runner.RunnerProxy => {

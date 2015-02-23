@@ -1,27 +1,157 @@
 package com.omegaup
 
-class Config(path: String = "omegaup.conf") {
-	private val props = new java.util.Properties(System.getProperties)
-	try {
-		props.load(new java.io.FileInputStream(path))
-	} catch {
-		case _: Throwable => {}
+case class BroadcasterConfig(
+	port: Int = 39613
+)
+
+case class RootsConfig(
+	compile: String = "/var/lib/omegaup/compile",
+	grade: String = "/var/lib/omegaup/grade",
+	input: String = "/var/lib/omegaup/input",
+	problems: String = "/var/lib/omegaup/problems",
+	submissions: String = "/var/lib/omegaup/submissions"
+)
+
+case class CompilersConfig(
+	c: String = "/usr/bin/gcc",
+	cpp: String = "/usr/bin/g++",
+	hs: String = "/usr/lib/ghc/lib/ghc",
+	java: String = "/usr/bin/javac",
+	karel: String = "/usr/bin/kcl",
+	pas: String = "/usr/bin/fpc",
+	py: String = "/usr/bin/python",
+	rb: String = "/usr/bin/ruby"
+)
+
+case class PathsConfig(
+	karel: String = "/usr/bin/karel",
+	minijail: String = "/var/lib/minijail"
+)
+
+case class CommonConfig(
+	compilers: CompilersConfig = CompilersConfig(),
+	paths: PathsConfig = PathsConfig(),
+	roots: RootsConfig = RootsConfig()
+)
+
+case class RoutingConfig(
+	registered_runners: List[String] = List(),
+	slow_threshold: Int = 50,
+	table: String = ""
+)
+
+case class ScoreboardRefreshConfig(
+	disabled: Boolean = false,
+	token: String = "secret",
+	url: String = "http://localhost/api/scoreboard/refresh/"
+)
+
+case class GraderConfig(
+	embedded_runner_enabled: Boolean = false,
+	flight_pruner_interval: Int = 60,
+	port: Int = 21680,
+	routing: RoutingConfig = RoutingConfig(),
+	runner_queue_timeout: Int = 600,
+	runner_timeout: Int = 600,
+	scoreboard_refresh: ScoreboardRefreshConfig = ScoreboardRefreshConfig(),
+	standalone: Boolean = false
+)
+
+case class OmegaUpConfig(
+	role_url: String = "http://localhost/api/contest/role/",
+	salt: String = "omegaup"
+)
+
+case class DbConfig(
+	driver: String = "org.h2.Driver",
+	password: String = "",
+	url: String = "jdbc:h2:file:omegaup",
+	user: String = "omegaup"
+)
+
+case class LoggingConfig(
+	file: String = "/var/log/omegaup/service.log",
+	level: String = "info",
+	max_size: String = "25MB",
+	perf_file: String = "/var/log/omegaup/perf.log",
+	rolling_count: Int = 10
+)
+
+case class RunnerLimitsConfig(
+	compile_time: Int = 30,
+	memory: Int = 640 * 1024 * 1024,
+	output: Int = 64 * 1024 * 1024
+)
+
+case class RunnerConfig(
+	deregister_url: String = "https://localhost:21680/endpoint/deregister/",
+	hostname: String = "localhost",
+	limits: RunnerLimitsConfig = new RunnerLimitsConfig(),
+	port: Int = 21681,
+	preserve: Boolean = false,
+	preserve_tar: Boolean = false,
+	register_url: String = "https://localhost:21680/endpoint/register/",
+	sandbox: String = "minijail"
+)
+
+case class SslConfig(
+	disabled: Boolean = false,
+	keystore_password: String = "omegaup",
+	keystore_path: String = "omegaup.jks",
+	password: String = "omegaup",
+	truststore_password: String = "omegaup",
+	truststore_path: String = "omegaup.jks"
+)
+
+case class Config(
+	broadcaster: BroadcasterConfig = BroadcasterConfig(),
+	common: CommonConfig = CommonConfig(),
+	db: DbConfig = DbConfig(),
+	grader: GraderConfig = GraderConfig(),
+	logging: LoggingConfig = LoggingConfig(),
+	omegaup: OmegaUpConfig = OmegaUpConfig(),
+	runner: RunnerConfig = RunnerConfig(),
+	ssl: SslConfig = SslConfig()
+)
+
+object ConfigMerge {
+	import net.liftweb.json.JsonAST._
+
+	private def copy(obj: Any, json: JValue): Object = {
+		val clazz = obj.getClass
+		val generated = List("productIterator", "productPrefix", "productArity",
+			"productElement", "canEqual", "tupled", "curried", "unapply", "equals",
+			"toString", "hashCode", "apply", "copy", "andThen", "compose")
+		val fields = clazz.getMethods.toSeq
+				.map(meth => meth -> meth.getName)
+				.filter({ case (meth, name) =>
+						meth.getDeclaringClass == clazz && !name.contains("$") &&
+						!generated.contains(name)
+				})
+				.sortWith(_._2 < _._2)
+				.map(_._1)
+		val meth = clazz.getMethods.filter(_.getName == "copy")(0)
+		assert(meth.getParameterTypes.toSeq ==
+			fields.map(_.getReturnType).toSeq)
+
+		val params = fields.map(field => {
+			val original = field.invoke(obj)
+			(json \ field.getName match {
+				case o: JObject => copy(original, o)
+				case i: JInt => i.num.toInt
+				case d: JDouble => d.num
+				case s: JString => s.s
+				case b: JBool => b.value
+				case a: JArray => a.values.map(_.toString)
+				case _ => original
+			}).asInstanceOf[Object]
+		}).toSeq
+
+		meth.invoke(obj, params:_*)
 	}
 
-	def get[T](propname: String, default: T): T = {
-		props.getProperty(propname) match {
-			case null => default
-			case value: Any => default match {
-				case x:String  => value.asInstanceOf[T]
-				case x:Int     => value.toInt.asInstanceOf[T]
-				case x:Boolean => (value == "true").asInstanceOf[T]
-				case _	 => null.asInstanceOf[T]
-			}
-		}
-	}
-
-	def set[T](propname: String, value: T): Unit = {
-		props.setProperty(propname, value.toString)
+	def apply[T](obj: T, json: JValue) = {
+		copy(obj, json).asInstanceOf[T]
 	}
 }
 

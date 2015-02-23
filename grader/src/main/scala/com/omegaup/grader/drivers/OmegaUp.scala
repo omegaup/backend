@@ -19,7 +19,7 @@ object OmegaUpDriver extends Driver with Log with Using {
   def getInputEntries(treeHashes: Iterable[(String, String)], alias:
     String)(implicit ctx: Context):
   Iterable[InputEntry] = {
-    val path = new File(ctx.config.get("problems.root", "problems"), alias)
+    val path = new File(ctx.config.common.roots.problems, alias)
     val objectsPath = new File(path, ".git/objects")
     val casesPath = new File(path, "cases/in")
 
@@ -50,7 +50,7 @@ object OmegaUpDriver extends Driver with Log with Using {
     val id = run.id
     val alias = run.problem.alias
     val lang = run.language
-    val errorFile = new File(ctx.config.get("grader.root", "grader"), + id + ".err")
+    val errorFile = new File(ctx.config.common.roots.grade, + id + ".err")
 
     log.info("Compiling {} {} on {}", alias, id, ctx.service.name)
 
@@ -63,7 +63,7 @@ object OmegaUpDriver extends Driver with Log with Using {
     ctx.updateVerdict(run)
 
     val code = FileUtil.read(
-      ctx.config.get("submissions.root", "submissions") + "/" +
+      ctx.config.common.roots.submissions + "/" +
       run.guid.substring(0, 2) + "/" + run.guid.substring(2))
     val compileMessage = createCompileMessage(run, code)
     val output = ctx.trace(EventCategory.Compile) {
@@ -82,7 +82,7 @@ object OmegaUpDriver extends Driver with Log with Using {
       return run
     }
 
-    val git = new Git(new File(ctx.config.get("problems.root", "problems"), alias))
+    val git = new Git(new File(ctx.config.common.roots.problems, alias))
     val input = git.getTreeHash("cases/in")
     val msg = new RunInputMessage(
       output.token.get,
@@ -127,7 +127,7 @@ object OmegaUpDriver extends Driver with Log with Using {
     run.status = Status.Running
     ctx.updateVerdict(run)
 
-    val target = new File(ctx.config.get("grader.root", "grader"), id.toString)
+    val target = new File(ctx.config.common.roots.grade, id.toString)
     FileUtil.deleteDirectory(target)
     target.mkdir
     val placer = new CasePlacer(target)
@@ -198,7 +198,7 @@ object OmegaUpDriver extends Driver with Log with Using {
     if (run.problem.validator == Validator.Custom) {
       List("c", "cpp", "py", "pas", "rb").map(lang => {
         (lang -> new File(
-          ctx.config.get("problems.root", "problems"),
+          ctx.config.common.roots.problems,
           run.problem.alias + "/validator." + lang)
         )
       }).find(_._2.exists) match {
@@ -222,7 +222,7 @@ object OmegaUpDriver extends Driver with Log with Using {
 
     val codes = new ListBuffer[(String,String)]
     val interactiveRoot = new File(
-      ctx.config.get("problems.root", "problems"),
+      ctx.config.common.roots.problems,
       run.problem.alias + "/interactive"
     )
     var interactive: Option[InteractiveDescription] = None

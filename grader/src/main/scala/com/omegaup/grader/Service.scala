@@ -1,6 +1,8 @@
 package com.omegaup.grader
 
 import com.omegaup.Config
+import com.omegaup.ConfigMerge
+import com.omegaup.FileUtil
 import com.omegaup.Https
 import com.omegaup.Log
 import com.omegaup.Logging
@@ -30,7 +32,8 @@ object Service extends Object with Log {
 	def main(args: Array[String]) = {
 		val options = parseOptions(args)
 
-		implicit val ctx = new Context(new Config(options.configPath))
+		implicit val ctx = new Context(ConfigMerge(Config(),
+			net.liftweb.json.parse(FileUtil.read(options.configPath))))
 
 		// logger
 		Logging.init

@@ -19,11 +19,11 @@ extends Object with GraderService with ServiceInterface with Log {
 	val runnerDispatcher = new RunnerDispatcher
 
 	// Loading SQL connector driver
-	Class.forName(serviceCtx.config.get("db.driver", "org.h2.Driver"))
+	Class.forName(serviceCtx.config.db.driver)
 	implicit val conn = java.sql.DriverManager.getConnection(
-		serviceCtx.config.get("db.url", "jdbc:h2:file:omegaup"),
-		serviceCtx.config.get("db.user", "omegaup"),
-		serviceCtx.config.get("db.password", "")
+		serviceCtx.config.db.url,
+		serviceCtx.config.db.user,
+		serviceCtx.config.db.password
 	)
 
 	def start() = {
@@ -87,29 +87,29 @@ extends Object with GraderService with ServiceInterface with Log {
 	}
 
 	def updateConfiguration(embeddedRunner: Boolean) = {
-		if (serviceCtx.config.get("grader.embedded_runner.enable", false) && !embeddedRunner) {
+		if (serviceCtx.config.grader.embedded_runner_enabled && !embeddedRunner) {
 			runnerDispatcher.addRunner(
 				new com.omegaup.runner.Runner(
 					"#embedded-runner",
-					serviceCtx.config.get("runner.sandbox", "minijail") match {
+					serviceCtx.config.runner.sandbox match {
 						case "null" => NullSandbox
 						case _ => Minijail
 					}
 				)
 			)
 		}
-		val source = serviceCtx.config.get("grader.routing.table", "")
+		val source = serviceCtx.config.grader.routing.table
 		try {
 			runnerDispatcher.updateConfiguration(
-				serviceCtx.config.get("grader.routing.table", source),
-				serviceCtx.config.get("grader.routing.slow_threshold", 50)
+				source,
+				serviceCtx.config.grader.routing.slow_threshold
 			)
 		} catch {
 			case ex: ParseException => {
 				log.error("Unable to parse {} at character {}", source, ex.getErrorOffset)
 			}
 		}
-		serviceCtx.config.get("grader.routing.registered_runners", "").split("\\s+").foreach({ endpoint => {
+		serviceCtx.config.grader.routing.registered_runners.foreach({ endpoint => {
 			val tokens = endpoint.split(":")
 			if (tokens.length > 0 && tokens(0).trim.length > 0) {
 				if (tokens.length == 1) {

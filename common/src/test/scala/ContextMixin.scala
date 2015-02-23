@@ -1,5 +1,7 @@
 import com.omegaup.Config
 import com.omegaup.Context
+import com.omegaup.Logging
+import com.omegaup.LoggingConfig
 import com.omegaup.OverrideLogger
 
 import org.scalatest.Alerting
@@ -10,8 +12,14 @@ import org.scalatest.Suite
 import org.scalatest.SuiteMixin
 
 trait ContextMixin extends SuiteMixin with Alerting { this: Suite =>
-  protected val config = new Config
+  protected var config = new Config(
+    logging = LoggingConfig(
+      file = "",
+      level = "off"
+    )
+  )
   protected implicit var ctx: Context = new Context(config)
+  Logging.init
 
   abstract override def runTest(testName: String, args: Args): Status = {
     var thrownException: Option[Throwable] = None

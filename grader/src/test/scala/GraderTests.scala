@@ -1,9 +1,4 @@
-import com.omegaup.Config
-import com.omegaup.Context
-import com.omegaup.Database
-import com.omegaup.FileUtil
-import com.omegaup.Logging
-import com.omegaup.Service
+import com.omegaup._
 import com.omegaup.data._
 import com.omegaup.grader.Grader
 import com.omegaup.grader.GraderOptions
@@ -36,41 +31,41 @@ class GraderSpec extends FreeSpec with Matchers with BeforeAndAfterAll
     }
     root.mkdir()
 
-    // populate temp database for problems and contests
-    config.set("db.driver", "org.h2.Driver")
-    config.set(
-      "db.url",
-      "jdbc:h2:file:" + root.getCanonicalPath + "/omegaup"
+    config = Config(
+      common = CommonConfig(
+        roots = RootsConfig(
+          compile = root.getCanonicalPath + "/compile",
+          grade = root.getCanonicalPath + "/grade",
+          input = root.getCanonicalPath + "/input",
+          problems = root.getCanonicalPath + "/problems",
+          submissions = root.getCanonicalPath + "/submissions"
+        )
+      ),
+      grader = GraderConfig(
+        embedded_runner_enabled = true,
+        port = 21681,
+        runner_timeout = 10,
+        standalone = true
+      ),
+      db = DbConfig(
+        password = "",
+        driver = "org.h2.Driver",
+        url = "jdbc:h2:file:" + root.getCanonicalPath + "/omegaup",
+        user = "sa"
+      ),
+      logging = config.logging.copy(),
+      runner = RunnerConfig(
+        preserve = true
+      ),
+      ssl = SslConfig(
+        disabled = true
+      )
     )
-    config.set("db.user", "sa")
-    config.set("db.password", "")
+    ctx = new Context(config)
 
-    config.set("ssl.keystore", "grader/omegaup.jks")
-    config.set("grader.standalone", "true")
-    config.set("grader.runner.timeout", "10")
-    config.set("grader.port", "21681")
-    config.set("grader.embedded_runner.enable", "true")
-    config.set("grader.scoreboard_refresh.enable", "false")
-    config.set("grader.root", root.getCanonicalPath + "/grader")
-    config.set("runner.sandbox.path", new File("../sandbox").getCanonicalPath)
-    config.set("runner.minijail.path", "/var/lib/minijail")
-    config.set(
-      "runner.sandbox.profiles.path",
-      new File("grader/src/test/resources/sandbox-profiles").getCanonicalPath
-    )
-    config.set("submissions.root", root.getCanonicalPath + "/submissions")
     for (i <- 0 until 256) {
       new File(root, f"submissions/$i%02x").mkdirs
     }
-    config.set("problems.root", root.getCanonicalPath + "/problems")
-    config.set("compile.root", root.getCanonicalPath + "/compile")
-    config.set("input.root", root.getCanonicalPath + "/input")
-    config.set("runner.sandbox", "minijail")
-    config.set("runner.preserve", "true")
-    config.set("logging.level", "off")
-    config.set("logging.file", "")
-
-    Logging.init
 
     val input = new ZipInputStream(new FileInputStream("grader/src/test/resources/omegaup-base.zip"))
     var entry: ZipEntry = input.getNextEntry
@@ -96,11 +91,12 @@ class GraderSpec extends FreeSpec with Matchers with BeforeAndAfterAll
 
     input.close
 
-    Class.forName(ctx.config.get("db.driver", "org.h2.Driver"))
+    // populate temp database for problems and contests
+    Class.forName(ctx.config.db.driver)
     conn = java.sql.DriverManager.getConnection(
-      ctx.config.get("db.url", "jdbc:h2:file:omegaup"),
-      ctx.config.get("db.user", "omegaup"),
-      ctx.config.get("db.password", "")
+      ctx.config.db.url,
+      ctx.config.db.user,
+      ctx.config.db.password
     )
     try {
       FileUtil.read("grader/src/main/resources/h2.sql").split("\n\n").foreach { Database.execute(_) }

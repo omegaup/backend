@@ -39,13 +39,13 @@ object Https extends Object with Log with Using {
 	private var lazyRunnerSocketFactory: SSLSocketFactory = null
 	private def createSocketFactory()(implicit ctx: Context) = new SSLSocketFactory {
 		private val sslContextFactory = new org.eclipse.jetty.util.ssl.SslContextFactory(
-			ctx.config.get("ssl.keystore", "omegaup.jks")
+			ctx.config.ssl.keystore_path
 		)
-		sslContextFactory.setKeyManagerPassword(ctx.config.get("ssl.password", "omegaup"))
-		sslContextFactory.setKeyStorePassword(ctx.config.get("ssl.keystore.password", "omegaup"))
+		sslContextFactory.setKeyManagerPassword(ctx.config.ssl.password)
+		sslContextFactory.setKeyStorePassword(ctx.config.ssl.keystore_password)
 		sslContextFactory.setTrustStore(FileUtil.loadKeyStore(
-			ctx.config.get("ssl.truststore", "omegaup.jks"),
-			ctx.config.get("ssl.truststore.password", "omegaup")
+			ctx.config.ssl.truststore_path,
+			ctx.config.ssl.truststore_password
 		))
 		sslContextFactory.setNeedClientAuth(true)
 		sslContextFactory.start
@@ -82,7 +82,7 @@ object Https extends Object with Log with Using {
 		val conn = new URL(url).openConnection.asInstanceOf[HttpURLConnection]
 		if (url.startsWith("https://")) {
 			if (runner) {
-				ctx.config.get("https.disable", false) match {
+				ctx.config.ssl.disabled match {
 					case true =>
 						throw new IllegalStateException("Cannot connect to https with https.disable")
 					case false =>

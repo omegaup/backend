@@ -100,14 +100,24 @@ class CompileSpec extends FreeSpec with Matchers with CaseMatchers
       FileUtil.deleteDirectory(root.getCanonicalPath)
     }
 
-    root.mkdir()
-    new File(root.getCanonicalPath + "/compile").mkdir()
+    val compileRoot = new File(root, "compile")
+    root.mkdir
+    compileRoot.mkdir
 
-    config.set("runner.preserve", true)
-    config.set("compile.root", root.getCanonicalPath + "/compile")
-    config.set("runner.sandbox.path", new File("../sandbox").getCanonicalPath)
-    config.set("runner.minijail.path", new File("/var/lib/minijail").getCanonicalPath)
-    config.set("logging.level", "off")
+    config = config.copy(
+      runner = RunnerConfig(
+        preserve = true
+      ),
+      common = CommonConfig(
+        roots = RootsConfig(
+          compile = compileRoot.getCanonicalPath
+        ),
+        paths = PathsConfig(
+          minijail = "/var/lib/minijail"
+        )
+      )
+    )
+    ctx = new Context(config)
 
     Logging.init
   }

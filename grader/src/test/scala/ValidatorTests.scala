@@ -6,13 +6,7 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.FlatSpec
 import org.scalatest.Matchers
 
-class ValidatorSpec extends FlatSpec with Matchers with ContextMixin
-		with BeforeAndAfterAll {
-
-  override def beforeAll() {
-    config.set("logging.level", "off")
-    Logging.init
-	}
+class ValidatorSpec extends FlatSpec with Matchers with ContextMixin {
 
 	"Tokenizers" should "tokenize properly" in {
 		var tok = new Tokenizer(new File("grader/src/test/resources/token_test.txt"),

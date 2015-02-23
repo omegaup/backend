@@ -17,6 +17,7 @@ import javax.servlet.ServletException
 import javax.servlet.http.HttpServlet
 import javax.servlet.http.HttpServletRequest
 import javax.servlet.http.HttpServletResponse
+import net.liftweb.json
 import net.liftweb.json.Serialization
 import org.apache.commons.compress.archivers.ArchiveEntry
 import org.apache.commons.compress.archivers.zip.ZipArchiveInputStream
@@ -37,7 +38,7 @@ class HttpHandler(grader: Grader, broadcaster: Broadcaster)(implicit ctx: Contex
 		request: HttpServletRequest,
 		response: HttpServletResponse
 	): Unit = {
-		if (request.getPathInfo() == "/" && ctx.config.get("grader.standalone", false)) {
+		if (request.getPathInfo() == "/" && ctx.config.grader.standalone) {
 			response.setContentType("text/html")
 			response.setStatus(HttpServletResponse.SC_OK)
 			FileUtil.copy(
@@ -59,17 +60,10 @@ class HttpHandler(grader: Grader, broadcaster: Broadcaster)(implicit ctx: Contex
 		Serialization.write(request.getPathInfo() match {
 			case "/grader/reload-config/" => {
 				try {
-					val req = Serialization.read[ReloadConfigInputMessage](request.getReader())
-					val embeddedRunner = ctx.config.get("grader.embedded_runner.enable", false)
-					// TODO: Config.load(grader.options.configPath)
-
-					req.overrides match {
-						case Some(x) => {
-							log.info("Configuration reloaded {}", x)
-							x.foreach { case (k, v) => ctx.config.set(k, v) }
-						}
-						case None => log.info("Configuration reloaded")
-					}
+					val mergedConfig = ConfigMerge(ctx.config,
+						json.JsonParser.parse(request.getReader(), true))
+					val embeddedRunner = ctx.config.grader.embedded_runner_enabled
+					log.info("Configuration reloaded")
 
 					grader.updateConfiguration(embeddedRunner)
 
@@ -86,7 +80,7 @@ class HttpHandler(grader: Grader, broadcaster: Broadcaster)(implicit ctx: Contex
 			case "/grader/status/" => {
 				response.setStatus(HttpServletResponse.SC_OK)
 				new StatusOutputMessage(
-					embedded_runner = ctx.config.get("grader.embedded_runner.enable", false),
+					embedded_runner = ctx.config.grader.embedded_runner_enabled,
 					queue = Some(grader.runnerDispatcher.status)
 				)
 			}
@@ -154,7 +148,7 @@ class HttpHandler(grader: Grader, broadcaster: Broadcaster)(implicit ctx: Contex
 				}
 			}
 			case _ => {
-				if (ctx.config.get("grader.standalone", false)) request.getPathInfo match {
+				if (ctx.config.grader.standalone) request.getPathInfo match {
 					case "/run/new/" => {
 						try {
 							var req = Serialization.read[RunNewInputMessage](request.getReader())
@@ -268,23 +262,23 @@ class HttpService(grader: Grader, broadcaster: Broadcaster)
 	val server = new org.eclipse.jetty.server.Server
 
 	{
-		val graderConnector = (if (ctx.config.get("https.disable", false)) {
+		val graderConnector = (if (ctx.config.ssl.disabled) {
 			new org.eclipse.jetty.server.ServerConnector(server)
 		} else {
 			// boilerplate code for jetty with https support
 			val sslContext = new org.eclipse.jetty.util.ssl.SslContextFactory(
-				ctx.config.get("ssl.keystore", "omegaup.jks"))
-			sslContext.setKeyManagerPassword(ctx.config.get("ssl.password", "omegaup"))
-			sslContext.setKeyStorePassword(ctx.config.get("ssl.keystore.password", "omegaup"))
+				ctx.config.ssl.keystore_path)
+			sslContext.setKeyManagerPassword(ctx.config.ssl.password)
+			sslContext.setKeyStorePassword(ctx.config.ssl.keystore_password)
 			sslContext.setTrustStore(FileUtil.loadKeyStore(
-				ctx.config.get("ssl.truststore", "omegaup.jks"),
-				ctx.config.get("ssl.truststore.password", "omegaup")
+				ctx.config.ssl.truststore_path,
+				ctx.config.ssl.truststore_password
 			))
 			sslContext.setNeedClientAuth(true)
 
 			new org.eclipse.jetty.server.ServerConnector(server, sslContext)
 		})
-		graderConnector.setPort(ctx.config.get("grader.port", 21680))
+		graderConnector.setPort(ctx.config.grader.port)
 
 		server.setConnectors(List(graderConnector).toArray)
 
@@ -314,7 +308,7 @@ object Service extends Object with Log with Using {
 		import java.text.SimpleDateFormat
 
 		val (file, guid) = FileUtil.createRandomFile(
-			new java.io.File(ctx.config.get("submissions.root", "submissions"))
+			new java.io.File(ctx.config.common.roots.submissions)
 		)
 		FileUtil.write(file, req.code)
 
@@ -340,11 +334,11 @@ object Service extends Object with Log with Using {
 		implicit val formats = OmegaUpSerialization.formats
 		GraderData.getRun(id) map(
 			run => {
-				val sourceFile = new File(ctx.config.get("submissions.root", "submissions"),
+				val sourceFile = new File(ctx.config.common.roots.submissions,
 					run.guid.substring(0, 2) + "/" + run.guid.substring(2))
-				val groupsFile = new File(ctx.config.get("grader.root", "grade"),
+				val groupsFile = new File(ctx.config.common.roots.grade,
 					run.id.toString + "/details.json")
-				val compileErrorFile = new File(ctx.config.get("grader.root", "grade"),
+				val compileErrorFile = new File(ctx.config.common.roots.grade,
 					run.id.toString + ".err")
 
 				RunStatusOutputMessage(run.problem.alias, run.status.toString,
@@ -486,7 +480,7 @@ output_limit:${problem.output_limit.getOrElse(-1)}
 stack_limit:${problem.stack_limit.getOrElse(-1)}""")
 
 			val problemDirectory =
-				Paths.get(ctx.config.get("problems.root", "./problems"), problem.alias)
+				Paths.get(ctx.config.common.roots.problems, problem.alias)
 
 			val git = new Git(uploadDirectory.toFile)
 			git.init
@@ -507,7 +501,7 @@ stack_limit:${problem.stack_limit.getOrElse(-1)}""")
 		GraderData.getProblems map(
 			problem => {
 				val statementsDirectory = new File(
-					new File(ctx.config.get("problems.root", "./problems"), problem.alias), "statements")
+					new File(ctx.config.common.roots.problems, problem.alias), "statements")
 				ProblemListOutputMessageEntry(
 					problem.alias,
 					problem.title,
@@ -536,21 +530,22 @@ stack_limit:${problem.stack_limit.getOrElse(-1)}""")
 	def main(args: Array[String]) = {
 		val graderOptions = com.omegaup.grader.Service.parseOptions(args)
 
-		implicit val ctx = new Context(new Config(graderOptions.configPath))
+		implicit val ctx = new Context(ConfigMerge(new Config(),
+			json.parse(FileUtil.read(graderOptions.configPath))))
 
 		// logger
 		Logging.init
 
 		val grader = new Grader(graderOptions)
-		if (ctx.config.get("grader.standalone", false)) {
-			val submissions = new File(ctx.config.get("submissions.root", "submissions"))
+		if (ctx.config.grader.standalone) {
+			val submissions = new File(ctx.config.common.roots.submissions)
 			for (i <- 0 until 256) {
 				new File(submissions, f"$i%02x").mkdirs
 			}
-			new File(ctx.config.get("grader.root", "grade")).mkdirs
-			new File(ctx.config.get("problems.root", "problems")).mkdirs
-			new File(ctx.config.get("input.root", "input")).mkdirs
-			new File(ctx.config.get("compile.root", "compile")).mkdirs
+			new File(ctx.config.common.roots.grade).mkdirs
+			new File(ctx.config.common.roots.problems).mkdirs
+			new File(ctx.config.common.roots.input).mkdirs
+			new File(ctx.config.common.roots.compile).mkdirs
 			implicit val connection: Connection = grader.conn
 			GraderData.init
 		}

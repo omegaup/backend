@@ -53,7 +53,7 @@ ServiceInterface with Runnable with Log with Using {
 
 	{
 		val broadcasterConnector = new org.eclipse.jetty.server.ServerConnector(server)
-		broadcasterConnector.setPort(serviceCtx.config.get("broadcaster.port", 39613))
+		broadcasterConnector.setPort(serviceCtx.config.broadcaster.port)
 		server.addConnector(broadcasterConnector)
 
 		val creator = new WebSocketCreator() {
@@ -147,17 +147,14 @@ ServiceInterface with Runnable with Log with Using {
 				val run = m.ctx.run
 				implicit val formats = OmegaUpSerialization.formats
 
-				if (serviceCtx.config.get("grader.scoreboard_refresh.enable", true)) {
+				if (!serviceCtx.config.grader.scoreboard_refresh.disabled) {
 					m.ctx.trace(EventCategory.GraderRefresh) {
 						try {
 							log.info("Scoreboard refresh {}",
 								Https.post[ScoreboardRefreshResponse](
-									serviceCtx.config.get(
-										"grader.scoreboard_refresh.url",
-										"http://localhost/api/scoreboard/refresh/"
-									),
+									serviceCtx.config.grader.scoreboard_refresh.url,
 									Map(
-										"token" -> serviceCtx.config.get("grader.scoreboard_refresh.token", "secret"),
+										"token" -> serviceCtx.config.grader.scoreboard_refresh.token,
 										"alias" -> elm.contest,
 										"run" -> run.id.toString
 									),
@@ -280,7 +277,7 @@ ServiceInterface with Runnable with Log with Using {
 			if (query.length != 2) return null
 			try {
 				val response = Https.post[ContestRoleResponse](
-					serviceCtx.config.get("grader.role.url", "http://localhost/api/contest/role/"),
+					serviceCtx.config.omegaup.role_url,
 					Map("token" -> query(1), "contest_alias" -> contest),
 					runner = false
 				)
@@ -312,7 +309,7 @@ ServiceInterface with Runnable with Log with Using {
 			val user = tokens(1)
 
 			val digest = hashdigest("SHA-256",
-				serviceCtx.config.get("omegaup.md5.salt", "omegaup") + user + entropy)
+				serviceCtx.config.omegaup.salt + user + entropy)
 			if (tokens(2) == digest) {
 				try {
 					(user.toInt, userId)
@@ -343,7 +340,7 @@ ServiceInterface with Runnable with Log with Using {
 			if (userId == -1) return null
 			try {
 				val response = Https.post[ContestRoleResponse](
-					serviceCtx.config.get("grader.role.url", "http://localhost/api/contest/role/"),
+					serviceCtx.config.omegaup.role_url,
 					Map("auth_token" -> token, "contest_alias" -> contest),
 					runner = false
 				)

@@ -14,7 +14,7 @@ import Verdict._
 trait OutputValidator extends Object with Log with Using {
 	def validateRun(run: Run)(implicit ctx: RunContext): Run = {
 		val alias = run.problem.alias
-		val dataDirectory = new File(ctx.config.get("grader.root", "./grade") + "/" + run.id)
+		val dataDirectory = new File(ctx.config.common.roots.grade, run.id.toString)
 
 		log.info("Validating {} {} with {}", alias, run.id, run.problem.validator)
 
@@ -28,7 +28,7 @@ trait OutputValidator extends Object with Log with Using {
 			.map{ f => f.getName.substring(0, f.getName.length - 5)->(f, MetaFile.load(f.getCanonicalPath)) }
 			.toMap
 
-		val weightsFile = new File(ctx.config.get("problems.root", "./problems") + "/" + alias + "/testplan")
+		val weightsFile = new File(ctx.config.common.roots.problems, alias + "/testplan")
 
 		log.trace("Finding Weights file in {}", weightsFile.getCanonicalPath)
 
@@ -63,7 +63,7 @@ trait OutputValidator extends Object with Log with Using {
 		} else {
 			val weights = new mutable.ListMap[String,mutable.ListMap[String,Double]]
 
-			val inputs = new File(ctx.config.get("problems.root", "./problems"), alias + "/cases/in/")
+			val inputs = new File(ctx.config.common.roots.problems, alias + "/cases/in/")
 				.listFiles
 				.filter { _.getName.endsWith(".in") }
 
@@ -144,7 +144,7 @@ trait OutputValidator extends Object with Log with Using {
 						run,
 						name,
 						new File(f.getCanonicalPath.replace(".meta", ".out")),
-						new File(ctx.config.get("problems.root", "./problems"),
+						new File(ctx.config.common.roots.problems,
 							alias + "/cases/out/" + f.getName.replace(".meta", ".out")),
 						metas(name)._2
 					)
@@ -182,7 +182,7 @@ trait OutputValidator extends Object with Log with Using {
 
 		implicit val formats = OmegaUpSerialization.formats
 
-		val details = new File(ctx.config.get("grader.root", "./grade") + "/" + run.id + "/details.json")
+		val details = new File(ctx.config.common.roots.grade, run.id + "/details.json")
 		log.debug("Writing details into {}.", details.getCanonicalPath)
 		Serialization.write(caseScores, new FileWriter(details))
 

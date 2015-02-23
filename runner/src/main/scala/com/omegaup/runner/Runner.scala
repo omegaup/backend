@@ -36,7 +36,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
       val missingTarget = !targetFile.exists
 
       if (previousError == null && status == 0 && !missingTarget) {
-        if (!ctx.config.get("runner.preserve", false)) {
+        if (!ctx.config.runner.preserve) {
           new File(runDirectory, "compile.meta").delete
           new File(runDirectory, "compile.out").delete
           new File(runDirectory, "compile.err").delete
@@ -80,7 +80,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
       }
     }
 
-    if (!ctx.config.get("runner.preserve", false)) {
+    if (!ctx.config.runner.preserve) {
       FileUtil.deleteDirectory(runDirectory.getParentFile.getCanonicalPath)
     }
 
@@ -240,7 +240,8 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
   def compile(message: CompileInputMessage)(implicit ctx: Context): CompileOutputMessage = {
     log.info("compile {}", message.lang)
 
-    val compileDirectory = new File(ctx.config.get("compile.root", "./compile"))
+    val compileDirectory = new File(ctx.config.common.roots.compile)
+    log.info("compiling in {}", compileDirectory)
     compileDirectory.mkdirs
 
     var runDirectoryFile = File.createTempFile(System.nanoTime.toString, null, compileDirectory)
@@ -295,7 +296,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
         if (in.contains(".") || in.contains("/")) {
           return new RunOutputMessage(status="error", error=Some("Invalid input"))
         }
-        new File (ctx.config.get("input.root", "./input"), in)
+        new File (ctx.config.common.roots.input, in)
       }
       case None => null
     }
@@ -307,7 +308,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
     if(casesDirectory != null && !casesDirectory.exists) {
       new RunOutputMessage(status="error", error=Some("missing input"))
     } else {
-      val runDirectory = new File(ctx.config.get("compile.root", "./compile"), message.token)
+      val runDirectory = new File(ctx.config.common.roots.compile, message.token)
 
       if(!runDirectory.exists) return new RunOutputMessage(status="error", error=Some("Invalid token"))
 
@@ -661,18 +662,18 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
   }
 
   def removeCompileDir(token: String)(implicit ctx: Context): Unit = {
-    val runDirectory = new File(ctx.config.get("compile.root", "./compile") + "/" + token)
+    val runDirectory = new File(ctx.config.common.roots.compile, token)
 
     if (!runDirectory.exists) throw new IllegalArgumentException("Invalid token")
 
-    if (!ctx.config.get("runner.preserve", false)) {
+    if (!ctx.config.runner.preserve) {
       log.error("Removing directory {}", runDirectory)
       FileUtil.deleteDirectory(runDirectory)
     }
   }
 
   def input(inputName: String, entries: Iterable[InputEntry])(implicit ctx: Context): InputOutputMessage = {
-    val inputDirectory = new File(ctx.config.get("input.root", "./input"), inputName)
+    val inputDirectory = new File(ctx.config.common.roots.input, inputName)
     inputDirectory.mkdirs
 
     try {
