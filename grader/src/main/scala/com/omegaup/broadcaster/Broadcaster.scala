@@ -40,8 +40,8 @@ class QueuedRun(contest: String, broadcast: Boolean, targetUser: Long, userOnly:
 class QueuedMessage(contest: String, broadcast: Boolean, targetUser: Long, userOnly: Boolean, val message: String)
 	extends QueuedElement(contest, broadcast, targetUser, userOnly) {}
 
-class Broadcaster(implicit serviceCtx: Context) extends Object with
-ServiceInterface with Runnable with Log with Using {
+class Broadcaster(implicit var serviceCtx: Context) extends Object with
+		ServiceInterface with Runnable with Log with Using {
 	private val PathRE = "^/([a-zA-Z0-9_-]+)/?".r
 	// A collection of subscribers.
 	private val subscribers = new mutable.HashMap[String, mutable.ArrayBuffer[BroadcasterSession]]
@@ -51,7 +51,7 @@ ServiceInterface with Runnable with Log with Using {
 	private val broadcastThread = new Thread(this, "BroadcastThread")
 	private val server = new org.eclipse.jetty.server.Server
 
-	{
+	override def start() = {
 		val broadcasterConnector = new org.eclipse.jetty.server.ServerConnector(server)
 		broadcasterConnector.setPort(serviceCtx.config.broadcaster.port)
 		server.addConnector(broadcasterConnector)
@@ -76,6 +76,10 @@ ServiceInterface with Runnable with Log with Using {
 		broadcastThread.start
 
 		log.info("Broadcaster started")
+	}
+
+	override def updateContext(newCtx: Context) = {
+		serviceCtx = newCtx
 	}
 
 	def subscribe(session: BroadcasterSession) = {
@@ -388,13 +392,8 @@ ServiceInterface with Runnable with Log with Using {
 	}
 }
 
-object Service extends Object with Log {
-	def main(args: Array[String]) = {
-		implicit val ctx = new Context
-
-		// logger
-		Logging.init
-
+object Service extends Object with Log with ContextMixin {
+	override def start() = {
 		val server = new Broadcaster
 
 		Runtime.getRuntime.addShutdownHook(new Thread() {

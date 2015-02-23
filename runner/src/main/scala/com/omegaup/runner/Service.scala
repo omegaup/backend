@@ -126,7 +126,7 @@ class RegisterThread(hostname: String, port: Int)(implicit ctx: Context)
   }
 }
 
-object Service extends Object with Log with Using {
+object Service extends Object with Log with Using with ContextMixin {
   def lock[T](registerThread: RegisterThread)(success: =>T, failure: =>T): T = {
     if (registerThread.acquire) {
       try {
@@ -139,43 +139,23 @@ object Service extends Object with Log with Using {
     }
   }
 
-  def main(args: Array[String]) = {
-    // Parse command-line options.
-    var configPath = "omegaup.conf"
-    var i = 0
-    while (i < args.length) {
-      if (args(i) == "--config" && i + 1 < args.length) {
-        i += 1
-        configPath = args(i)
-      } else if (args(i) == "--output" && i + 1 < args.length) {
-        i += 1
-        System.setOut(new PrintStream(new FileOutputStream(args(i))))
-      }
-      i += 1
-    }
-
-		implicit val ctx = new Context(ConfigMerge(Config(),
-			net.liftweb.json.parse(FileUtil.read(configPath))))
-
+  override def start() = {
     // Get local hostname
-    val hostname = ctx.config.runner.hostname
+    val hostname = serviceCtx.config.runner.hostname
 
     if (hostname == "") {
       throw new IllegalArgumentException("runner.hostname configuration must be set")
     }
 
-		new File(ctx.config.common.roots.input).mkdirs
-		new File(ctx.config.common.roots.compile).mkdirs
+		new File(serviceCtx.config.common.roots.input).mkdirs
+		new File(serviceCtx.config.common.roots.compile).mkdirs
 
     var registerThread: RegisterThread = null
-
-    // logger
-    Logging.init
 
     // And build a runner instance
     val runner = new Runner(
 			hostname,
-			ctx.config.runner.sandbox match {
+			serviceCtx.config.runner.sandbox match {
 				case "null" => NullSandbox
 				case _ => Minijail
 			}
@@ -202,7 +182,7 @@ object Service extends Object with Log with Using {
                 val req = Serialization.read[RunInputMessage](request.getReader)
                 token = req.token
 
-                val zipFile = new File(ctx.config.common.roots.compile, token + "/output.zip")
+                val zipFile = new File(serviceCtx.config.common.roots.compile, token + "/output.zip")
                 runner.run(req, callbackProxy)
               } catch {
                 case e: Exception => {
@@ -263,8 +243,8 @@ object Service extends Object with Log with Using {
                     var tarStream: InputStream = request.getInputStream
 
                     // Some debugging code to diagnose input transmission problems.
-                    if (ctx.config.runner.preserve_tar) {
-                      var tarFile = new File(ctx.config.common.roots.input, inputName + ".tar")
+                    if (serviceCtx.config.runner.preserve_tar) {
+                      var tarFile = new File(serviceCtx.config.common.roots.input, inputName + ".tar")
                       using (new FileOutputStream(tarFile)) {
                         FileUtil.copy(tarStream, _)
                       }
@@ -314,26 +294,26 @@ object Service extends Object with Log with Using {
     };
 
 		val server = new org.eclipse.jetty.server.Server()
-		val runnerConnector = (if (ctx.config.ssl.disabled) {
+		val runnerConnector = (if (serviceCtx.config.ssl.disabled) {
 			new org.eclipse.jetty.server.ServerConnector(server)
 		} else {
 			// boilerplate code for jetty with https support
 
 			val sslContext =
 				new org.eclipse.jetty.util.ssl.SslContextFactory(
-					ctx.config.ssl.keystore_path
+					serviceCtx.config.ssl.keystore_path
 				)
-			sslContext.setKeyManagerPassword(ctx.config.ssl.password)
-			sslContext.setKeyStorePassword(ctx.config.ssl.keystore_password)
+			sslContext.setKeyManagerPassword(serviceCtx.config.ssl.password)
+			sslContext.setKeyStorePassword(serviceCtx.config.ssl.keystore_password)
 			sslContext.setTrustStore(FileUtil.loadKeyStore(
-				ctx.config.ssl.truststore_path,
-				ctx.config.ssl.truststore_password
+				serviceCtx.config.ssl.truststore_path,
+				serviceCtx.config.ssl.truststore_password
 			))
 			sslContext.setNeedClientAuth(true)
 
 			new org.eclipse.jetty.server.ServerConnector(server, sslContext)
 		})
-    runnerConnector.setPort(ctx.config.runner.port)
+    runnerConnector.setPort(serviceCtx.config.runner.port)
 
     server.setConnectors(List(runnerConnector).toArray)
     server.setHandler(handler)

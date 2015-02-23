@@ -1,7 +1,6 @@
 import com.omegaup._
 import com.omegaup.data._
 import com.omegaup.grader.Grader
-import com.omegaup.grader.GraderOptions
 
 import Language._
 
@@ -62,6 +61,7 @@ class GraderSpec extends FreeSpec with Matchers with BeforeAndAfterAll
       )
     )
     ctx = new Context(config)
+    Service.updateContext(ctx)
 
     for (i <- 0 until 256) {
       new File(root, f"submissions/$i%02x").mkdirs
@@ -105,7 +105,7 @@ class GraderSpec extends FreeSpec with Matchers with BeforeAndAfterAll
       conn.close
     }
 
-    grader = new Grader(new GraderOptions)
+    grader = new Grader
     grader.start
     conn = grader.conn
 

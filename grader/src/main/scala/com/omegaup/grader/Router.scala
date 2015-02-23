@@ -164,7 +164,8 @@ object RoutingDescription extends StandardTokenParsers with Log {
 	}
 }
 
-class RunnerDispatcher(implicit serviceCtx: Context) extends ServiceInterface with Log {
+class RunnerDispatcher(implicit var serviceCtx: Context)
+		extends ServiceInterface with Log {
 	private val registeredEndpoints = scala.collection.mutable.HashMap.empty[RunnerEndpoint, Long]
 	private val runnerQueue = scala.collection.mutable.Queue.empty[RunnerService]
 	private val runQueue = new Array[scala.collection.mutable.Queue[RunContext]](8)
@@ -177,15 +178,20 @@ class RunnerDispatcher(implicit serviceCtx: Context) extends ServiceInterface wi
 	private val lock = new Object
 
 	private val pruner = new java.util.Timer("Flight pruner", true)
-	pruner.scheduleAtFixedRate(
-		new java.util.TimerTask() {
-			override def run(): Unit = pruneFlights
-		},
-		serviceCtx.config.grader.flight_pruner_interval * 1000,
-		serviceCtx.config.grader.flight_pruner_interval * 1000
-	)
 
-	for (i <- 0 until runQueue.length) runQueue(i) = scala.collection.mutable.Queue.empty[RunContext]
+	override def start() = {
+		pruner.scheduleAtFixedRate(
+			new java.util.TimerTask() {
+				override def run(): Unit = pruneFlights
+			},
+			serviceCtx.config.grader.flight_pruner_interval * 1000,
+			serviceCtx.config.grader.flight_pruner_interval * 1000
+		)
+
+		for (i <- 0 until runQueue.length) {
+			runQueue(i) = scala.collection.mutable.Queue.empty[RunContext]
+		}
+	}
 
 	def status() = lock.synchronized {
 		QueueStatus(
@@ -196,20 +202,32 @@ class RunnerDispatcher(implicit serviceCtx: Context) extends ServiceInterface wi
 		)
 	}
 
-	def updateConfiguration(description: String, slowThreshold: Int) = lock.synchronized {
-		runRouter = RoutingDescription.parse(description)
-		this.slowThreshold = slowThreshold
+	override def updateContext(newCtx: Context) = lock.synchronized {
+		val description = newCtx.config.grader.routing.table
+		val slowThreshold = newCtx.config.grader.routing.slow_threshold
 
-		val runs = scala.collection.mutable.MutableList.empty[RunContext]
-		for (i <- 0 until runQueue.length) {
-			while (!runQueue(i).isEmpty) runs += runQueue(i).dequeue
+		try {
+			runRouter = RoutingDescription.parse(description)
+			this.slowThreshold = slowThreshold
+			serviceCtx = newCtx
+
+			val runs = scala.collection.mutable.MutableList.empty[RunContext]
+			for (i <- 0 until runQueue.length) {
+				while (!runQueue(i).isEmpty) runs += runQueue(i).dequeue
+			}
+			runs.sortBy(_.creationTime)
+
+			runs.foreach { ctx => {
+				runQueue(runRouter(ctx)) += ctx
+				dispatchLocked
+			}}
+		} catch {
+			case ex: ParseException => {
+				log.error("Unable to parse {} at character {}", description,
+					ex.getErrorOffset)
+			}
 		}
-		runs.sortBy(_.creationTime)
 
-		runs.foreach { ctx => {
-			runQueue(runRouter(ctx)) += ctx
-			dispatchLocked
-		}}
 	}
 
 	def register(hostname: String, port: Int): EndpointRegisterOutputMessage = {

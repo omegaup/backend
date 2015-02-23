@@ -8,15 +8,12 @@ import Status._
 import Verdict._
 import Validator._
 
-case class GraderOptions(
-	configPath: String = "omegaup.conf"
-)
-
-class Grader(val options: GraderOptions)(implicit serviceCtx: Context)
+class Grader(implicit var serviceCtx: Context)
 extends Object with GraderService with ServiceInterface with Log {
 	type Listener = (RunContext, Run) => Unit
 	private val listeners = scala.collection.mutable.ListBuffer.empty[Listener]
 	val runnerDispatcher = new RunnerDispatcher
+	private var embeddedRunner: Boolean = false
 
 	// Loading SQL connector driver
 	Class.forName(serviceCtx.config.db.driver)
@@ -26,11 +23,10 @@ extends Object with GraderService with ServiceInterface with Log {
 		serviceCtx.config.db.password
 	)
 
-	def start() = {
-		updateConfiguration(false)
-
+	override def start() = {
+		runnerDispatcher.start
+		updateContext(serviceCtx)
 		recoverQueue
-
 		log.info("omegaUp Grader service started")
 	}
 
@@ -86,29 +82,25 @@ extends Object with GraderService with ServiceInterface with Log {
 		run
 	}
 
-	def updateConfiguration(embeddedRunner: Boolean) = {
-		if (serviceCtx.config.grader.embedded_runner_enabled && !embeddedRunner) {
-			runnerDispatcher.addRunner(
-				new com.omegaup.runner.Runner(
-					"#embedded-runner",
-					serviceCtx.config.runner.sandbox match {
-						case "null" => NullSandbox
-						case _ => Minijail
-					}
+	override def updateContext(newCtx: Context) = {
+		serviceCtx = newCtx
+
+		this.synchronized {
+			if (serviceCtx.config.grader.embedded_runner_enabled && !embeddedRunner) {
+				runnerDispatcher.addRunner(
+					new com.omegaup.runner.Runner(
+						"#embedded-runner",
+						serviceCtx.config.runner.sandbox match {
+							case "null" => NullSandbox
+							case _ => Minijail
+						}
+					)
 				)
-			)
-		}
-		val source = serviceCtx.config.grader.routing.table
-		try {
-			runnerDispatcher.updateConfiguration(
-				source,
-				serviceCtx.config.grader.routing.slow_threshold
-			)
-		} catch {
-			case ex: ParseException => {
-				log.error("Unable to parse {} at character {}", source, ex.getErrorOffset)
 			}
+			embeddedRunner = serviceCtx.config.grader.embedded_runner_enabled
 		}
+
+		runnerDispatcher.updateContext(newCtx)
 		serviceCtx.config.grader.routing.registered_runners.foreach({ endpoint => {
 			val tokens = endpoint.split(":")
 			if (tokens.length > 0 && tokens(0).trim.length > 0) {

@@ -5,6 +5,8 @@ import java.io.InputStream
 import java.io.OutputStream
 
 trait ServiceInterface {
+	def updateContext(newCtx: Context)
+	def start(): Unit
 	def stop(): Unit
 	def join(): Unit
 }
