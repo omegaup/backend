@@ -17,6 +17,8 @@ ProguardKeys.options in Proguard ++= Seq(
   "-dontwarn",
   "-keep interface scala.ScalaObject",
   "-keep class com.omegaup.**",
+  "-keepclasseswithmembers public class com.omegaup.** { public *** copy(...); }",
+  "-keepclasseswithmembers public class com.omegaup.data.** { *; }",
   "-keepclassmembers class scala.tools.scalap.scalax.rules.** { *; }",
   "-keep class scala.collection.JavaConversions",
   "-keep class org.eclipse.jetty.util.log.Slf4jLog",

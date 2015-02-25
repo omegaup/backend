@@ -131,7 +131,11 @@ object ConfigMerge {
 				})
 				.sortWith(_._2 < _._2)
 				.map(_._1)
-		val meth = clazz.getMethods.filter(_.getName == "copy")(0)
+		val copyMethods = clazz.getMethods.filter(_.getName == "copy")
+		if (copyMethods.length == 0) {
+			throw new NoSuchMethodException(clazz + ".copy")
+		}
+		val meth = copyMethods(0)
 		assert(meth.getParameterTypes.toSeq ==
 			fields.map(_.getReturnType).toSeq)
 

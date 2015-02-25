@@ -1,6 +1,7 @@
 package com.omegaup
 
 import ch.qos.logback
+import com.omegaup.data.LogCopyable
 import java.io.ByteArrayOutputStream
 import logback.classic.Level
 import logback.classic.Level._
@@ -30,6 +31,9 @@ class OverrideLogger(levelName: String) {
 	def append(event: ILoggingEvent) = {
 		val element = layout.doLayout(event)
 		buffer.append(element)
+	}
+	def append(message: String) = {
+		buffer.append(message)
 	}
 	def start() = {
 		layout.start
@@ -392,6 +396,27 @@ object Logging extends Object {
 		appender.start
 
 		logger.addAppender(appender)
+	}
+
+	def debugWrap[T <: LogCopyable[T]](f: (Boolean => Context) => T)(implicit parentCtx: Context): T = {
+		var overrideLogger: Option[OverrideLogger] = None
+		try {
+			val message = f(debug => {
+				if (debug) {
+					overrideLogger = Some(new OverrideLogger("debug"))
+					overrideLogger.get.start
+					new Context(parentCtx.config, overrideLogger.get)
+				} else {
+					parentCtx
+				}
+			})
+			overrideLogger match {
+				case None => message
+				case Some(logger) => message.copyWithLogs(Some(logger.toString))
+			}
+		} finally {
+			overrideLogger.map(_.stop)
+		}
 	}
 }
 

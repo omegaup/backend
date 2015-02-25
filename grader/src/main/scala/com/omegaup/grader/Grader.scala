@@ -62,8 +62,18 @@ extends Object with GraderService with ServiceInterface with Log {
 		for (id <- message.id) {
 			GraderData.getRun(id) match {
 				case None => throw new IllegalArgumentException("Id " + id + " not found")
-				case Some(run) => grade(new RunContext(serviceCtx, Some(this), run,
-					message.debug, message.rejudge))
+				case Some(run) => {
+					val overrideLogger: Option[OverrideLogger] = message.debug match {
+						case false => None
+						case true => {
+							val logger = new OverrideLogger("debug")
+							logger.start
+							Some(logger)
+						}
+					}
+					grade(new RunContext(serviceCtx, Some(this), run, message.debug,
+						message.rejudge, overrideLogger))
+				}
 			}
 		}
 		RunGradeOutputMessage()

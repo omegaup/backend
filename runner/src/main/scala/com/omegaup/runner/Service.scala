@@ -177,13 +177,15 @@ object Service extends Object with Log with Using with ContextMixin {
             response.setStatus(HttpServletResponse.SC_OK)
 
             using (new OmegaUpRunstreamWriter(response.getOutputStream)) { callbackProxy => {
-							val message = (try {
-								val req = Serialization.read[RunInputMessage](request.getReader)
-								runner.run(req, callbackProxy)
-							} catch {
-								case e: Exception => {
-									log.error(e, "/run/")
-									new RunOutputMessage(status = "error", error = Some(e.getMessage))
+							val message = Logging.debugWrap(ctx => {
+								try {
+									val req = Serialization.read[RunInputMessage](request.getReader)
+									runner.run(req, callbackProxy)(ctx(req.debug))
+								} catch {
+									case e: Exception => {
+										log.error(e, "/run/")
+										new RunOutputMessage(status = "error", error = Some(e.getMessage))
+									}
 								}
 							})
 							log.info("Returning {}", message)
@@ -203,15 +205,17 @@ object Service extends Object with Log with Using with ContextMixin {
             response.setContentType("text/json")
             Serialization.write(request.getPathInfo() match {
               case "/compile/" => lock(registerThread) ({
-								(try {
-									val req = Serialization.read[CompileInputMessage](request.getReader())
-									response.setStatus(HttpServletResponse.SC_OK)
-									runner.compile(req)
-								} catch {
-									case e: Exception => {
-										log.error(e, "/compile/")
-										response.setStatus(HttpServletResponse.SC_BAD_REQUEST)
-										new CompileOutputMessage(status = "error", error = Some(e.getMessage))
+								Logging.debugWrap(ctx => {
+									try {
+										val req = Serialization.read[CompileInputMessage](request.getReader())
+										response.setStatus(HttpServletResponse.SC_OK)
+										runner.compile(req)(ctx(req.debug))
+									} catch {
+										case e: Exception => {
+											log.error(e, "/compile/")
+											response.setStatus(HttpServletResponse.SC_BAD_REQUEST)
+											new CompileOutputMessage(status = "error", error = Some(e.getMessage))
+										}
 									}
 								}).toJson
               }, {

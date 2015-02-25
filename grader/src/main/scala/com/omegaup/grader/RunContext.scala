@@ -1,8 +1,9 @@
 package com.omegaup.grader
 
 import com.omegaup.Config
-import com.omegaup.Log
 import com.omegaup.Context
+import com.omegaup.Log
+import com.omegaup.OverrideLogger
 import com.omegaup.RunnerService
 import com.omegaup.data.Run
 
@@ -53,8 +54,9 @@ case class CompleteEvent(category: EventCategory, time: Long, duration: Long, ar
 }
 
 class RunContext(parent: Context, grader: Option[Grader], var run: Run,
-	val debug: Boolean, val rejudge: Boolean
-) extends Context(parent.config) with Log {
+	val debug: Boolean, val rejudge: Boolean,
+	overrideLogger: Option[OverrideLogger] = None
+) extends Context(parent.config, overrideLogger.getOrElse(null)) with Log {
 	val creationTime = System.currentTimeMillis
 	val rejudges: Int = 0
 	val eventList = new scala.collection.mutable.MutableList[AnyRef]

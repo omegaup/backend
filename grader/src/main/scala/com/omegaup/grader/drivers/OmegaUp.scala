@@ -51,11 +51,15 @@ object OmegaUpDriver extends Driver with Log with Using {
     val alias = run.problem.alias
     val lang = run.language
     val errorFile = new File(ctx.config.common.roots.grade, + id + ".err")
+    val logFile = new File(ctx.config.common.roots.grade, + id + ".log")
 
     log.info("Compiling {} {} on {}", alias, id, ctx.service.name)
 
     if (errorFile.exists) {
       errorFile.delete
+    }
+    if (logFile.exists) {
+      logFile.delete
     }
 
     run.status = Status.Compiling
@@ -294,5 +298,11 @@ object OmegaUpDriver extends Driver with Log with Using {
                             validatorCode,
                             interactive,
                             ctx.debug)
+  }
+
+  def setLogs(run: Run, logs: String)(implicit ctx: RunContext): Unit = {
+    val id = run.id
+    val logFile = new File(ctx.config.common.roots.grade, + id + ".log")
+    FileUtil.write(logFile, logs)
   }
 }

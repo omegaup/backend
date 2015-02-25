@@ -379,6 +379,9 @@ class RunnerDispatcher(implicit var serviceCtx: Context)
 				}
 			}
 
+			if (ctx.debug) {
+				driver.setLogs(ctx.run, ctx.overrideLogger.toString)
+			}
 			ctx.updateVerdict(ctx.run)
 		}
 	}

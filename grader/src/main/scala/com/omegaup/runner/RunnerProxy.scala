@@ -42,20 +42,42 @@ with Using with Log {
 
 	def compile(message: CompileInputMessage)(implicit ctx: Context):
 	CompileOutputMessage = {
-		Https.send[CompileOutputMessage, CompileInputMessage](url + "/compile/",
+		val result = Https.send[CompileOutputMessage, CompileInputMessage](url + "/compile/",
 			message,
 			true
 		)
+		if (ctx.overrideLogger != null) {
+			result.logs match {
+				case Some(logs) => {
+					log.debug(s"=================== logs from $hostname ===================")
+					ctx.overrideLogger.append(logs)
+					log.debug("===========================================================")
+				}
+				case None => {}
+			}
+		}
+		result
 	}
 
 	def run(message: RunInputMessage, callback: RunCaseCallback)(implicit ctx: Context):
 	RunOutputMessage = {
 		val reader = new OmegaUpRunstreamReader(callback)
-		Https.send[RunOutputMessage, RunInputMessage](url + "/run/",
+		val result = Https.send[RunOutputMessage, RunInputMessage](url + "/run/",
 			message,
 			reader.apply _,
 			true
 		)
+		if (ctx.overrideLogger != null) {
+			result.logs match {
+				case Some(logs) => {
+					log.debug(s"=================== logs from $hostname ===================")
+					ctx.overrideLogger.append(logs)
+					log.debug("===========================================================")
+				}
+				case None => {}
+			}
+		}
+		result
 	}
 	
 	def input(inputName: String, entries: Iterable[InputEntry])(implicit ctx: Context):

@@ -14,6 +14,11 @@ import java.nio.file.Paths
 import spray.json._
 import DefaultJsonProtocol._
 
+trait LogCopyable[T <: LogCopyable[T]] {
+	self: T => def logs: Option[String]
+	def copyWithLogs(logs: Option[String]): T
+}
+
 case class NullMessage()
 
 // from Runner
@@ -32,6 +37,9 @@ case class CompileInputMessage(lang: String, code: List[(String, String)],
 case class CompileOutputMessage(status: String = "ok",
     error: Option[String] = None, token: Option[String] = None,
     logs: Option[String] = None)
+		extends LogCopyable[CompileOutputMessage] {
+	def copyWithLogs(logs: Option[String]) = this.copy(logs = logs)
+}
 
 case class InteractiveRuntimeDescription(main: String, interfaces: List[String],
     parentLang: String)
@@ -43,6 +51,9 @@ case class RunInputMessage(token: String, timeLimit: Long = 1000,
 		interactive: Option[InteractiveRuntimeDescription] = None)
 case class RunOutputMessage(status: String = "ok", error: Option[String] = None,
     results: Option[List[RunCaseResult]] = None, logs: Option[String] = None)
+		extends LogCopyable[RunOutputMessage] {
+	def copyWithLogs(logs: Option[String]) = this.copy(logs = logs)
+}
 
 case class InputOutputMessage(status: String = "ok",
 		error: Option[String] = None, logs: Option[String] = None)
@@ -72,7 +83,7 @@ case class RunStatusInputMessage(id: String)
 case class RunStatusOutputMessage(problem: String, status: String,
   verdict: String, score: Double, runtime: Double, memory: Double,
   source: String, groups: Option[List[GroupVerdictMessage]],
-  compile_error: Option[String])
+  compile_error: Option[String], logs: Option[String])
 case class RunListInputMessage()
 case class RunListOutputMessageEntry(problem: String, id: String,
   status: String, verdict: String, score: Double, runtime: Double,
@@ -143,7 +154,7 @@ object OmegaUpProtocol extends DefaultJsonProtocol {
 	implicit val runStatusInputMessageProtocol =
 		jsonFormat1(RunStatusInputMessage)
 	implicit val runStatusOutputMessageProtocol =
-		jsonFormat9(RunStatusOutputMessage)
+		jsonFormat10(RunStatusOutputMessage)
 	implicit val runListInputMessageProtocol = jsonFormat0(RunListInputMessage)
 	implicit val runListOutputMessageEntryProtocol =
 		jsonFormat7(RunListOutputMessageEntry)

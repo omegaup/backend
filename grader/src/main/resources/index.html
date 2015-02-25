@@ -122,6 +122,12 @@
 		#runs table th, #runs table td {
 			text-align: center;
 		}
+		#runs-details pre.logs {
+			text-align: left;
+			overflow: scroll;
+			word-wrap: normal;
+			max-height: 500px;
+		}
 		</style>
 	</head>
 	<body>
@@ -511,6 +517,7 @@
 							);
 						}
 					});
+					var logs = (this.state.run.logs ? [this.state.run.logs] : []);
 
 					return (
 						<div className="panel panel-default">
@@ -530,6 +537,13 @@
 								</thead>
 								{groupNodes}
 							</table>
+								{logs.map(function (logs) {
+									return(
+										<div className="panel-footer">
+												<pre className="logs">{logs}</pre>
+										</div>
+									);
+								})}
 						</div>
 					);
 				}
@@ -565,6 +579,25 @@
 						error: handleAjaxError,
 					});
 				},
+				handleRunDebugRejudge: function() {
+					var data = {
+						id: [this.props.run.id],
+						debug: true,
+						rejudge: true
+					};
+					$.ajax({
+						url: '/run/grade/',
+						method: 'POST',
+						dataType: 'json',
+						data: JSON.stringify(data),
+						processData: false,
+						contentType: false,
+						success: function(data) {
+							$(document).trigger('run-update');
+						}.bind(this),
+						error: handleAjaxError,
+					});
+				},
 				render: function() {
 					var runtime = this.props.run.runtime.toFixed(3);
 					var memory = this.props.run.memory.toFixed(2);
@@ -579,6 +612,7 @@
 							<td>{runtime}</td>
 							<td>{memory}</td>
 							<td><button onClick={this.handleRunRejudge} className="glyphicon glyphicon-repeat" title="Reevaluar"></button></td>
+							<td><button onClick={this.handleRunDebugRejudge} className="glyphicon glyphicon-dashboard" title="Reevaluar (debug)"></button></td>
 							<td><button onClick={this.handleRunDetails} className="glyphicon glyphicon-zoom-in" title="Detalles"></button></td>
 						</tr>
 					);

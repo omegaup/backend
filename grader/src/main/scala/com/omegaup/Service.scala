@@ -349,6 +349,8 @@ object Service extends Object with Log with Using with ContextMixin {
 					run.id.toString + "/details.json")
 				val compileErrorFile = new File(serviceCtx.config.common.roots.grade,
 					run.id.toString + ".err")
+				val logsFile = new File(serviceCtx.config.common.roots.grade,
+					run.id.toString + ".log")
 
 				RunStatusOutputMessage(run.problem.alias, run.status.toString,
 					run.verdict.toString, run.score, run.runtime / 1000.0,
@@ -363,6 +365,10 @@ object Service extends Object with Log with Using with ContextMixin {
 						case true => Some(Serialization.read[List[GroupVerdictMessage]](
 							new FileReader(groupsFile)
 						))
+					},
+					logs = logsFile.exists match {
+						case false => None
+						case true => Some(FileUtil.read(logsFile))
 					}
 				)
 			}
