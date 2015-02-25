@@ -1,38 +1,21 @@
 package com.omegaup.broadcaster
 
-import java.io._
-import java.util.zip._
-import java.util.concurrent._
-import javax.servlet._
-import javax.servlet.http._
-import org.eclipse.jetty.websocket.api._
-import org.eclipse.jetty.websocket.servlet._
-import org.eclipse.jetty.websocket.server.WebSocketHandler
-import org.eclipse.jetty.server._
-import org.eclipse.jetty.servlet._
-import net.liftweb.json.Serialization
-import scala.collection.{mutable,immutable}
-import scala.collection.JavaConversions._
 import com.omegaup._
+import com.omegaup.data.OmegaUpProtocol._
 import com.omegaup.data._
 import com.omegaup.grader._
-
-case class RunDetails(
-	username: Option[String],
-	contest_alias: Option[String],
-	alias: String,
-	guid: String,
-	runtime: Double,
-	memory: Long,
-	score: Double,
-	contest_score: Option[Double],
-	status: String,
-	verdict: String,
-	submit_delay: Long,
-	time: Long,
-	language: String
-)
-case class UpdateRunMessage(message: String, run: RunDetails)
+import java.io._
+import java.util.concurrent._
+import java.util.zip._
+import javax.servlet._
+import javax.servlet.http._
+import org.eclipse.jetty.server._
+import org.eclipse.jetty.servlet._
+import org.eclipse.jetty.websocket.api._
+import org.eclipse.jetty.websocket.server.WebSocketHandler
+import org.eclipse.jetty.websocket.servlet._
+import scala.collection.JavaConversions._
+import scala.collection.{mutable,immutable}
 
 class QueuedElement(val contest: String, val broadcast: Boolean, val targetUser: Long, val userOnly: Boolean) {}
 class QueuedRun(contest: String, broadcast: Boolean, targetUser: Long, userOnly: Boolean, val ctx: RunContext)
@@ -149,7 +132,6 @@ class Broadcaster(implicit var serviceCtx: Context) extends Object with
 			case m: QueuedRun => {
 				m.ctx.broadcastDequeued
 				val run = m.ctx.run
-				implicit val formats = OmegaUpSerialization.formats
 
 				if (!serviceCtx.config.grader.scoreboard_refresh.disabled) {
 					m.ctx.trace(EventCategory.GraderRefresh) {
@@ -173,25 +155,23 @@ class Broadcaster(implicit var serviceCtx: Context) extends Object with
 
 				m.ctx.finish
 
-				Serialization.write(
-					UpdateRunMessage("/run/update/",
-						RunDetails(
-							username = run.user.map(_.username),
-							contest_alias = Some(elm.contest),
-							alias = run.problem.alias,
-							guid = run.guid,
-							runtime = run.runtime,
-							memory = run.memory,
-							score = run.score,
-							contest_score = run.contest_score,
-							status = run.status.toString,
-							verdict = run.verdict.toString,
-							submit_delay = run.submit_delay,
-							time = run.time.getTime / 1000,
-							language = run.language.toString
-						)
+				Serialization.writeString(UpdateRunMessage("/run/update/",
+					RunDetails(
+						username = run.user.map(_.username),
+						contest_alias = Some(elm.contest),
+						alias = run.problem.alias,
+						guid = run.guid,
+						runtime = run.runtime,
+						memory = run.memory,
+						score = run.score,
+						contest_score = run.contest_score,
+						status = run.status.toString,
+						verdict = run.verdict.toString,
+						submit_delay = run.submit_delay,
+						time = run.time.getTime / 1000,
+						language = run.language.toString
 					)
-				)
+				))
 			}
 
 			case m: QueuedMessage => {

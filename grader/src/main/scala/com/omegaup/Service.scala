@@ -1,6 +1,7 @@
 package com.omegaup
 
 import com.omegaup.data._
+import com.omegaup.data.OmegaUpProtocol._
 import com.omegaup.grader.Grader
 import com.omegaup.grader.GraderData
 import com.omegaup.broadcaster.Broadcaster
@@ -17,8 +18,6 @@ import javax.servlet.ServletException
 import javax.servlet.http.HttpServlet
 import javax.servlet.http.HttpServletRequest
 import javax.servlet.http.HttpServletResponse
-import net.liftweb.json
-import net.liftweb.json.Serialization
 import org.apache.commons.compress.archivers.ArchiveEntry
 import org.apache.commons.compress.archivers.zip.ZipArchiveInputStream
 import org.apache.commons.fileupload.servlet.ServletFileUpload
@@ -27,6 +26,8 @@ import org.eclipse.jetty.server.handler.AbstractHandler
 import scala.collection.mutable.HashSet
 import scala.collection.mutable.HashMap
 import scala.collection.mutable.MutableList
+
+import spray.json._
 
 class HttpHandler(grader: Grader, broadcaster: Broadcaster,
 		updateConfig: Config => Unit) extends AbstractHandler with Log {
@@ -56,26 +57,24 @@ class HttpHandler(grader: Grader, broadcaster: Broadcaster,
 			return
 		}
 
-		implicit val formats = OmegaUpSerialization.formats
-
 		response.setContentType("text/json")
 
 		Serialization.write(request.getPathInfo() match {
 			case "/grader/reload-config/" => {
 				try {
 					val mergedConfig = ConfigMerge(ctx.config,
-						json.JsonParser.parse(request.getReader(), true))
+						FileUtil.read(request.getReader()))
 					log.info("Configuration reloaded")
 
 					updateConfig(mergedConfig)
 
 					response.setStatus(HttpServletResponse.SC_OK)
-					new ReloadConfigOutputMessage()
+					new ReloadConfigOutputMessage().toJson
 				} catch {
 					case e: Exception => {
 						log.error(e, "Reload config")
 						response.setStatus(HttpServletResponse.SC_BAD_REQUEST)
-						new ReloadConfigOutputMessage(status = "error", error = Some(e.getMessage))
+						new ReloadConfigOutputMessage(status = "error", error = Some(e.getMessage)).toJson
 					}
 				}
 			}
@@ -84,23 +83,23 @@ class HttpHandler(grader: Grader, broadcaster: Broadcaster,
 				new StatusOutputMessage(
 					embedded_runner = ctx.config.grader.embedded_runner_enabled,
 					queue = Some(grader.runnerDispatcher.status)
-				)
+				).toJson
 			}
 			case "/run/grade/" => {
 				try {
 					val req = Serialization.read[RunGradeInputMessage](request.getReader())
 					response.setStatus(HttpServletResponse.SC_OK)
-					grader.grade(req)
+					grader.grade(req).toJson
 				} catch {
 					case e: IllegalArgumentException => {
 						log.error(e, "Grade failed")
 						response.setStatus(HttpServletResponse.SC_NOT_FOUND)
-						new RunGradeOutputMessage(status = "error", error = Some(e.getMessage))
+						new RunGradeOutputMessage(status = "error", error = Some(e.getMessage)).toJson
 					}
 					case e: Exception => {
 						log.error(e, "Grade failed")
 						response.setStatus(HttpServletResponse.SC_BAD_REQUEST)
-						new RunGradeOutputMessage(status = "error", error = Some(e.getMessage))
+						new RunGradeOutputMessage(status = "error", error = Some(e.getMessage)).toJson
 					}
 				}
 			}
@@ -108,12 +107,12 @@ class HttpHandler(grader: Grader, broadcaster: Broadcaster,
 				try {
 					val req = Serialization.read[EndpointRegisterInputMessage](request.getReader())
 					response.setStatus(HttpServletResponse.SC_OK)
-					grader.runnerDispatcher.register(req.hostname, req.port)
+					grader.runnerDispatcher.register(req.hostname, req.port).toJson
 				} catch {
 					case e: Exception => {
 						log.error(e, "Register failed")
 						response.setStatus(HttpServletResponse.SC_BAD_REQUEST)
-						new EndpointRegisterOutputMessage(status = "error", error = Some(e.getMessage))
+						new EndpointRegisterOutputMessage(status = "error", error = Some(e.getMessage)).toJson
 					}
 				}
 			}
@@ -121,12 +120,12 @@ class HttpHandler(grader: Grader, broadcaster: Broadcaster,
 				try {
 					val req = Serialization.read[EndpointRegisterInputMessage](request.getReader())
 					response.setStatus(HttpServletResponse.SC_OK)
-					grader.runnerDispatcher.deregister(req.hostname, req.port)
+					grader.runnerDispatcher.deregister(req.hostname, req.port).toJson
 				} catch {
 					case e: Exception => {
 						log.warn(e, "Deregister failed")
 						response.setStatus(HttpServletResponse.SC_BAD_REQUEST)
-						new EndpointRegisterOutputMessage(status = "error", error = Some(e.getMessage))
+						new EndpointRegisterOutputMessage(status = "error", error = Some(e.getMessage)).toJson
 					}
 				}
 			}
@@ -140,12 +139,12 @@ class HttpHandler(grader: Grader, broadcaster: Broadcaster,
 						req.broadcast,
 						req.targetUser,
 						req.userOnly
-					)
+					).toJson
 				} catch {
 					case e: Exception => {
 						response.setStatus(HttpServletResponse.SC_BAD_REQUEST)
 						log.error(e, "Broadcast failed")
-						new BroadcastOutputMessage(status = "error", error = Some(e.getMessage))
+						new BroadcastOutputMessage(status = "error", error = Some(e.getMessage)).toJson
 					}
 				}
 			}
@@ -159,17 +158,17 @@ class HttpHandler(grader: Grader, broadcaster: Broadcaster,
 							req = req.copy(ip = Some(request.getRemoteAddr))
 							val outputMessage = Service.runNew(req)
 							grader.grade(RunGradeInputMessage(id = List(outputMessage.id.get)))
-							outputMessage
+							outputMessage.toJson
 						} catch {
 							case e: IllegalArgumentException => {
 								log.error(e, "Submitting new run failed")
 								response.setStatus(HttpServletResponse.SC_NOT_FOUND)
-								new RunNewOutputMessage(status = "error", error = Some(e.getMessage))
+								new RunNewOutputMessage(status = "error", error = Some(e.getMessage)).toJson
 							}
 							case e: Exception => {
 								log.error(e, "Submitting new run failed")
 								response.setStatus(HttpServletResponse.SC_BAD_REQUEST)
-								new RunNewOutputMessage(status = "error", error = Some(e.getMessage))
+								new RunNewOutputMessage(status = "error", error = Some(e.getMessage)).toJson
 							}
 						}
 					}
@@ -180,18 +179,18 @@ class HttpHandler(grader: Grader, broadcaster: Broadcaster,
 							outputMessage match {
 								case None => {
 									response.setStatus(HttpServletResponse.SC_NOT_FOUND)
-									new NullMessage()
+									new NullMessage().toJson
 								}
 								case Some(message) => {
 									response.setStatus(HttpServletResponse.SC_OK)
-									message
+									message.toJson
 								}
 							}
 						} catch {
 							case e: Exception => {
 								log.error(e, "Getting run status failed")
 								response.setStatus(HttpServletResponse.SC_BAD_REQUEST)
-								new NullMessage()
+								new NullMessage().toJson
 							}
 						}
 					}
@@ -203,12 +202,12 @@ class HttpHandler(grader: Grader, broadcaster: Broadcaster,
 							}
 							implicit val connection: Connection = grader.conn
 							response.setStatus(HttpServletResponse.SC_OK)
-							Service.runList(req)
+							Service.runList(req).toJson
 						} catch {
 							case e: Exception => {
 								log.error(e, "Getting run list failed")
 								response.setStatus(HttpServletResponse.SC_BAD_REQUEST)
-								new NullMessage()
+								new NullMessage().toJson
 							}
 						}
 					}
@@ -220,12 +219,12 @@ class HttpHandler(grader: Grader, broadcaster: Broadcaster,
 							}
 							implicit val connection: Connection = grader.conn
 							response.setStatus(HttpServletResponse.SC_OK)
-							Service.problemList(req)
+							Service.problemList(req).toJson
 						} catch {
 							case e: Exception => {
 								log.error(e, "Getting problem list failed")
 								response.setStatus(HttpServletResponse.SC_BAD_REQUEST)
-								new NullMessage()
+								new NullMessage().toJson
 							}
 						}
 					}
@@ -233,23 +232,23 @@ class HttpHandler(grader: Grader, broadcaster: Broadcaster,
 						try {
 							implicit val connection: Connection = grader.conn
 							response.setStatus(HttpServletResponse.SC_OK)
-							Service.problemNew(request)
+							Service.problemNew(request).toJson
 						} catch {
 							case e: Exception => {
 								log.error(e, "Creating new problem failed")
 								response.setStatus(HttpServletResponse.SC_BAD_REQUEST)
 								new ProblemNewOutputMessage(status = "error",
-									error = Some(e.getMessage))
+									error = Some(e.getMessage)).toJson
 							}
 						}
 					}
 					case _ => {
 						response.setStatus(HttpServletResponse.SC_NOT_FOUND)
-						new NullMessage()
+						new NullMessage().toJson
 					}
 				} else {
 					response.setStatus(HttpServletResponse.SC_NOT_FOUND)
-					new NullMessage()
+					new NullMessage().toJson
 				}
 			}
 		}, response.getWriter())
@@ -342,7 +341,6 @@ object Service extends Object with Log with Using with ContextMixin {
 
 	def runStatus(id: String)
 	(implicit connection: Connection): Option[RunStatusOutputMessage] = {
-		implicit val formats = OmegaUpSerialization.formats
 		GraderData.getRun(id) map(
 			run => {
 				val sourceFile = new File(serviceCtx.config.common.roots.submissions,

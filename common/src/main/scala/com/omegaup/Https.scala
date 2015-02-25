@@ -1,6 +1,6 @@
 package com.omegaup
 
-import com.omegaup.data.OmegaUpSerialization
+import com.omegaup.data.OmegaUpProtocol._
 
 import java.io.BufferedReader
 import java.io.File
@@ -19,7 +19,8 @@ import java.net.URL
 import java.net.URLEncoder
 import javax.net.ssl.HttpsURLConnection
 import javax.net.ssl.SSLSocketFactory
-import net.liftweb.json.Serialization
+
+import spray.json.{JsonReader, JsonWriter}
 
 object Https extends Object with Log with Using {
 	private val defaultSocketFactory = SSLSocketFactory.getDefault().asInstanceOf[SSLSocketFactory]
@@ -103,14 +104,12 @@ object Https extends Object with Log with Using {
 		}}
 	}
 
-	def post[T](url: String, data: scala.collection.Map[String, String], runner: Boolean = true)(implicit mf: Manifest[T],  ctx: Context):T = {
+	def post[T : JsonReader](url: String, data: scala.collection.Map[String, String], runner: Boolean = true)(implicit ctx: Context):T = {
 		log.debug("POST {}", url)
 
 		val postdata = data.map { case(key, value) =>
 			URLEncoder.encode(key, "UTF-8") + "=" + URLEncoder.encode(value, "UTF-8")
 		}.mkString("&").getBytes("UTF-8")
-
-		implicit val formats = OmegaUpSerialization.formats
 
 		using (connect(url, runner)) { conn => {
 			conn.setDoOutput(true)
@@ -124,48 +123,42 @@ object Https extends Object with Log with Using {
 		}}
 	}
 
-	def send[T, W <: AnyRef](url:String, request:W, responseReader: InputStream=>T, runner: Boolean)(implicit mf: Manifest[T],  ctx: Context):T = {
+	def send[T : JsonReader, W : JsonWriter](url:String, request:W, responseReader: InputStream=>T, runner: Boolean)(implicit ctx: Context):T = {
 		log.debug("Requesting {}", url)
-
-		implicit val formats = OmegaUpSerialization.formats
 
 		using (connect(url, runner)) { conn => {
 			conn.addRequestProperty("Content-Type", "text/json")
 			conn.setDoOutput(true)
 			val writer = new PrintWriter(new OutputStreamWriter(conn.getOutputStream()))
-			Serialization.write[W, PrintWriter](request, writer)
+			Serialization.write[W](request, writer)
 			writer.close()
 
 			responseReader(conn.getInputStream)
 		}}
 	}
 
-	def send[T, W <: AnyRef](url:String, request:W, runner: Boolean)(implicit mf: Manifest[T],  ctx: Context):T = {
+	def send[T : JsonReader, W : JsonWriter](url:String, request:W, runner: Boolean)(implicit ctx: Context):T = {
 		log.debug("Requesting {}", url)
-
-		implicit val formats = OmegaUpSerialization.formats
 
 		using (connect(url, runner)) { conn => {
 			conn.addRequestProperty("Content-Type", "text/json")
 			conn.setDoOutput(true)
 			val writer = new PrintWriter(new OutputStreamWriter(conn.getOutputStream()))
-			Serialization.write[W, PrintWriter](request, writer)
+			Serialization.write[W](request, writer)
 			writer.close()
 
 			Serialization.read[T](new InputStreamReader(conn.getInputStream()))
 		}}
 	}
 
-	def zip_send[T](url:String, zipfile:String, zipname:String, runner: Boolean)(implicit mf: Manifest[T],  ctx: Context): T = {
+	def zip_send[T : JsonReader](url:String, zipfile:String, zipname:String, runner: Boolean)(implicit ctx: Context): T = {
 		val file = new File(zipfile)
 
-		zip_send(url, new FileInputStream(zipfile), file.length.toInt, zipname, runner)
+		zip_send[T](url, new FileInputStream(zipfile), file.length.toInt, zipname, runner)
 	}
 
-	def zip_send[T](url:String, inputStream:InputStream, zipSize:Int, zipname:String, runner: Boolean)(implicit mf: Manifest[T],  ctx: Context): T = {
+	def zip_send[T : JsonReader](url:String, inputStream:InputStream, zipSize:Int, zipname:String, runner: Boolean)(implicit ctx: Context): T = {
 		log.debug("Requesting {}", url)
-
-		implicit val formats = OmegaUpSerialization.formats
 
 		using (connect(url, runner)) { conn => {
 			conn.addRequestProperty("Content-Type", "application/zip")
@@ -182,10 +175,8 @@ object Https extends Object with Log with Using {
 		}}
 	}
 
-	def stream_send[T](url:String, mimeType: String, filename: String, callback:OutputStream=>Unit, runner: Boolean = true)(implicit mf: Manifest[T],  ctx: Context): T = {
+	def stream_send[T : JsonReader](url:String, mimeType: String, filename: String, callback:OutputStream=>Unit, runner: Boolean = true)(implicit ctx: Context): T = {
 		log.debug("Requesting {}", url)
-
-		implicit val formats = OmegaUpSerialization.formats
 
 		using (connect(url, runner)) { conn => {
 			conn.addRequestProperty("Content-Type", mimeType)
@@ -201,16 +192,14 @@ object Https extends Object with Log with Using {
 		}}
 	}
 
-	def receive_zip[T, W <: AnyRef](url:String, request:W, file:String, runner: Boolean = true)(implicit mf: Manifest[T],  ctx: Context): Option[T] = {
+	def receive_zip[T : JsonReader, W : JsonWriter](url:String, request:W, file:String, runner: Boolean = true)(implicit ctx: Context): Option[T] = {
 		log.debug("Requesting {}", url)
-
-		implicit val formats = OmegaUpSerialization.formats
 
 		using (connect(url, runner)) { conn => {
 			conn.addRequestProperty("Content-Type", "text/json")
 			conn.setDoOutput(true)
 			val writer = new PrintWriter(new OutputStreamWriter(conn.getOutputStream()))
-			Serialization.write[W, PrintWriter](request, writer)
+			Serialization.write[W](request, writer)
 			writer.close()
 
 			if (conn.getHeaderField("Content-Type") == "application/zip") {

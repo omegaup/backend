@@ -1,7 +1,6 @@
 package com.omegaup
 
 import ch.qos.logback.classic.Level
-import net.liftweb.json
 
 class Context(val config: Config = new Config, val overrideLogger: OverrideLogger = null) {
 	def loggingOverride(level: Level) = {
@@ -29,8 +28,7 @@ trait ContextMixin {
 			i += 1
 		}
 
-		new Context(ConfigMerge(Config(),
-			json.parse(FileUtil.read(configPath))))
+		new Context(ConfigMerge(Config(), FileUtil.read(configPath)))
 	}
 
 	def updateContext(newCtx: Context) = {

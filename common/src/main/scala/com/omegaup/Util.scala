@@ -26,28 +26,20 @@ import scala.language.implicitConversions
 
 object FileUtil extends Object with Using {
 	@throws(classOf[IOException])
-	def read(filename: String): String = read(new File(filename))
+	def read(filename: String): String = read(new FileReader(filename))
 
 	@throws(classOf[IOException])
-	def read(file: File): String = {
+	def read(file: File): String = read(new FileReader(file))
+
+	@throws(classOf[IOException])
+	def read(stream: InputStream): String = read(new InputStreamReader(stream))
+
+	@throws(classOf[IOException])
+	def read(r: Reader): String = {
 		val contents = new StringBuffer
 		var ch: Int = 0
 
-		using (new FileReader(file)) { fileReader => {
-			while( {ch = fileReader.read(); ch != -1} ) {
-				contents.appendCodePoint(ch)
-			}
-
-			contents.toString.trim
-		}}
-	}
-
-	@throws(classOf[IOException])
-	def read(stream: InputStream) = {
-		val contents = new StringBuffer
-		var ch: Int = 0
-
-		using (new InputStreamReader(stream)) { reader => {
+		using (r) { reader => {
 			while( {ch = reader.read(); ch != -1} ) {
 				contents.appendCodePoint(ch)
 			}
@@ -60,10 +52,11 @@ object FileUtil extends Object with Using {
 	def write(filename: String, data: String): Unit = write(new File(filename), data)
 
 	@throws(classOf[IOException])
-	def write(file: File, data: String): Unit = {
-		using (new FileWriter(file)) { fileWriter =>
-			fileWriter.write(data)
-		}
+	def write(file: File, data: String): Unit = write(new FileWriter(file), data)
+
+	@throws(classOf[IOException])
+	def write(writer: Writer, data: String): Unit = {
+		using (writer) { _.write(data) }
 	}
 
 	@throws(classOf[IOException])

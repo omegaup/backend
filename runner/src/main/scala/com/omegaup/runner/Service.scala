@@ -3,13 +3,15 @@ package com.omegaup.runner
 import java.io._
 import javax.servlet._
 import javax.servlet.http._
-import net.liftweb.json.Serialization
 import org.eclipse.jetty.server.Request
 import org.eclipse.jetty.server.handler._
 import com.omegaup._
 import com.omegaup.data._
+import com.omegaup.data.OmegaUpProtocol._
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorOutputStream
 import org.apache.commons.compress.archivers.tar.{TarArchiveInputStream, TarArchiveEntry}
+
+import spray.json._
 
 class OmegaUpRunstreamWriter(outputStream: OutputStream)(implicit ctx: Context)
 		extends Closeable with RunCaseCallback with Log {
@@ -35,8 +37,7 @@ class OmegaUpRunstreamWriter(outputStream: OutputStream)(implicit ctx: Context)
     if (finalized) return
     log.debug("Finalizing runstream with {}", message)
     dos.writeBoolean(false)
-    implicit val formats = OmegaUpSerialization.formats
-    Serialization.write(message, new OutputStreamWriter(dos))
+		Serialization.write(message, new OutputStreamWriter(dos))
     finalized = true
   }
 
@@ -169,8 +170,6 @@ object Service extends Object with Log with Using with ContextMixin {
                           baseRequest: Request,
                           request: HttpServletRequest,
                           response: HttpServletResponse) = {
-        implicit val formats = OmegaUpSerialization.formats
-
         request.getPathInfo() match {
           case "/run/" => lock[Unit](registerThread) ({
             var token: String = null
@@ -178,46 +177,46 @@ object Service extends Object with Log with Using with ContextMixin {
             response.setStatus(HttpServletResponse.SC_OK)
 
             using (new OmegaUpRunstreamWriter(response.getOutputStream)) { callbackProxy => {
-              val message = try {
-                val req = Serialization.read[RunInputMessage](request.getReader)
-                token = req.token
-
-                val zipFile = new File(serviceCtx.config.common.roots.compile, token + "/output.zip")
-                runner.run(req, callbackProxy)
-              } catch {
-                case e: Exception => {
-                  log.error(e, "/run/")
-                  new RunOutputMessage(status = "error", error = Some(e.getMessage))
-                }
-              }
-              log.info("Returning {}", message)
-              if (token != null && ((message.error getOrElse "") != "missing input"))
-                runner.removeCompileDir(token)
-              callbackProxy.finalize(message)
+							val message = (try {
+								val req = Serialization.read[RunInputMessage](request.getReader)
+								runner.run(req, callbackProxy)
+							} catch {
+								case e: Exception => {
+									log.error(e, "/run/")
+									new RunOutputMessage(status = "error", error = Some(e.getMessage))
+								}
+							})
+							log.info("Returning {}", message)
+							if (token != null && ((message.error getOrElse "") != "missing input"))
+								runner.removeCompileDir(token)
+							callbackProxy.finalize(message)
             }}
           }, {
             response.setContentType("text/json")
             response.setStatus(HttpServletResponse.SC_CONFLICT)
-            Serialization.write(new RunOutputMessage(status="error", error=Some("Resource busy")))
+						Serialization.write(
+							new RunOutputMessage(status="error",
+								error=Some("Resource busy")),
+							response.getWriter)
           })
           case _ => {
             response.setContentType("text/json")
             Serialization.write(request.getPathInfo() match {
               case "/compile/" => lock(registerThread) ({
-                try {
-                  val req = Serialization.read[CompileInputMessage](request.getReader())
-                  response.setStatus(HttpServletResponse.SC_OK)
-                  runner.compile(req)
-                } catch {
-                  case e: Exception => {
-                    log.error(e, "/compile/")
-                    response.setStatus(HttpServletResponse.SC_BAD_REQUEST)
-                    new CompileOutputMessage(status = "error", error = Some(e.getMessage))
-                  }
-                }
+								(try {
+									val req = Serialization.read[CompileInputMessage](request.getReader())
+									response.setStatus(HttpServletResponse.SC_OK)
+									runner.compile(req)
+								} catch {
+									case e: Exception => {
+										log.error(e, "/compile/")
+										response.setStatus(HttpServletResponse.SC_BAD_REQUEST)
+										new CompileOutputMessage(status = "error", error = Some(e.getMessage))
+									}
+								}).toJson
               }, {
                 response.setStatus(HttpServletResponse.SC_CONFLICT)
-                new CompileOutputMessage(status="error", error=Some("Resource busy"))
+                new CompileOutputMessage(status="error", error=Some("Resource busy")).toJson
               })
               case "/input/" => lock(registerThread) ({
                 try {
@@ -232,7 +231,7 @@ object Service extends Object with Log with Using with ContextMixin {
                                    "Content-Disposition must be \"attachment\" and a filename " +
                                    "must be specified"
                               )
-                    )
+                    ).toJson
                   } else {
                     val ContentDispositionRegex =
                       "attachment; filename=([a-zA-Z0-9_-][a-zA-Z0-9_.-]*);.*".r
@@ -268,22 +267,22 @@ object Service extends Object with Log with Using with ContextMixin {
                             }
                           }
                       })
-                    }}
+                    }}.toJson
                   }
                 } catch {
                   case e: Exception => {
                     log.error(e, "/input/")
                     response.setStatus(HttpServletResponse.SC_BAD_REQUEST)
-                    new InputOutputMessage(status = "error", error = Some(e.getMessage))
+                    new InputOutputMessage(status = "error", error = Some(e.getMessage)).toJson
                   }
                 }
               }, {
                 response.setStatus(HttpServletResponse.SC_CONFLICT)
-                new InputOutputMessage(status="error", error=Some("Resource busy"))
+                new InputOutputMessage(status="error", error=Some("Resource busy")).toJson
               })
               case _ => {
                 response.setStatus(HttpServletResponse.SC_NOT_FOUND)
-                new NullMessage()
+                new NullMessage().toJson
               }
             }, response.getWriter())
           }

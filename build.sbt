@@ -11,7 +11,7 @@ lazy val commonSettings = Seq(
 		"ch.qos.logback" % "logback-core" % "1.1.1",
 		"com.omegaup" %% "libinteractive" % "latest.integration",
 		"commons-codec" % "commons-codec" % "1.9",
-		"net.liftweb" %% "lift-json" % "2.6",
+		"io.spray" %%  "spray-json" % "1.3.1",
 		"org.scalatest" %% "scalatest" % "2.2.4" % "test",
 		"org.slf4j" % "log4j-over-slf4j" % "1.7.6"
 	),

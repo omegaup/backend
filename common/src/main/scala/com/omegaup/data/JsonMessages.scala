@@ -1,84 +1,25 @@
 package com.omegaup.data
 
+import com.omegaup.FileUtil
 import com.omegaup.libinteractive.idl.IDL
 import com.omegaup.libinteractive.target.Options
 import com.omegaup.libinteractive.target.OS
 import com.omegaup.libinteractive.target.Command
 
+import java.io.Reader
+import java.io.Writer
 import java.nio.file.Path
 import java.nio.file.Paths
 
-import net.liftweb.json.Formats
-import net.liftweb.json.JNull
-import net.liftweb.json.JString
-import net.liftweb.json.JValue
-import net.liftweb.json.MappingException
-import net.liftweb.json.NoTypeHints
-import net.liftweb.json.Serializer
-import net.liftweb.json.Serialization
-import net.liftweb.json.TypeInfo
+import spray.json._
+import DefaultJsonProtocol._
 
 case class NullMessage()
 
-// Serializers
-object OSSerializer extends Serializer[OS.EnumVal] {
-  private val OSClass = classOf[OS.EnumVal]
-
-  def deserialize(implicit format: Formats): PartialFunction[(TypeInfo, JValue), OS.EnumVal] = {
-    case (TypeInfo(OSClass, _), json) => json match {
-      case JString(s) if !OS.values.find(_.name == s).isEmpty =>
-          OS.values.find(_.name == s).get
-      case x => throw new MappingException("Can't convert " + x + " to OS")
-    }
-  }
-
-  def serialize(implicit format: Formats): PartialFunction[Any, JValue] = {
-    case x: OS.EnumVal => JString(x.toString)
-  }
-}
-
-object CommandSerializer extends Serializer[Command.EnumVal] {
-  private val CommandClass = classOf[Command.EnumVal]
-
-  def deserialize(implicit format: Formats): PartialFunction[(TypeInfo, JValue), Command.EnumVal] = {
-    case (TypeInfo(CommandClass, _), json) => json match {
-      case JString(s) if !Command.values.find(_.name == s).isEmpty =>
-          Command.values.find(_.name == s).get
-      case x => throw new MappingException("Can't convert " + x + " to Command")
-    }
-  }
-
-  def serialize(implicit format: Formats): PartialFunction[Any, JValue] = {
-    case x: Command.EnumVal => JString(x.toString)
-  }
-}
-
-object PathSerializer extends Serializer[Path] {
-  private val PathClass = classOf[Path]
-
-  def deserialize(implicit format: Formats): PartialFunction[(TypeInfo, JValue), Path] = {
-    case (TypeInfo(PathClass, _), json) => json match {
-      case JString(s) => Paths.get(s)
-      case JNull => null
-      case x => throw new MappingException("Can't convert " + x + " to Path")
-    }
-  }
-
-  def serialize(implicit format: Formats): PartialFunction[Any, JValue] = {
-    case null => JNull
-    case x: Path => JString(x.toString)
-  }
-}
-
-object OmegaUpSerialization {
-  val formats = Serialization.formats(NoTypeHints) +
-      PathSerializer +
-      CommandSerializer +
-      OSSerializer
-}
-
 // from Runner
-case class RunCaseResult(name: String, status: String, time: Int, memory: Int, output: Option[String] = None, context: Option[String] = None)
+case class RunCaseResult(name: String, status: String, time: Int, memory: Int,
+	output: Option[String] = None, context: Option[String] = None)
+
 case class CaseData(name: String, data: String)
 
 case class InteractiveDescription(idlSource: String, parentLang: String,
@@ -88,35 +29,39 @@ case class CompileInputMessage(lang: String, code: List[(String, String)],
     master_code: Option[List[(String, String)]] = None,
     interactive: Option[InteractiveDescription] = None,
     debug: Boolean = false)
-case class CompileOutputMessage(status: String = "ok", error: Option[String] = None, token: Option[String] = None)
+case class CompileOutputMessage(status: String = "ok",
+    error: Option[String] = None, token: Option[String] = None,
+    logs: Option[String] = None)
 
 case class InteractiveRuntimeDescription(main: String, interfaces: List[String],
     parentLang: String)
 case class RunInputMessage(token: String, timeLimit: Long = 1000,
-  overallWallTimeLimit: Long = 60000, extraWallTime: Long = 0, memoryLimit: Int = 65535,
-  outputLimit: Long = 10240, stackLimit: Long = 10485760, debug: Boolean = false,
-  input: Option[String] = None, cases: Option[List[CaseData]] = None,
-  interactive: Option[InteractiveRuntimeDescription] = None)
+		overallWallTimeLimit: Long = 60000, extraWallTime: Long = 0,
+		memoryLimit: Int = 65535, outputLimit: Long = 10240,
+		stackLimit: Long = 10485760, debug: Boolean = false,
+		input: Option[String] = None, cases: Option[List[CaseData]] = None,
+		interactive: Option[InteractiveRuntimeDescription] = None)
 case class RunOutputMessage(status: String = "ok", error: Option[String] = None,
-  results: Option[List[RunCaseResult]] = None)
+    results: Option[List[RunCaseResult]] = None, logs: Option[String] = None)
 
-case class InputOutputMessage(status: String = "ok", error: Option[String] = None)
+case class InputOutputMessage(status: String = "ok",
+		error: Option[String] = None, logs: Option[String] = None)
 
 // from Grader
 case class ReloadConfigInputMessage(overrides: Option[Map[String, String]] = None)
-case class ReloadConfigOutputMessage(status: String = "ok", error: Option[String] = None)
-case class StatusOutputMessage(status: String = "ok", embedded_runner: Boolean = true, queue: Option[QueueStatus] = None)
+case class ReloadConfigOutputMessage(status: String = "ok",
+	error: Option[String] = None)
+case class StatusOutputMessage(status: String = "ok",
+	embedded_runner: Boolean = true, queue: Option[QueueStatus] = None)
 case class Running(name: String, id: Int)
-case class QueueStatus(
-  run_queue_length: Int,
-  runner_queue_length: Int,
-  runners: List[String],
-  running: List[Running]
-)
-case class RunGradeInputMessage(id: List[String], debug: Boolean = false, rejudge: Boolean = false)
+case class QueueStatus(run_queue_length: Int, runner_queue_length: Int,
+	runners: List[String], running: List[Running])
+case class RunGradeInputMessage(id: List[String], debug: Boolean = false,
+	rejudge: Boolean = false)
 case class RunGradeOutputMessage(status: String = "ok", error: Option[String] = None)
 case class EndpointRegisterInputMessage(hostname: String, port: Int)
-case class EndpointRegisterOutputMessage(status: String = "ok", error: Option[String] = None)
+case class EndpointRegisterOutputMessage(status: String = "ok",
+	error: Option[String] = None)
 
 // for standalone Grader
 case class RunNewInputMessage(problem: String, language: String, code: String,
@@ -132,7 +77,8 @@ case class RunListInputMessage()
 case class RunListOutputMessageEntry(problem: String, id: String,
   status: String, verdict: String, score: Double, runtime: Double,
   memory: Double)
-case class ProblemNewOutputMessage(status: String = "ok", error: Option[String] = None)
+case class ProblemNewOutputMessage(status: String = "ok",
+	error: Option[String] = None)
 case class ProblemListInputMessage()
 case class ProblemListOutputMessageEntry(id: String, title: String,
   validator: String, time_limit: Option[Double],
@@ -143,16 +89,108 @@ case class ProblemListOutputMessageEntry(id: String, title: String,
 
 // for serializing judgement details
 case class CaseVerdictMessage(name: String, verdict: String, score: Double)
-case class GroupVerdictMessage(group: String, cases: List[CaseVerdictMessage], score: Double)
+case class GroupVerdictMessage(group: String, cases: List[CaseVerdictMessage],
+	score: Double)
 
 // Broadcaster
 case class ContestRoleResponse(status: String = "ok", admin: Boolean = false)
-case class BroadcastInputMessage(
-  contest: String = "",
-  message: String = "",
-  broadcast: Boolean = false,
-  targetUser: Long = -1,
-  userOnly: Boolean = false
-)
-case class BroadcastOutputMessage(status: String = "ok", error: Option[String] = None)
-case class ScoreboardRefreshResponse(status: String = "ok", error: Option[String] = None, errorcode: Option[String] = None, header: Option[String] = None)
+case class BroadcastInputMessage(contest: String = "", message: String = "",
+	broadcast: Boolean = false, targetUser: Long = -1, userOnly: Boolean = false)
+case class BroadcastOutputMessage(status: String = "ok",
+	error: Option[String] = None)
+case class ScoreboardRefreshResponse(status: String = "ok",
+	error: Option[String] = None, errorcode: Option[String] = None,
+	header: Option[String] = None)
+case class RunDetails(username: Option[String], contest_alias: Option[String],
+	alias: String, guid: String, runtime: Double, memory: Long, score: Double,
+	contest_score: Option[Double], status: String, verdict: String,
+	submit_delay: Long, time: Long, language: String)
+case class UpdateRunMessage(message: String, run: RunDetails)
+
+object OmegaUpProtocol extends DefaultJsonProtocol {
+	implicit val nullMessageProtocol = jsonFormat0(NullMessage)
+	implicit val runCaseResultProtocol = jsonFormat6(RunCaseResult)
+	implicit val caseDataProtocol = jsonFormat2(CaseData)
+	implicit val interactiveDescriptionProtocol =
+		jsonFormat4(InteractiveDescription)
+	implicit val compileInputMessageProtocol = jsonFormat6(CompileInputMessage)
+	implicit val compileOutputMessageProtocol = jsonFormat4(CompileOutputMessage)
+	implicit val interactiveRuntimeDescriptionProtocol =
+		jsonFormat3(InteractiveRuntimeDescription)
+	implicit val runInputMessageProtocol = jsonFormat11(RunInputMessage)
+	implicit val runOutputMessageProtocol = jsonFormat4(RunOutputMessage)
+	implicit val inputOutputMessageProtocol = jsonFormat3(InputOutputMessage)
+	implicit val endpointRegisterInputMessageProtocol =
+		jsonFormat2(EndpointRegisterInputMessage)
+	implicit val endpointRegisterOutputMessageProtocol =
+		jsonFormat2(EndpointRegisterOutputMessage)
+	implicit val caseVerdictMessageProtocol = jsonFormat3(CaseVerdictMessage)
+	implicit val groupVerdictMessageProtocol = jsonFormat3(GroupVerdictMessage)
+	implicit val contestRoleResponseProtocol = jsonFormat2(ContestRoleResponse)
+	implicit val broadcastInputMessageProtocol =
+		jsonFormat5(BroadcastInputMessage)
+	implicit val broadcastOutputMessageProtocol =
+		jsonFormat2(BroadcastOutputMessage)
+	implicit val scoreboardRefreshResponseProtocol =
+		jsonFormat4(ScoreboardRefreshResponse)
+	implicit val runDetailsProtocol = jsonFormat13(RunDetails)
+	implicit val updateRunMessageProtocol = jsonFormat2(UpdateRunMessage)
+	implicit val runGradeInputMessageProtocol = jsonFormat3(RunGradeInputMessage)
+	implicit val runGradeOutputMessageProtocol =
+		jsonFormat2(RunGradeOutputMessage)
+	implicit val runNewInputMessageProtocol = jsonFormat5(RunNewInputMessage)
+	implicit val runNewOutputMessageProtocol = jsonFormat3(RunNewOutputMessage)
+	implicit val runStatusInputMessageProtocol =
+		jsonFormat1(RunStatusInputMessage)
+	implicit val runStatusOutputMessageProtocol =
+		jsonFormat9(RunStatusOutputMessage)
+	implicit val runListInputMessageProtocol = jsonFormat0(RunListInputMessage)
+	implicit val runListOutputMessageEntryProtocol =
+		jsonFormat7(RunListOutputMessageEntry)
+	implicit val problemNewOutputMessageProtocol =
+		jsonFormat2(ProblemNewOutputMessage)
+	implicit val problemListInputMessageProtocol =
+		jsonFormat0(ProblemListInputMessage)
+	implicit val problemListOutputMessageEntryProtocol =
+		jsonFormat12(ProblemListOutputMessageEntry)
+	implicit val reloadConfigInputMessageProtocol =
+		jsonFormat1(ReloadConfigInputMessage)
+	implicit val reloadConfigOutputMessageProtocol =
+		jsonFormat2(ReloadConfigOutputMessage)
+	implicit val runningProtocol = jsonFormat2(Running)
+	implicit val queueStatusProtocol = jsonFormat4(QueueStatus)
+	implicit val statusOutputMessageProtocol =
+		jsonFormat3(StatusOutputMessage)
+
+	implicit object listGroupVerdictMessageProtocol extends JsonFormat[List[GroupVerdictMessage]] {
+		override def write(obj: List[GroupVerdictMessage]): JsValue = {
+			JsArray(obj.map(_.toJson):_*)
+		}
+		override def read(json: JsValue): List[GroupVerdictMessage] = {
+			json match {
+				case a: JsArray => a.elements.map(_.convertTo[GroupVerdictMessage]).toList
+				case _ => throw new spray.json.DeserializationException("json was not an array")
+			}
+		}
+	}
+
+	object Serialization {
+		def write[T : JsonWriter](obj: T, writer: Writer): Unit = {
+			FileUtil.write(writer, obj.toJson.compactPrint)
+		}
+
+		def read[T : JsonReader](reader: Reader): T = {
+			FileUtil.read(reader).parseJson.convertTo[T]
+		}
+
+		def writeString[T : JsonWriter](obj: T): String = {
+			obj.toJson.compactPrint
+		}
+
+		def readString[T : JsonReader](str: String): T = {
+			str.parseJson.convertTo[T]
+		}
+	}
+}
+
+/* vim: set noexpandtab: */

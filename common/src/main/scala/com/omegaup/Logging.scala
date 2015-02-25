@@ -1,15 +1,18 @@
 package com.omegaup
 
 import ch.qos.logback
+import java.io.ByteArrayOutputStream
 import logback.classic.Level
 import logback.classic.Level._
 import logback.classic.PatternLayout
 import logback.classic.spi.ILoggingEvent
 import logback.classic.spi.LoggingEvent
 import logback.core.OutputStreamAppender
-import java.io.ByteArrayOutputStream
 import org.slf4j.LoggerFactory
 import org.slf4j.helpers.MessageFormatter
+
+import spray.json.JsObject
+import spray.json.JsString
 
 trait Log {
 	protected lazy val log =
@@ -35,6 +38,7 @@ class OverrideLogger(levelName: String) {
 		layout.stop
 	}
 	override def toString() = {
+		layout.stop
 		buffer.toString
 	}
 }

@@ -2,13 +2,13 @@ package com.omegaup.runner
 
 import com.omegaup._
 import com.omegaup.data._
+import com.omegaup.data.OmegaUpProtocol._
 import java.io._
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream
 import org.apache.commons.compress.archivers.tar.{TarArchiveOutputStream, TarArchiveEntry}
-import net.liftweb.json._
 
 class OmegaUpRunstreamReader(callback: RunCaseCallback) extends Object with Using with Log {
-	def apply(inputStream: InputStream): RunOutputMessage = {
+	def apply(inputStream: InputStream)(implicit ctx: Context): RunOutputMessage = {
 		using (new BZip2CompressorInputStream(inputStream)) { bzip2 => {
 			val dis = new DataInputStream(bzip2)
 
@@ -20,7 +20,6 @@ class OmegaUpRunstreamReader(callback: RunCaseCallback) extends Object with Usin
 				}
 			}
 
-			implicit val formats = OmegaUpSerialization.formats
 			Serialization.read[RunOutputMessage](new InputStreamReader(dis))
 		}}
 	}

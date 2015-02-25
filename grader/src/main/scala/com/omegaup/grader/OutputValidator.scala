@@ -6,9 +6,9 @@ import java.util.regex.Pattern
 import scala.collection.Iterator
 import scala.collection.mutable
 import scala.collection.immutable.Map
-import net.liftweb.json.Serialization
 import com.omegaup._
 import com.omegaup.data._
+import com.omegaup.data.OmegaUpProtocol._
 import Verdict._
 
 trait OutputValidator extends Object with Log with Using {
@@ -179,8 +179,6 @@ trait OutputValidator extends Object with Log with Using {
 				}
 			)
 		}}
-
-		implicit val formats = OmegaUpSerialization.formats
 
 		val details = new File(ctx.config.common.roots.grade, run.id + "/details.json")
 		log.debug("Writing details into {}.", details.getCanonicalPath)

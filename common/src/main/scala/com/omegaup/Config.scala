@@ -115,9 +115,10 @@ case class Config(
 )
 
 object ConfigMerge {
-	import net.liftweb.json.JsonAST._
+	import spray.json._
+	import DefaultJsonProtocol._
 
-	private def copy(obj: Any, json: JValue): Object = {
+	private def copy(obj: Any, json: JsObject): Object = {
 		val clazz = obj.getClass
 		val generated = List("productIterator", "productPrefix", "productArity",
 			"productElement", "canEqual", "tupled", "curried", "unapply", "equals",
@@ -136,13 +137,20 @@ object ConfigMerge {
 
 		val params = fields.map(field => {
 			val original = field.invoke(obj)
-			(json \ field.getName match {
-				case o: JObject => copy(original, o)
-				case i: JInt => i.num.toInt
-				case d: JDouble => d.num
-				case s: JString => s.s
-				case b: JBool => b.value
-				case a: JArray => a.values.map(_.toString)
+			(json.fields.get(field.getName) match {
+				case Some(o: JsObject) => copy(original, o)
+				case Some(i: JsNumber) if field.getReturnType == classOf[Int] =>
+					i.value.toInt
+				case Some(i: JsNumber) if field.getReturnType == classOf[Long] =>
+					i.value.toLong
+				case Some(i: JsNumber) if field.getReturnType == classOf[Float] =>
+					i.value.toFloat
+				case Some(i: JsNumber) if field.getReturnType == classOf[Double] =>
+					i.value.toDouble
+				case Some(s: JsString) => s.value
+				case Some(JsTrue) => true
+				case Some(JsFalse) => false
+				case Some(a: JsArray) => a.elements.map(_.asInstanceOf[JsString].value).toList
 				case _ => original
 			}).asInstanceOf[Object]
 		}).toSeq
@@ -150,8 +158,8 @@ object ConfigMerge {
 		meth.invoke(obj, params:_*)
 	}
 
-	def apply[T](obj: T, json: JValue) = {
-		copy(obj, json).asInstanceOf[T]
+	def apply[T](obj: T, json: String) = {
+		copy(obj, json.parseJson.asJsObject).asInstanceOf[T]
 	}
 }
 
