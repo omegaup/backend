@@ -362,7 +362,11 @@ class RunnerDispatcher(implicit var serviceCtx: Context)
 
 			if (ctx.run.status != Status.Ready) {
 				ctx.run = try {
-					driver.validateOutput(ctx.run.copy)
+					try {
+						driver.validateOutput(ctx.run.copy)
+					} finally {
+						driver.cleanResults(ctx.run)
+					}
 				} catch {
 					case e: Exception => {
 						log.error(e, "Error while validating")

@@ -47,20 +47,17 @@ object OmegaUpDriver extends Driver with Log with Using {
   }
 
   override def run(run: Run)(implicit ctx: RunContext): Run = {
-    val id = run.id
     val alias = run.problem.alias
     val lang = run.language
-    val errorFile = new File(ctx.config.common.roots.grade, + id + ".err")
-    val logFile = new File(ctx.config.common.roots.grade, + id + ".log")
+    val gradeDirectory = new File(ctx.config.common.roots.grade,
+      run.guid.substring(0, 2) + "/" + run.guid.substring(2))
 
-    log.info("Compiling {} {} on {}", alias, id, ctx.service.name)
+    log.info("Compiling {} {} on {}", alias, run.id, ctx.service.name)
 
-    if (errorFile.exists) {
-      errorFile.delete
+    if (gradeDirectory.exists) {
+      FileUtil.deleteDirectory(gradeDirectory)
     }
-    if (logFile.exists) {
-      logFile.delete
-    }
+    gradeDirectory.mkdirs
 
     run.status = Status.Compiling
     run.judged_by = Some(ctx.service.name)
@@ -75,7 +72,10 @@ object OmegaUpDriver extends Driver with Log with Using {
     }
 
     if(output.status != "ok") {
-      FileUtil.write(errorFile, output.error.get)
+      FileUtil.write(
+        new File(gradeDirectory, "compile_error.log"),
+        output.error.get
+      )
 
       run.status = Status.Ready
       run.verdict = Verdict.CompileError
@@ -131,16 +131,15 @@ object OmegaUpDriver extends Driver with Log with Using {
     run.status = Status.Running
     ctx.updateVerdict(run)
 
-    val target = new File(ctx.config.common.roots.grade, id.toString)
-    FileUtil.deleteDirectory(target)
-    target.mkdir
+    val target = new File(gradeDirectory, "results")
+    target.mkdirs
     val placer = new CasePlacer(target)
 
-    log.info("Running {}({}) on {}", alias, id, ctx.service.name)
+    log.info("Running {}({}) on {}", alias, run.id, ctx.service.name)
     var response = ctx.trace(EventCategory.Run) {
       ctx.service.run(msg, placer)
     }
-    log.debug("Ran {} {}, returned {}", alias, id, response)
+    log.debug("Ran {} {}, returned {}", alias, run.id, response)
     if (response.status != "ok") {
       if (response.error.get ==  "missing input") {
         log.info("Received a missing input message, trying to send input from {} ({})", alias, ctx.service.name)
@@ -155,7 +154,7 @@ object OmegaUpDriver extends Driver with Log with Using {
           ctx.service.run(msg, placer)
         }
         if (response.status != "ok") {
-          log.error("Second try, ran {}({}) on {}, returned {}", alias, id, ctx.service.name, response)
+          log.error("Second try, ran {}({}) on {}, returned {}", alias, run.id, ctx.service.name, response)
           throw new RuntimeException("Unable to run submission after sending input. giving up.")
         }
       } else {
@@ -191,6 +190,14 @@ object OmegaUpDriver extends Driver with Log with Using {
         case _ => throw new IllegalArgumentException("Validator " + run.problem.validator + " not found")
       }
     }
+  }
+
+  override def cleanResults(run: Run)(implicit ctx: RunContext): Unit = {
+    val gradeDirectory = new File(ctx.config.common.roots.grade,
+      run.guid.substring(0, 2) + "/" + run.guid.substring(2))
+		val resultsDirectory = new File(gradeDirectory, "results")
+		FileUtil.zipDirectory(resultsDirectory, new File(gradeDirectory, "results.zip"))
+		FileUtil.deleteDirectory(resultsDirectory)
   }
 
   @throws(classOf[FileNotFoundException])
@@ -302,7 +309,9 @@ object OmegaUpDriver extends Driver with Log with Using {
 
   def setLogs(run: Run, logs: String)(implicit ctx: RunContext): Unit = {
     val id = run.id
-    val logFile = new File(ctx.config.common.roots.grade, + id + ".log")
+    val gradeDirectory = new File(ctx.config.common.roots.grade,
+      run.guid.substring(0, 2) + "/" + run.guid.substring(2))
+    val logFile = new File(gradeDirectory, "run.log")
     FileUtil.write(logFile, logs)
   }
 }

@@ -99,7 +99,7 @@ case class ProblemListOutputMessageEntry(id: String, title: String,
   statements: Map[String, String])
 
 // for serializing judgement details
-case class CaseVerdictMessage(name: String, verdict: String, score: Double)
+case class CaseVerdictMessage(name: String, verdict: String, score: Double, meta: Map[String, String])
 case class GroupVerdictMessage(group: String, cases: List[CaseVerdictMessage],
 	score: Double)
 
@@ -135,7 +135,7 @@ object OmegaUpProtocol extends DefaultJsonProtocol {
 		jsonFormat2(EndpointRegisterInputMessage)
 	implicit val endpointRegisterOutputMessageProtocol =
 		jsonFormat2(EndpointRegisterOutputMessage)
-	implicit val caseVerdictMessageProtocol = jsonFormat3(CaseVerdictMessage)
+	implicit val caseVerdictMessageProtocol = jsonFormat4(CaseVerdictMessage)
 	implicit val groupVerdictMessageProtocol = jsonFormat3(GroupVerdictMessage)
 	implicit val contestRoleResponseProtocol = jsonFormat2(ContestRoleResponse)
 	implicit val broadcastInputMessageProtocol =

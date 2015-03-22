@@ -345,12 +345,11 @@ object Service extends Object with Log with Using with ContextMixin {
 			run => {
 				val sourceFile = new File(serviceCtx.config.common.roots.submissions,
 					run.guid.substring(0, 2) + "/" + run.guid.substring(2))
-				val groupsFile = new File(serviceCtx.config.common.roots.grade,
-					run.id.toString + "/details.json")
-				val compileErrorFile = new File(serviceCtx.config.common.roots.grade,
-					run.id.toString + ".err")
-				val logsFile = new File(serviceCtx.config.common.roots.grade,
-					run.id.toString + ".log")
+				val gradeDirectory = new File(serviceCtx.config.common.roots.grade,
+					run.guid.substring(0, 2) + "/" + run.guid.substring(2))
+				val groupsFile = new File(gradeDirectory, "details.json")
+				val compileErrorFile = new File(gradeDirectory, "compile_error.log")
+				val logsFile = new File(gradeDirectory, "run.log")
 
 				RunStatusOutputMessage(run.problem.alias, run.status.toString,
 					run.verdict.toString, run.score, run.runtime / 1000.0,
@@ -557,7 +556,10 @@ stack_limit:${problem.stack_limit.getOrElse(-1)}""")
 			for (i <- 0 until 256) {
 				new File(submissions, f"$i%02x").mkdirs
 			}
-			new File(serviceCtx.config.common.roots.grade).mkdirs
+			val grade = new File(serviceCtx.config.common.roots.grade)
+			for (i <- 0 until 256) {
+				new File(grade, f"$i%02x").mkdirs
+			}
 			new File(serviceCtx.config.common.roots.problems).mkdirs
 			new File(serviceCtx.config.common.roots.input).mkdirs
 			new File(serviceCtx.config.common.roots.compile).mkdirs

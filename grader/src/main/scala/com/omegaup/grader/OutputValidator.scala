@@ -14,7 +14,8 @@ import Verdict._
 trait OutputValidator extends Object with Log with Using {
 	def validateRun(run: Run)(implicit ctx: RunContext): Run = {
 		val alias = run.problem.alias
-		val dataDirectory = new File(ctx.config.common.roots.grade, run.id.toString)
+		val gradeDirectory = new File(ctx.config.common.roots.grade,
+			run.guid.substring(0, 2) + "/" + run.guid.substring(2))
 
 		log.info("Validating {} {} with {}", alias, run.id, run.problem.validator)
 
@@ -23,7 +24,8 @@ trait OutputValidator extends Object with Log with Using {
 		run.runtime = 0
 		run.memory = 0
 
-		val metas = dataDirectory.listFiles
+		val resultsDirectory = new File(gradeDirectory, "results")
+		val metas = resultsDirectory.listFiles
 			.filter { _.getName.endsWith(".meta") }
 			.map{ f => f.getName.substring(0, f.getName.length - 5)->(f, MetaFile.load(f.getCanonicalPath)) }
 			.toMap
@@ -165,7 +167,12 @@ trait OutputValidator extends Object with Log with Using {
 				new CaseVerdictMessage(
 					name,
 					verdict,
-					score * weight
+					score * weight,
+					if (metas.contains(name)) {
+						filterMeta(metas(name)._2)
+					} else {
+						Map.empty[String, String]
+					}
 				)
 			}}
 
@@ -180,7 +187,7 @@ trait OutputValidator extends Object with Log with Using {
 			)
 		}}
 
-		val details = new File(ctx.config.common.roots.grade, run.id + "/details.json")
+		val details = new File(gradeDirectory, "details.json")
 		log.debug("Writing details into {}.", details.getCanonicalPath)
 		Serialization.write(caseScores, new FileWriter(details))
 
@@ -227,6 +234,11 @@ trait OutputValidator extends Object with Log with Using {
 	def validateCase(run: Run, caseName: String, runOut: File, problemOut: File,
 		meta: scala.collection.Map[String,String])(implicit ctx: Context):
 	Double
+
+	private def filterMeta(meta: scala.collection.Map[String, String]):
+			scala.collection.immutable.Map[String, String] = {
+		meta.filter(_._1 != "status").toMap
+	}
 }
 
 object CustomValidator extends OutputValidator {

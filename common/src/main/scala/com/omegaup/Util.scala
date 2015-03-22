@@ -20,6 +20,8 @@ import java.nio.file.Path
 import java.security.KeyStore
 import java.security.MessageDigest
 import java.util.Random
+import java.util.zip.ZipOutputStream
+import java.util.zip.ZipEntry
 import org.apache.commons.codec.binary.Base64InputStream
 import scala.collection.mutable
 import scala.language.implicitConversions
@@ -107,7 +109,7 @@ object FileUtil extends Object with Using {
 
 	@throws(classOf[IOException])
 	def deleteDirectory(dir: File): Boolean = {
-		if(dir.exists) {
+		if (dir.exists) {
 			if (dir.isDirectory)
 				dir.listFiles.foreach { FileUtil.deleteDirectory(_) }
 			dir.delete
@@ -190,6 +192,36 @@ object FileUtil extends Object with Using {
 			}
 		}
 		(target.toFile, guid)
+	}
+
+	def zipDirectory(dir: File, output: File) = {
+		using (new ZipOutputStream(new FileOutputStream(output))) { zip => {
+			dir.listFiles.foreach {
+				file => zipDirectoryVisitor(zip, file, file.getName)
+			}
+		}}
+	}
+
+	private def zipDirectoryVisitor(zip: ZipOutputStream, entry: File, path: String): Unit = {
+		if (entry.exists) {
+			if (entry.isDirectory) {
+				var directoryName = path + "/"
+				zip.putNextEntry(new ZipEntry(directoryName))
+				zip.closeEntry
+				entry.listFiles.foreach {
+					FileUtil.zipDirectoryVisitor(zip, _, directoryName + entry.getName)
+				}
+			} else {
+				val zipEntry = new ZipEntry(path)
+				zipEntry.setSize(entry.length)
+				zipEntry.setTime(entry.lastModified)
+				zip.putNextEntry(zipEntry)
+				using (new FileInputStream(entry)) { fileStream => {
+					copy(fileStream, zip)
+				}}
+				zip.closeEntry
+			}
+		}
 	}
 }
 

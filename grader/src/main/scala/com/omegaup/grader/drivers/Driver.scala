@@ -8,6 +8,7 @@ trait Driver {
 	def run(run: Run)(implicit ctx: RunContext): Run
 	def validateOutput(run: Run)(implicit ctx: RunContext): Run
 	def setLogs(run: Run, logs: String)(implicit ctx: RunContext): Unit
+	def cleanResults(run: Run)(implicit ctx: RunContext): Unit
 }
 
 /* vim: set noexpandtab: */
