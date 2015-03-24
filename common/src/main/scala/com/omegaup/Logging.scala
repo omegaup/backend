@@ -301,7 +301,7 @@ object Logging extends Object {
 
 		val perfLog = ctx.config.logging.perf_file
 		if (perfLog != "") {
-			val perfLogger = LoggerFactory.getLogger("omegaup.grader.RunContext")
+			val perfLogger = LoggerFactory.getLogger("com.omegaup.grader.RunContext")
 				.asInstanceOf[logback.classic.Logger]
 
 			createAppender(perfLogger, perfLog, perfLayoutPattern)
