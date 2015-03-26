@@ -170,7 +170,8 @@ class RunnerDispatcher(implicit var serviceCtx: Context)
 	private val runnerQueue = scala.collection.mutable.Queue.empty[RunnerService]
 	private val runQueue = new Array[scala.collection.mutable.Queue[RunContext]](8)
 	private val runsInFlight = scala.collection.mutable.HashMap.empty[Long, RunContext]
-	private val executor = Executors.newCachedThreadPool
+	private val graderExecutor = Executors.newCachedThreadPool
+	private val validatorExecutor = Executors.newFixedThreadPool(1)
 	private var flightIndex: Long = 0
 	private var runRouter = RoutingDescription.parse("")
 	private var slowThreshold: Int = 50
@@ -293,11 +294,13 @@ class RunnerDispatcher(implicit var serviceCtx: Context)
 				case e: Exception => {
 					log.error("Error while running {}: {}", ctx.run.id, e)
 				}
+			} finally {
+				validatorExecutor.submit(new ValidateTask(driver))
 			}
 		}
 
 		private def gradeTask() = {
-			val future = executor.submit(new Callable[Run]() {
+			val future = graderExecutor.submit(new Callable[Run]() {
 					override def call(): Run = ctx.trace(EventCategory.Runner, "runner" -> ctx.service.name) {
 						driver.run(ctx.run.copy)
 					}
@@ -359,7 +362,25 @@ class RunnerDispatcher(implicit var serviceCtx: Context)
 			} finally {
 				flightFinished(flightIndex)
 			}
+		}
+	}
 
+	private class ValidateTask(
+		driver: Driver
+	)(implicit ctx: RunContext) extends Runnable {
+		override def run(): Unit = {
+			try {
+				validateTask
+			} catch {
+				case e: Exception => {
+					log.error("Error while validating {}: {}", ctx.run.id, e)
+				}
+			} finally {
+				ctx.updateVerdict(ctx.run)
+			}
+		}
+
+		private def validateTask() = {
 			if (ctx.run.status != Status.Ready) {
 				ctx.run = try {
 					try {
@@ -386,7 +407,6 @@ class RunnerDispatcher(implicit var serviceCtx: Context)
 			if (ctx.debug) {
 				driver.setLogs(ctx.run, ctx.overrideLogger.toString)
 			}
-			ctx.updateVerdict(ctx.run)
 		}
 	}
 
@@ -493,17 +513,19 @@ class RunnerDispatcher(implicit var serviceCtx: Context)
 		if (ctx.run.problem.slow) {
 			slowRuns += 1
 		}
-		executor.submit(new GradeTask(flightIndex, OmegaUpDriver)(ctx))
+		graderExecutor.submit(new GradeTask(flightIndex, OmegaUpDriver)(ctx))
 
 		flightIndex += 1
 	}
 
 	override def stop(): Unit = {
-		executor.shutdown
+		graderExecutor.shutdown
+		validatorExecutor.shutdown
 	}
 
 	override def join(): Unit = {
-		executor.awaitTermination(Long.MaxValue, TimeUnit.NANOSECONDS)
+		graderExecutor.awaitTermination(Long.MaxValue, TimeUnit.NANOSECONDS)
+		validatorExecutor.awaitTermination(Long.MaxValue, TimeUnit.NANOSECONDS)
 	}
 }
 
