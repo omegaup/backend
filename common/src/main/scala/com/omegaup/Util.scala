@@ -209,7 +209,7 @@ object FileUtil extends Object with Using {
 				zip.putNextEntry(new ZipEntry(directoryName))
 				zip.closeEntry
 				entry.listFiles.foreach {
-					FileUtil.zipDirectoryVisitor(zip, _, directoryName + entry.getName)
+					child => FileUtil.zipDirectoryVisitor(zip, child, directoryName + child.getName)
 				}
 			} else {
 				val zipEntry = new ZipEntry(path)
