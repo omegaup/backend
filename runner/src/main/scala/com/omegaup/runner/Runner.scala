@@ -195,7 +195,12 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
       }).foreach(installer.apply)
 
     var targets = List(
-      (interactive.parentLang, Paths.get("$parent"), true),
+      (interactive.parentLang match {
+        // Problemsetters should not suffer with ancient compiler settings.
+        // This is just a temporary solution until we fully deprecate C++03.
+        case "cpp" => "cpp11"
+        case lang => lang
+      }, Paths.get("$parent"), true),
       (interactive.childLang, Paths.get("$child"), false)
     )
 
