@@ -37,6 +37,11 @@ lazy val common = project
 	.settings(
 		name := "common"
 	)
+	.enablePlugins(BuildInfoPlugin)
+	.settings(
+		buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion),
+		buildInfoPackage := "com.omegaup"
+	)
 
 lazy val runner = project
 	.dependsOn(common % "compile->compile;test->test")

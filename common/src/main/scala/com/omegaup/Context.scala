@@ -15,7 +15,11 @@ trait ContextMixin {
 		var configPath = "omegaup.conf"
 		var i = 0
 		while (i < args.length) {
-			if (args(i) == "--config" && i + 1 < args.length) {
+			if (args(i) == "--version") {
+				System.out.println("omegaUp " + com.omegaup.BuildInfo.version)
+				System.out.println(com.omegaup.libinteractive.BuildInfo)
+				System.exit(0)
+			} else if (args(i) == "--config" && i + 1 < args.length) {
 				i += 1
 				configPath = args(i)
 			} else if (args(i) == "--output" && i + 1 < args.length) {
