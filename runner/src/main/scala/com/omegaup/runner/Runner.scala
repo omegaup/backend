@@ -175,24 +175,31 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
     val parser = new Parser
 
     val idl = parser.parse(interactive.idlSource)
+    val runRoot = runDirectory.toPath.toAbsolutePath
     val options = Options(
       parentLang = interactive.parentLang,
       childLang = interactive.childLang,
       moduleName = interactive.moduleName,
-      pipeDirectories = true
+      libraryDirectory = Paths.get(""),
+      root = runRoot,
+      pipeDirectories = true,
+      preferOriginalSources = false
     )
-    val installer = new InstallVisitor(runDirectory.toPath, Paths.get(""))
+    log.debug("Invoking libinteractive {}, with {}",
+      libinteractive.BuildInfo.version, options)
+    val installer = new InstallVisitor
     Generator.generate(idl, options,
-      Paths.get("$parent"), Paths.get("$child")).map(_ match {
-        case link: OutputLink => {
-          if (link.target.getFileName.toString == "$parent") {
-            OutputFile(link.path, parent._2)
-          } else {
-            OutputFile(link.path, child._2)
-          }
+      runRoot.resolve(Paths.get("$parent")), runRoot.resolve(Paths.get("$child"))
+    ).map(_ match {
+      case link: OutputLink => {
+        if (link.target.getFileName.toString == "$parent") {
+          OutputFile(link.path, parent._2)
+        } else {
+          OutputFile(link.path, child._2)
         }
-        case path: OutputPath => path
-      }).foreach(installer.apply)
+      }
+      case path: OutputPath => path
+    }).foreach(installer.apply)
 
     var targets = List(
       (interactive.parentLang match {
@@ -200,15 +207,14 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
         // This is just a temporary solution until we fully deprecate C++03.
         case "cpp" => "cpp11"
         case lang => lang
-      }, Paths.get("$parent"), true),
-      (interactive.childLang, Paths.get("$child"), false)
+      }, runRoot.resolve(Paths.get("$parent")), true),
+      (interactive.childLang, runRoot.resolve(Paths.get("$child")), false)
     )
 
     for ((lang, path, parent) <- targets) {
       var target = Generator.target(lang, idl,
           options, path, parent)
       for (makefile <- target.generateMakefileRules) {
-        val runRoot = Paths.get(runDirectory.getCanonicalPath)
         val targetRoot = runRoot.resolve(makefile.target.getParent)
         val sources = makefile.requisites.map(runRoot.resolve(_).toString)
 
@@ -574,6 +580,9 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
         if (parentMeta("status") == "OL") {
           // Special case for OLE
           childMeta + ("status" -> "OL")
+        } else if (parentMeta("status") == "TO") {
+          // Special case for TLE
+          childMeta + ("status" -> "TO") + ("error" -> ("Parent process time limit exceeded: time " + parentMeta("time") + " time-wall: " + parentMeta("time-wall")))
         } else {
           parentMeta + ("status" -> "JE") + ("error" -> ("Child process finished correctly, but parent did not: " + parentMeta("status")))
         }
@@ -603,7 +612,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
 
         val validator_lang = FileUtil.read(new File(validatorDirectory, "lang"))
 
-        sandbox.run(message,
+        sandbox.run(message
                     validator_lang,
                     logTag = "Validator run",
                     extraParams = List(caseName, lang),
