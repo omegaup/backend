@@ -44,6 +44,7 @@ case class CompileOutputMessage(status: String = "ok",
 case class InteractiveRuntimeDescription(main: String, interfaces: List[String],
     parentLang: String)
 case class RunInputMessage(token: String, timeLimit: Long = 1000,
+		validatorTimeLimit: Long = 1000,
 		overallWallTimeLimit: Long = 60000, extraWallTime: Long = 0,
 		memoryLimit: Int = 65535, outputLimit: Long = 10240,
 		stackLimit: Long = 10485760, debug: Boolean = false,
@@ -128,7 +129,7 @@ object OmegaUpProtocol extends DefaultJsonProtocol {
 	implicit val compileOutputMessageProtocol = jsonFormat4(CompileOutputMessage)
 	implicit val interactiveRuntimeDescriptionProtocol =
 		jsonFormat3(InteractiveRuntimeDescription)
-	implicit val runInputMessageProtocol = jsonFormat11(RunInputMessage)
+	implicit val runInputMessageProtocol = jsonFormat12(RunInputMessage)
 	implicit val runOutputMessageProtocol = jsonFormat4(RunOutputMessage)
 	implicit val inputOutputMessageProtocol = jsonFormat3(InputOutputMessage)
 	implicit val endpointRegisterInputMessageProtocol =

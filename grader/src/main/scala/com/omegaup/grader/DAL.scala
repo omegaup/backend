@@ -62,6 +62,10 @@ object GraderData {
 				case null => None
 				case x: String => Some(x.toLong)
 			},
+			validator_time_limit = rs.getString("validator_time_limit") match {
+				case null => None
+				case x: String => Some(x.toLong)
+			},
 			overall_wall_time_limit = rs.getString("overall_wall_time_limit") match {
 				case null => None
 				case x: String => Some(x.toLong)
@@ -212,11 +216,12 @@ object GraderData {
 	def insertProblem(problem: Problem)
 	(implicit connection: Connection, ctx: Context): Problem = {
 		execute(
-			"INSERT INTO Problems (alias, title, validator, time_limit, overall_wall_time_limit, extra_wall_time, memory_limit, output_limit, stack_limit) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?);",
+			"INSERT INTO Problems (alias, title, validator, time_limit, validator_time_limit, overall_wall_time_limit, extra_wall_time, memory_limit, output_limit, stack_limit) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?);",
 			problem.alias,
 			problem.title,
 			problem.validator,
 			problem.time_limit.getOrElse(null),
+			problem.validator_time_limit.getOrElse(null),
 			problem.overall_wall_time_limit.getOrElse(null),
 			problem.extra_wall_time,
 			problem.memory_limit.getOrElse(null),

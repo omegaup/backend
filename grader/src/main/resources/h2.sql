@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS `Problems` (
   `alias` varchar(10) DEFAULT NULL,
   `validator` varchar(15) NOT NULL DEFAULT 'token-numeric',
   `time_limit` int(11) DEFAULT '3000',
+  `validator_time_limit` int(11) DEFAULT '3000',
   `overall_wall_time_limit` int(11) NOT NULL DEFAULT '120000',
   `extra_wall_time` int(11) NOT NULL DEFAULT '0',
   `memory_limit` int(11) DEFAULT '64',

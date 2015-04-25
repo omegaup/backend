@@ -454,7 +454,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
     threads.submit(new Runnable() {
       override def run(): Unit = {
         sandbox.run(
-          message,
+          message.copy(timeLimit = message.validatorTimeLimit),
           interactive.parentLang,
           chdir = new File(binDirectory, main)
               .getCanonicalPath,
@@ -612,7 +612,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
 
         val validator_lang = FileUtil.read(new File(validatorDirectory, "lang"))
 
-        sandbox.run(message
+        sandbox.run(message.copy(timeLimit = message.validatorTimeLimit),
                     validator_lang,
                     logTag = "Validator run",
                     extraParams = List(caseName, lang),
