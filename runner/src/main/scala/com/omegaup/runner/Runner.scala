@@ -214,7 +214,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
     for ((lang, path, parent) <- targets) {
       var target = Generator.target(lang, idl,
           options, path, parent)
-      for (makefile <- target.generateMakefileRules) {
+      for (makefile <- target.generateMakefileRules.filter(!_.debug)) {
         val targetRoot = runRoot.resolve(makefile.target.getParent)
         val sources = makefile.requisites.map(runRoot.resolve(_).toString)
 
