@@ -583,6 +583,9 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
         } else if (parentMeta("status") == "TO") {
           // Special case for TLE
           childMeta + ("status" -> "TO") + ("error" -> ("Parent process time limit exceeded: time " + parentMeta("time") + " time-wall: " + parentMeta("time-wall")))
+        } else if (parentMeta.contains("return") && parentMeta("return") == "242") {
+          // Special case for missed replies.
+          childMeta + ("status" -> "RE") + ("error" -> ("Child unexpectedly terminated without replying call"))
         } else {
           parentMeta + ("status" -> "JE") + ("error" -> ("Child process finished correctly, but parent did not: " + parentMeta("status")))
         }
