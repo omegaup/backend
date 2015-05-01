@@ -86,6 +86,12 @@ class Broadcaster(implicit var serviceCtx: Context) extends Object with
 		}
 	}
 
+	def connections(): Int = {
+		subscriberLock.synchronized {
+			subscribers.map(_._2.size).foldLeft(0)(_ + _)
+		}
+	}
+
 	def hashdigest(algorithm: String, s: String): String = {
 		val hexdigest = new StringBuffer
 

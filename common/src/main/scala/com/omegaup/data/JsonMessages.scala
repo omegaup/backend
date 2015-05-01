@@ -64,7 +64,8 @@ case class ReloadConfigInputMessage(overrides: Option[Map[String, String]] = Non
 case class ReloadConfigOutputMessage(status: String = "ok",
 	error: Option[String] = None)
 case class StatusOutputMessage(status: String = "ok",
-	embedded_runner: Boolean = true, queue: Option[QueueStatus] = None)
+	embedded_runner: Boolean = true, queue: Option[QueueStatus] = None,
+	broadcaster_sockets: Int = 0)
 case class Running(name: String, id: Int)
 case class QueueStatus(run_queue_length: Int, runner_queue_length: Int,
 	runners: List[String], running: List[Running])
@@ -172,7 +173,7 @@ object OmegaUpProtocol extends DefaultJsonProtocol {
 	implicit val runningProtocol = jsonFormat2(Running)
 	implicit val queueStatusProtocol = jsonFormat4(QueueStatus)
 	implicit val statusOutputMessageProtocol =
-		jsonFormat3(StatusOutputMessage)
+		jsonFormat4(StatusOutputMessage)
 
 	implicit object listGroupVerdictMessageProtocol extends JsonFormat[List[GroupVerdictMessage]] {
 		override def write(obj: List[GroupVerdictMessage]): JsValue = {

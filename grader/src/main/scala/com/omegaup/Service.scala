@@ -82,6 +82,7 @@ class HttpHandler(grader: Grader, broadcaster: Broadcaster,
 				response.setStatus(HttpServletResponse.SC_OK)
 				new StatusOutputMessage(
 					embedded_runner = ctx.config.grader.embedded_runner_enabled,
+					broadcaster_sockets = broadcaster.connections,
 					queue = Some(grader.runnerDispatcher.status)
 				).toJson
 			}
