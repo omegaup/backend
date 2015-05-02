@@ -42,6 +42,7 @@ case class RoutingConfig(
 
 case class ScoreboardRefreshConfig(
 	disabled: Boolean = false,
+	interval: Int = 10000,
 	token: String = "secret",
 	url: String = "http://localhost/api/scoreboard/refresh/"
 )
