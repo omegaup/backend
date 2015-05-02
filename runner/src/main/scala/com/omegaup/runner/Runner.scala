@@ -438,6 +438,9 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
           .mkdir
       val pipeDir = new File(binDirectory, s"${interface}_pipes")
       pipeDir.mkdir
+      // Workaround for #14: try to delete and re-create the pipes each run.
+      new File(pipeDir, "in").delete
+      new File(pipeDir, "out").delete
       using (runtime.exec(Array[String](
           "/usr/bin/mkfifo",
           new File(pipeDir, "in").getCanonicalPath,
