@@ -542,7 +542,9 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
     val childrenMeta = childrenMetaFiles.map{
       file => MetaFile.load(file.getCanonicalPath)
     }
-    childrenMetaFiles.foreach(_.delete)
+    if (!ctx.config.runner.preserve) {
+      childrenMetaFiles.foreach(_.delete)
+    }
     var time = 0.0
     var timeWall = 0.0
     var mem = 0L
@@ -578,8 +580,8 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
 
     val finalMeta = (
       if (childMeta("status") == "OK" && parentMeta("status") != "OK") {
-        log.error("Child processes finished correctly, but parent did not {}",
-          parentMeta)
+        log.error("Child processes finished correctly {}, but parent did not {}",
+          childMeta, parentMeta)
         if (parentMeta("status") == "OL") {
           // Special case for OLE
           childMeta + ("status" -> "OL")
@@ -589,6 +591,9 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
         } else if (parentMeta.contains("return") && parentMeta("return") == "242") {
           // Special case for missed replies.
           childMeta + ("status" -> "RE") + ("error" -> ("Child unexpectedly terminated without replying call"))
+        } else if (parentMeta.contains("signal") && parentMeta("signal") == "13") {
+          // SIGPIPE on the parent means the child process closed the pipe while the parent was writing.
+          childMeta + ("status" -> "RE") + ("error" -> ("Child unexpectedly closed the pipe"))
         } else {
           parentMeta + ("status" -> "JE") + ("error" -> ("Child process finished correctly, but parent did not: " + parentMeta("status")))
         }
