@@ -211,7 +211,7 @@ object OmegaUpDriver extends Driver with Log with Using {
     var validatorCode: Option[List[(String, String)]] = None
 
     if (run.problem.validator == Validator.Custom) {
-      List("c", "cpp", "py", "pas", "rb").map(lang => {
+      List("c", "cpp", "py", "pas", "rb", "hs", "java").map(lang => {
         (lang -> new File(
           ctx.config.common.roots.problems,
           run.problem.alias + "/validator." + lang)
