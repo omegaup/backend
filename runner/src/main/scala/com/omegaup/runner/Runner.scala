@@ -346,7 +346,8 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
                   using (new FileOutputStream(new File(runDirectory, caseName + ".out"))) {
                     FileUtil.copy(stream, _)
                   }
-                  FileUtil.write(new File(runDirectory, caseName + ".meta").getCanonicalPath,
+                  FileUtil.write(new File(runDirectory, caseName + ".err"), "")
+                  FileUtil.write(new File(runDirectory, caseName + ".meta"),
                                  "time:0\ntime-wall:0\nmem:0\nstatus:OK")
                   process(message, runDirectory, casesDirectory, lang, new File(runDirectory, caseName + ".meta"), callback)
                 }
