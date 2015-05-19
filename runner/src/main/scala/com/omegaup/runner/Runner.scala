@@ -358,7 +358,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
           }}
         } catch {
           case e: Exception => {
-            log.warn(e, "Literal submission")
+            log.debug(e, "Literal submission")
             val caseName = runDirectory.getCanonicalPath + "/Main"
             FileUtil.copy(new File(binDirectory, "Main.cat"), new File(caseName + ".out"))
             FileUtil.write(caseName + ".err", "")
