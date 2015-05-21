@@ -392,7 +392,7 @@ object Minijail extends Object with Sandbox with Log with Using {
 
     log.debug("Compile {}", params.mkString(" "))
 
-    val (status, syscallName) = runMinijail(params)
+    val status = runMinijail(params)
     if (status != -1) {
       // Truncate the compiler error to 8k
       try {
@@ -404,7 +404,7 @@ object Minijail extends Object with Sandbox with Log with Using {
           log.error("Unable to truncate {}: {}", errorFile, e)
         }
       }
-      patchMetaFile(lang, status, syscallName, None, metaFile)
+      patchMetaFile(lang, status, None, metaFile)
     }
     callback(status)
   }
@@ -533,85 +533,28 @@ object Minijail extends Object with Sandbox with Log with Using {
     }) ++ extraParams
 
     log.debug("{} {}", logTag, params.mkString(" "))
-    val (status, syscallName) = runMinijail(params)
-    patchMetaFile(lang, status, syscallName, Some(message), metaFile)
+    val status = runMinijail(params)
+    patchMetaFile(lang, status, Some(message), metaFile)
   }
 
-  private def runMinijail(params: List[String])(implicit ctx: Context): (Int, String) = {
-    val helperPath = ctx.config.common.paths.minijail + "/bin/minijail_syscall_helper"
-    val helperParams = List("/usr/bin/sudo", helperPath)
+  private def runMinijail(params: List[String])(implicit ctx: Context): Int = {
     val runtime = Runtime.getRuntime
     var status = -1
     var syscallName = ""
 
-    using (runtime.exec(helperParams.toArray)) { helper => {
-      if (helper == null) {
-        log.error("minijail_syscall_helper was null")
+    using (runtime.exec(params.toArray)) { minijail =>
+      if (minijail == null) {
+        log.error("minijail process was null")
       } else {
-        val reader = new BufferedReader(new InputStreamReader(helper.getInputStream))
-
-        // Read one line before starting the actual minijail process
-        val initialStatus = reader.readLine
-        log.debug("minijail helper initial status {}", initialStatus)
-
-        using (runtime.exec(params.toArray)) { minijail =>
-          if (minijail == null) {
-            log.error("minijail process was null")
-          } else {
-            status = minijail.waitFor
-            log.debug("minijail returned {}", status)
-          }
-        }
-
-        val future = executor.submit(new Callable[String]() {
-          override def call(): String = {
-            var result: String = null
-            using (reader) {
-              stream => result = stream.readLine
-            }
-            try {
-              using (new BufferedReader(new InputStreamReader(helper.getErrorStream))) { stream =>
-                var line: String = null
-                while ( { line = stream.readLine ; line != null } ) {
-                  log.error("minijail_syscall_helper {}", line)
-                }
-              }
-            } catch {
-              case e: Exception => {
-                log.debug(e, "minijail_syscall_helper")
-              }
-            }
-            val helperStatus = helper.waitFor
-            if (helperStatus != 0) {
-              log.debug("minijail_syscall_helper exit status {}", helperStatus)
-            }
-            result
-          }
-        })
-
-        // Wait up to 1 second for the output. Otherwise kill the process.
-        try {
-          syscallName = future.get(1, TimeUnit.SECONDS)
-          if (syscallName != null) {
-            log.debug("syscall: {}", syscallName)
-          }
-        } catch {
-          case e: TimeoutException => {
-            log.info("Timeout reading syscall name")
-            helper.destroy
-          }
-          case e: Exception => {
-            log.error(e, "Failed to read syscall name")
-            helper.destroy
-          }
-        }
+        status = minijail.waitFor
+        log.debug("minijail returned {}", status)
       }
-    }}
+    }
 
-    (status, syscallName)
+    status
   }
 
-  private def patchMetaFile(lang: String, status: Int, syscallName: String, message: Option[RunInputMessage], metaFile: String)(implicit ctx: Context) = {
+  private def patchMetaFile(lang: String, status: Int, message: Option[RunInputMessage], metaFile: String)(implicit ctx: Context) = {
     val meta = try {
       collection.mutable.Map(MetaFile.load(metaFile).toSeq: _*)
     } catch {
@@ -640,10 +583,6 @@ object Minijail extends Object with Sandbox with Log with Using {
           log.error("Received odd signal: {}", other)
           "JE"
         }
-      }
-
-      if (meta("signal") == "31") { // SIGSYS
-        meta("syscall") = syscallName
       }
     } else {
       meta("return") = meta("status")

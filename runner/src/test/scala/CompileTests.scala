@@ -15,7 +15,7 @@ import org.scalatest.matchers.BeMatcher
 import org.scalatest.matchers.MatchResult
 
 case class CaseResult(name: String, status: String, output: Option[String],
-  score: Option[Double])
+  score: Option[Double], meta: Map[String, String])
 
 class OKMatcher(output: String) extends BeMatcher[CaseResult] with Matchers {
   def apply(result: CaseResult) =
@@ -76,7 +76,7 @@ class CallbackListener(expectations: Map[String, CaseResult => Unit])
       } else {
         None
       })
-      expectations(caseName)(CaseResult(caseName, meta("status"), output, score))
+      expectations(caseName)(CaseResult(caseName, meta("status"), output, score, meta.toMap))
       output = None
     }
   }
@@ -285,7 +285,11 @@ class CompileSpec extends FreeSpec with Matchers with CaseMatchers
         """))),
         ("ok", "0") -> { _ should be (OK("Hello, World!")) },
         ("tle", "1") -> { _ should be (TimeLimitExceeded) },
-        ("rfe", "2") -> { _ should be (RestrictedFunction) },
+        ("rfe", "2") -> { result => {
+          result should be (RestrictedFunction)
+          result.meta should contain key ("syscall")
+          result.meta("syscall") should (be ("fork") or be("clone"))
+        }},
         ("mle", "3") -> { _ should be (MemoryLimitExceeded) },
         ("ole", "4") -> { _ should be (OutputLimitExceeded) },
         ("segfault", "5") -> { _ should be (Signal) },
@@ -337,7 +341,11 @@ class CompileSpec extends FreeSpec with Matchers with CaseMatchers
         """))),
         ("ok", "0") -> { _ should be (OK("Hello, World!")) },
         ("tle", "1") -> { _ should be (TimeLimitExceeded) },
-        ("rfe", "2") -> { _ should be (RestrictedFunction) },
+        ("rfe", "2") -> { result => {
+          result should be (RestrictedFunction)
+          result.meta should contain key ("syscall")
+          result.meta("syscall") should (be ("fork") or be("clone"))
+        }},
         ("mle", "3") -> { _ should be (MemoryLimitExceeded) },
         ("ole", "4") -> { _ should be (OutputLimitExceeded) },
         ("segfault", "5") -> { _ should be (Signal) },
