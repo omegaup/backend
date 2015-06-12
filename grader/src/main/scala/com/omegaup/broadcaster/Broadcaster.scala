@@ -23,6 +23,7 @@ class QueuedMessage(val contest: String, val broadcast: Boolean, val
 class Broadcaster(implicit var serviceCtx: Context) extends Object with
 		ServiceInterface with Log with Using {
 	private val PathRE = "^/([a-zA-Z0-9_-]+)/?".r
+	private val AllEvents = "all-events"
 	// A collection of subscribers.
 	private val subscribers = new mutable.HashMap[String, mutable.ArrayBuffer[BroadcasterSession]]
 	private val subscriberLock = new Object
@@ -33,7 +34,7 @@ class Broadcaster(implicit var serviceCtx: Context) extends Object with
 	private val broadcastThread = new Thread(new BroadcastHandler, "BroadcastThread")
 	private val scoreboardThread = new Thread(new ScoreboardHandler, "ScoreboardThread")
 	private val server = new org.eclipse.jetty.server.Server
-
+	  
 	override def start() = {
 		val broadcasterConnector = new org.eclipse.jetty.server.ServerConnector(server)
 		broadcasterConnector.setPort(serviceCtx.config.broadcaster.port)
@@ -108,6 +109,7 @@ class Broadcaster(implicit var serviceCtx: Context) extends Object with
 	}
 
 	def update()(implicit ctx: RunContext): Unit = {
+		log.debug("update() run contest: {}", ctx.run.contest)
 		ctx.run.contest match {
 			case Some(contest) => {
 				messageQueue.put(new QueuedMessage(
@@ -139,7 +141,36 @@ class Broadcaster(implicit var serviceCtx: Context) extends Object with
 				requestScoreboardUpdate(contest.alias)
 			}
 
-			case None => {}
+			case None => {
+				if (serviceCtx.config.broadcaster.enable_all_events) {
+					messageQueue.put(new QueuedMessage(
+					contest = null,
+					broadcast = false,
+					targetUser = ctx.run.user match {
+						case Some(user) => user.id
+						case None => -1
+					},
+					userOnly = true,
+					message = Serialization.writeString(UpdateRunMessage("/run/update/",
+						RunDetails(
+							username = ctx.run.user.map(_.username),
+							contest_alias = None,
+							alias = ctx.run.problem.alias,
+							guid = ctx.run.guid,
+							runtime = ctx.run.runtime,
+							memory = ctx.run.memory,
+							score = ctx.run.score,
+							contest_score = ctx.run.contest_score,
+							status = ctx.run.status.toString,
+							verdict = ctx.run.verdict.toString,
+							submit_delay = ctx.run.submit_delay,
+							time = ctx.run.time.getTime / 1000,
+							language = ctx.run.language.toString
+						)
+					))
+				))
+				}				
+			}
 		}
 		ctx.finish
 	}
@@ -230,10 +261,11 @@ class Broadcaster(implicit var serviceCtx: Context) extends Object with
 		}
 
 		private def runLoop(m: QueuedMessage): Unit = {
+			log.debug("runLoop() for contest, run: {} {}", m.contest, m.message)
 			val message = m.message
 
 			val notifyList = subscriberLock.synchronized {
-				if (subscribers.contains(m.contest)) {
+				(if (subscribers.contains(m.contest)) {
 					subscribers(m.contest)
 						.filter(subscriber =>
 							(
@@ -244,10 +276,15 @@ class Broadcaster(implicit var serviceCtx: Context) extends Object with
 								!m.userOnly ||
 								!subscriber.admin
 							)
-						)
+						)												  
 				} else {
-					null
-				}
+					List()
+				}) ++ (if (serviceCtx.config.broadcaster.enable_all_events &&
+					subscribers.contains(AllEvents)) {
+						subscribers(AllEvents)
+				} else {
+					List()
+				})
 			}
 
 			if (notifyList != null)
