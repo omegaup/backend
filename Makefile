@@ -7,4 +7,4 @@ clean:
 	@rm $(RUNNER_JAR) $(GRADER_JAR)
 
 $(RUNNER_JAR) $(GRADER_JAR): $(BACKEND_SOURCES)
-	sbt proguard:proguard
+	sbt update proguard:proguard
