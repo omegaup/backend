@@ -1,7 +1,8 @@
 package com.omegaup
 
 case class BroadcasterConfig(
-	port: Int = 39613
+	enable_all_events: Boolean = false,
+	port: Int = 39613	
 )
 
 case class RootsConfig(
