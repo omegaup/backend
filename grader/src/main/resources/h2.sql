@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS `Contests` (
   `submissions_gap` int(11) NOT NULL DEFAULT '1' COMMENT 'Tiempo mínimo en segundos que debe de esperar un usuario despues de realizar un envío para hacer otro',
   `feedback` varchar(10) NOT NULL,
   `penalty` int(11) NOT NULL DEFAULT '1' COMMENT 'Entero indicando el número de minutos con que se penaliza por recibir un no-accepted',
-  `penalty_time_start` varchar(10) NOT NULL COMMENT 'Indica el momento cuando se inicia a contar el timpo: cuando inicia el concurso o cuando se abre el problema',
+  `penalty_type` varchar(16) NOT NULL COMMENT 'Indica la política de cálculo de penalty: minutos desde que inició el concurso, minutos desde que se abrió el problema, o tiempo de ejecución (en milisegundos).',
   `penalty_calc_policy` varchar(3) DEFAULT 'sum' NOT NULL COMMENT 'Indica como afecta el penalty al score.',
   `urgent` tinyint(1) DEFAULT '0' NOT NULL COMMENT 'Indica si el concurso es de alta prioridad y requiere mejor QoS.',
   PRIMARY KEY (`contest_id`)
@@ -63,6 +63,7 @@ CREATE TABLE IF NOT EXISTS `Runs` (
   `status` varchar(10) NOT NULL DEFAULT 'new',
   `verdict` varchar(5) NOT NULL,
   `runtime` int(11) NOT NULL DEFAULT '0',
+  `penalty` int(11) NOT NULL DEFAULT '0',
   `memory` int(11) NOT NULL DEFAULT '0',
   `score` double NOT NULL DEFAULT '0',
   `contest_score` double NULL DEFAULT NULL,

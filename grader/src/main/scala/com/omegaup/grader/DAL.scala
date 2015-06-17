@@ -27,6 +27,7 @@ object GraderData {
 			verdict = Verdict.withName(rs.getString("verdict")),
 			time = rs.getTimestamp("time"),
 			runtime = rs.getLong("runtime"),
+			penalty = rs.getLong("penalty"),
 			memory = rs.getLong("memory"),
 			submit_delay = rs.getInt("submit_delay"),
 			score = rs.getDouble("score"),
@@ -46,6 +47,7 @@ object GraderData {
 					alias = rs.getString("contest_alias"),
 					start_time = rs.getTimestamp("start_time"),
 					finish_time = rs.getTimestamp("finish_time"),
+					penalty_type = PenaltyType.withName(rs.getString("penalty_type")),
 					points_decay_factor = rs.getDouble("points_decay_factor"),
 					urgent = rs.getInt("urgent") == 1
 				))
@@ -94,8 +96,8 @@ object GraderData {
 		query("""
 			SELECT
 				r.*, p.*, u.username, cp.points, c.alias AS contest_alias,
-				c.start_time, c.finish_time, c.points_decay_factor, r.submit_delay,
-				c.penalty, c.urgent
+				c.start_time, c.finish_time, c.points_decay_factor,
+				c.penalty, c.penalty_type, c.urgent
 			FROM
 				Runs AS r
 			INNER JOIN
@@ -143,8 +145,8 @@ object GraderData {
 		queryEach("""
 			SELECT
 				r.*, p.*, u.username, cp.points, c.alias AS contest_alias,
-				c.start_time, c.finish_time, c.points_decay_factor, r.submit_delay,
-				c.penalty, c.urgent
+				c.start_time, c.finish_time, c.points_decay_factor,
+				c.penalty, c.penalty_type, c.urgent
 			FROM
 				Runs AS r
 			INNER JOIN
@@ -169,8 +171,8 @@ object GraderData {
 		queryEach("""
 			SELECT
 				r.*, p.*, u.username, cp.points, c.alias AS contest_alias,
-				c.start_time, c.finish_time, c.points_decay_factor, r.submit_delay,
-				c.penalty, c.urgent
+				c.start_time, c.finish_time, c.points_decay_factor,
+				c.penalty, c.penalty_type, c.urgent
 			FROM
 				Runs AS r
 			INNER JOIN
@@ -196,14 +198,15 @@ object GraderData {
 			UPDATE
 				Runs
 			SET
-				status = ?, verdict = ?, runtime = ?, memory = ?, score = ?,
-				contest_score = ?, judged_by = ?
+				status = ?, verdict = ?, runtime = ?, penalty = ?, memory = ?,
+				score = ?, contest_score = ?, judged_by = ?
 			WHERE
 				run_id = ?;
 			""",
 			run.status,
 			run.verdict,
 			run.runtime,
+			run.penalty,
 			run.memory,
 			run.score,
 			run.contest_score.getOrElse(null),

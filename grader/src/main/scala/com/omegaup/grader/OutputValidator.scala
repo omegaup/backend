@@ -10,6 +10,7 @@ import com.omegaup._
 import com.omegaup.data._
 import com.omegaup.data.OmegaUpProtocol._
 import Verdict._
+import PenaltyType._
 
 trait OutputValidator extends Object with Log with Using {
 	def validateRun(run: Run)(implicit ctx: RunContext): Run = {
@@ -211,7 +212,6 @@ trait OutputValidator extends Object with Log with Using {
 		})
 
 		run.score = scala.math.round(run.score * 1024 * 1024) / (1024.0 * 1024.0)
-
 		if(run.score == 0 && run.verdict < Verdict.WrongAnswer)
 			run.verdict = Verdict.WrongAnswer
 		else if(run.score < (1-1e-9) && run.verdict < Verdict.PartialAccepted)
@@ -227,6 +227,12 @@ trait OutputValidator extends Object with Log with Using {
 			case None => None
 			case Some(factor) => Some(run.score * factor)
 		}
+		run.penalty = (if (!run.contest.isEmpty &&
+		                   run.contest.get.penalty_type == PenaltyType.Runtime) {
+			run.runtime
+		} else {
+			run.submit_delay
+		})
 
 		run
 	}

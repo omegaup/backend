@@ -115,9 +115,9 @@ case class ScoreboardRefreshResponse(status: String = "ok",
 	error: Option[String] = None, errorcode: Option[String] = None,
 	header: Option[String] = None)
 case class RunDetails(username: Option[String], contest_alias: Option[String],
-	alias: String, guid: String, runtime: Double, memory: Long, score: Double,
-	contest_score: Option[Double], status: String, verdict: String,
-	submit_delay: Long, time: Long, language: String)
+	alias: String, guid: String, runtime: Double, penalty: Long, memory: Long,
+	score: Double, contest_score: Option[Double], status: String, verdict:
+	String, submit_delay: Long, time: Long, language: String)
 case class UpdateRunMessage(message: String, run: RunDetails)
 
 object OmegaUpProtocol extends DefaultJsonProtocol {
@@ -146,7 +146,7 @@ object OmegaUpProtocol extends DefaultJsonProtocol {
 		jsonFormat2(BroadcastOutputMessage)
 	implicit val scoreboardRefreshResponseProtocol =
 		jsonFormat4(ScoreboardRefreshResponse)
-	implicit val runDetailsProtocol = jsonFormat13(RunDetails)
+	implicit val runDetailsProtocol = jsonFormat14(RunDetails)
 	implicit val updateRunMessageProtocol = jsonFormat2(UpdateRunMessage)
 	implicit val runGradeInputMessageProtocol = jsonFormat3(RunGradeInputMessage)
 	implicit val runGradeOutputMessageProtocol =

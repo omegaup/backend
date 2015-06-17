@@ -52,10 +52,19 @@ object Verdict extends Enumeration {
 	val  JudgeError = Value(11, "JE")
 }
 
+object PenaltyType extends Enumeration {
+	type PenaltyType = Value
+	val  ContestStart = Value(1, "contest_start")
+	val  ProblemOpen = Value(2, "problem_open")
+	val  Runtime = Value(3, "runtime")
+	val  NoPenalty = Value(4, "none")
+}
+
 import Validator._
 import Verdict._
 import Status._
 import Language._
+import PenaltyType._
 
 class Contest(
 	var id: Long = 0,
@@ -63,6 +72,7 @@ class Contest(
 	var alias: String = "",
 	var start_time: Timestamp = new Timestamp(0),
 	var finish_time: Timestamp = new Timestamp(0),
+	var penalty_type: PenaltyType = PenaltyType.NoPenalty,
 	var points_decay_factor: Double = 0,
 	var urgent: Boolean = false
 ) {
@@ -73,6 +83,7 @@ class Contest(
       alias = this.alias,
       start_time = this.start_time,
       finish_time = this.finish_time,
+      penalty_type = this.penalty_type,
       points_decay_factor = this.points_decay_factor,
       urgent = this.urgent
     )
@@ -134,6 +145,7 @@ class Run(
 	var status: Status = Status.New,
 	var verdict: Verdict = Verdict.JudgeError,
 	var runtime: Long = 0,
+	var penalty: Long = 0,
 	var memory: Long = 0,
 	var score: Double = 0,
 	var contest_score: Option[Double] = None,
@@ -153,6 +165,7 @@ class Run(
       status = this.status,
       verdict = this.verdict,
       runtime = this.runtime,
+      penalty = this.penalty,
       memory = this.memory,
       score = this.score,
       contest_score = this.contest_score,
