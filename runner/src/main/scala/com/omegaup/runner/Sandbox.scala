@@ -566,24 +566,28 @@ object Minijail extends Object with Sandbox with Log with Using {
 
     if (meta.contains("signal")) {
       meta("status") = meta("signal") match {
-        case "4" => "FO"  // SIGILL
-        case "6" => "RE"  // SIGABRT
-        case "7" => "SG"  // SIGBUS
-        case "8" => "RE"  // SIGFPE
-        case "9" => "FO"  // SIGKILL
-        case "11" => "SG" // SIGSEGV
-        case "13" => "RE" // SIGPIPE
-        case "14" => "TO" // SIGALRM
-        case "24" => "TO" // SIGXCPU
-        case "30" => "TO" // SIGXCPU
-        case "31" => "FO" // SIGSYS
-        case "25" => "OL" // SIGFSZ
-        case "35" => "OL" // SIGFSZ
+        case "SIGILL" => "FO"
+        case "SIGSYS" => "FO"
+
+        case "SIGABRT" => "RE"
+        case "SIGBUS" => "SG"
+        case "SIGFPE" => "RE"
+        case "SIGKILL" => "RE"
+        case "SIGPIPE" => "RE"
+        case "SIGSEGV" => "SG"
+
+        case "SIGALRM" => "TO"
+        case "SIGXCPU" => "TO"
+
+        case "SIGXFSZ" => "OL"
         case other => {
           log.error("Received odd signal: {}", other)
-          "JE"
+          "RE"
         }
       }
+    } else if (meta.contains("signal_number")) {
+      meta("status") = "RE"
+      log.error("Received odd signal number: {}", meta("signal_number"))
     } else {
       meta("return") = meta("status")
       if (meta("status") == "0" || lang == "c") {
