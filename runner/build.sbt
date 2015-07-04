@@ -40,3 +40,5 @@ ProguardKeys.proguardVersion in Proguard := "5.2"
 mainClass in (Compile, run) := Some("com.omegaup.runner.Service")
 
 javaOptions in (Proguard, ProguardKeys.proguard) := Seq("-Xmx2G")
+
+test in assembly := {}

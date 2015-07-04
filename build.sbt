@@ -1,7 +1,12 @@
 parallelExecution in Global := false
 
+enablePlugins(GitVersioning)
+
+git.useGitDescribe := true
+
+git.gitDescribedVersion <<= git.gitDescribedVersion((v) => v.map(_.drop(1)))
+
 lazy val commonSettings = Seq(
-	version := "1.1",
 	organization := "com.omegaup",
 	scalaVersion := "2.11.5",
 	scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature"),
@@ -58,3 +63,5 @@ lazy val grader = project
 	)
 
 mainClass in (Compile, run) := Some("com.omegaup.Service")
+
+test in assembly := {}
