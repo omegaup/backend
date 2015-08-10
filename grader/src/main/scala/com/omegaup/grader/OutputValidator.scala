@@ -169,6 +169,7 @@ trait OutputValidator extends Object with Log with Using {
 					name,
 					verdict,
 					score * weight,
+					weight,
 					if (metas.contains(name)) {
 						filterMeta(metas(name)._2)
 					} else {
@@ -184,7 +185,8 @@ trait OutputValidator extends Object with Log with Using {
 					scores.foldLeft(0.0)(_+_.score)
 				} else {
 					0.0
-				}
+				},
+				scores.foldLeft(0.0)(_+_.max_score)
 			)
 		}}
 
