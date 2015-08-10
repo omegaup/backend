@@ -101,9 +101,9 @@ case class ProblemListOutputMessageEntry(id: String, title: String,
   statements: Map[String, String])
 
 // for serializing judgement details
-case class CaseVerdictMessage(name: String, verdict: String, score: Double, meta: Map[String, String])
+case class CaseVerdictMessage(name: String, verdict: String, score: Double, max_score: Double, meta: Map[String, String])
 case class GroupVerdictMessage(group: String, cases: List[CaseVerdictMessage],
-	score: Double)
+	score: Double, max_score: Double)
 
 // Broadcaster
 case class ContestRoleResponse(status: String = "ok", admin: Boolean = false)
@@ -137,8 +137,8 @@ object OmegaUpProtocol extends DefaultJsonProtocol {
 		jsonFormat2(EndpointRegisterInputMessage)
 	implicit val endpointRegisterOutputMessageProtocol =
 		jsonFormat2(EndpointRegisterOutputMessage)
-	implicit val caseVerdictMessageProtocol = jsonFormat4(CaseVerdictMessage)
-	implicit val groupVerdictMessageProtocol = jsonFormat3(GroupVerdictMessage)
+	implicit val caseVerdictMessageProtocol = jsonFormat5(CaseVerdictMessage)
+	implicit val groupVerdictMessageProtocol = jsonFormat4(GroupVerdictMessage)
 	implicit val contestRoleResponseProtocol = jsonFormat2(ContestRoleResponse)
 	implicit val broadcastInputMessageProtocol =
 		jsonFormat5(BroadcastInputMessage)

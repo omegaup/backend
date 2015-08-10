@@ -39,7 +39,32 @@ class JsonSpec extends FlatSpec with Matchers {
 	}
 
 	"GroupVerdictMessage lists" should "be parseable" in {
-		val serialized = """[{"group":"0","cases":[{"name":"0","verdict":"AC","meta":{},"score":1.0}],"score":1.0},{"group":"1","cases":[{"name":"1","verdict":"AC","meta":{},"score":1.0}],"score":1.0}]"""
+		val serialized = """[
+			{
+				"group": "0",
+				"cases": [{
+					"name": "0",
+					"verdict": "AC",
+					"meta": {},
+					"score": 1.0,
+					"max_score": 1.0
+				}],
+				"score": 1.0,
+				"max_score": 1.0
+			},
+			{
+				"group": "1",
+				"cases": [{
+					"name": "0",
+					"verdict": "AC",
+					"meta": {},
+					"score": 1.0,
+					"max_score": 1.0
+				}],
+				"score": 1.0,
+				"max_score": 1.0
+			}
+		]"""
 		val deserialized = Serialization.readString[List[GroupVerdictMessage]](serialized)
 		deserialized.length should equal (2)
 	}
