@@ -52,6 +52,7 @@ case class GraderConfig(
 	embedded_runner_enabled: Boolean = false,
 	flight_pruner_interval: Int = 60,
 	port: Int = 21680,
+	proxy_runner_enabled: Boolean = false,
 	routing: RoutingConfig = RoutingConfig(),
 	runner_queue_timeout: Int = 600,
 	runner_timeout: Int = 600,
@@ -105,6 +106,15 @@ case class SslConfig(
 	truststore_path: String = "omegaup.jks"
 )
 
+case class ProxyConfig(
+	admin_password: String = "",
+	admin_username: String = "",
+	contest_alias: String = "",
+	contestants: List[String] = List(),
+	remote_host: String = "omegaup.com",
+	use_tls: Boolean = true
+)
+
 case class Config(
 	broadcaster: BroadcasterConfig = BroadcasterConfig(),
 	common: CommonConfig = CommonConfig(),
@@ -112,6 +122,7 @@ case class Config(
 	grader: GraderConfig = GraderConfig(),
 	logging: LoggingConfig = LoggingConfig(),
 	omegaup: OmegaUpConfig = OmegaUpConfig(),
+	proxy: ProxyConfig = ProxyConfig(),
 	runner: RunnerConfig = RunnerConfig(),
 	ssl: SslConfig = SslConfig()
 )

@@ -116,10 +116,63 @@ object Https extends Object with Log with Using {
 			conn.setRequestMethod("POST")
 			conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
 			conn.setRequestProperty("Content-Length", postdata.length.toString)
-			val stream = conn.getOutputStream()
-			stream.write(postdata, 0, postdata.length)
-			stream.close
+			using (conn.getOutputStream) { _.write(postdata, 0, postdata.length) }
 			Serialization.read[T](new InputStreamReader(conn.getInputStream()))
+		}}
+	}
+
+	def post_error[T1 : JsonReader, T2: JsonReader](url: String, data: scala.collection.Map[String, String], runner: Boolean = true)(implicit ctx: Context): Either[T1, T2] = {
+		log.debug("POST {}", url)
+
+		val postdata = data.map { case(key, value) =>
+			URLEncoder.encode(key, "UTF-8") + "=" + URLEncoder.encode(value, "UTF-8")
+		}.mkString("&").getBytes("UTF-8")
+
+		using (connect(url, runner)) { conn => {
+			conn.setDoOutput(true)
+			conn.setRequestMethod("POST")
+			conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
+			conn.setRequestProperty("Content-Length", postdata.length.toString)
+			using (conn.getOutputStream) { _.write(postdata, 0, postdata.length) }
+			try {
+				Left(Serialization.read[T1](new InputStreamReader(conn.getInputStream)))
+			} catch {
+				case e: IOException => {
+					Right(Serialization.read[T2](new InputStreamReader(conn.getErrorStream)))
+				}
+			}
+		}}
+	}
+
+	def post_string(url: String, data: scala.collection.Map[String, String], runner: Boolean = true)(implicit ctx: Context): Either[String, Int] = {
+		log.debug("POST {}", url)
+
+		val postdata = data.map { case(key, value) =>
+			URLEncoder.encode(key, "UTF-8") + "=" + URLEncoder.encode(value, "UTF-8")
+		}.mkString("&").getBytes("UTF-8")
+
+		using (connect(url, runner)) { conn => {
+			conn.setDoOutput(true)
+			conn.setRequestMethod("POST")
+			conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
+			conn.setRequestProperty("Content-Length", postdata.length.toString)
+			using (conn.getOutputStream) { _.write(postdata, 0, postdata.length) }
+			try {
+				val builder = new java.lang.StringBuilder
+				using (new InputStreamReader(conn.getInputStream())) { reader => {
+					val buffer = Array.ofDim[Char](1024)
+					var read = 0
+
+					while( { read = reader.read(buffer) ; read > 0 } ) {
+						builder.append(buffer, 0, read)
+					}
+				}}
+				Left(builder.toString)
+			} catch {
+				case e: IOException => {
+					Right(conn.getResponseCode)
+				}
+			}
 		}}
 	}
 
@@ -129,9 +182,9 @@ object Https extends Object with Log with Using {
 		using (connect(url, runner)) { conn => {
 			conn.addRequestProperty("Content-Type", "text/json")
 			conn.setDoOutput(true)
-			val writer = new PrintWriter(new OutputStreamWriter(conn.getOutputStream()))
-			Serialization.write[W](request, writer)
-			writer.close()
+			using (new PrintWriter(new OutputStreamWriter(conn.getOutputStream))) {
+				Serialization.write[W](request, _)
+			}
 
 			responseReader(conn.getInputStream)
 		}}
@@ -143,11 +196,13 @@ object Https extends Object with Log with Using {
 		using (connect(url, runner)) { conn => {
 			conn.addRequestProperty("Content-Type", "text/json")
 			conn.setDoOutput(true)
-			val writer = new PrintWriter(new OutputStreamWriter(conn.getOutputStream()))
-			Serialization.write[W](request, writer)
-			writer.close()
+			using (new PrintWriter(new OutputStreamWriter(conn.getOutputStream))) {
+				Serialization.write[W](request, _)
+			}
 
-			Serialization.read[T](new InputStreamReader(conn.getInputStream()))
+			using (new InputStreamReader(conn.getInputStream)) {
+				Serialization.read[T](_)
+			}
 		}}
 	}
 
@@ -171,7 +226,9 @@ object Https extends Object with Log with Using {
 				}
 			}}
 
-			Serialization.read[T](new InputStreamReader(conn.getInputStream()))
+			using (new InputStreamReader(conn.getInputStream)) {
+				Serialization.read[T](_)
+			}
 		}}
 	}
 
@@ -188,7 +245,9 @@ object Https extends Object with Log with Using {
 				callback(_)
 			}
 
-			Serialization.read[T](new InputStreamReader(conn.getInputStream()))
+			using (new InputStreamReader(conn.getInputStream)) {
+				Serialization.read[T](_)
+			}
 		}}
 	}
 
@@ -198,26 +257,49 @@ object Https extends Object with Log with Using {
 		using (connect(url, runner)) { conn => {
 			conn.addRequestProperty("Content-Type", "text/json")
 			conn.setDoOutput(true)
-			val writer = new PrintWriter(new OutputStreamWriter(conn.getOutputStream()))
-			Serialization.write[W](request, writer)
-			writer.close()
+			using (new PrintWriter(new OutputStreamWriter(conn.getOutputStream))) {
+				Serialization.write[W](request, _)
+			}
 
 			if (conn.getHeaderField("Content-Type") == "application/zip") {
-				val outputStream = new FileOutputStream(file)
-				val inputStream = conn.getInputStream
-				val buffer = Array.ofDim[Byte](1024)
-				var read = 0
-
-				while( { read = inputStream.read(buffer) ; read > 0 } ) {
-					outputStream.write(buffer, 0, read)
-				}
-
-				inputStream.close
-				outputStream.close
+				using (conn.getInputStream) { istream => {
+					using (new FileOutputStream(file)) {
+						FileUtil.copy(istream, _)
+					}
+				}}
 
 				None
 			} else {
-				Some(Serialization.read[T](new InputStreamReader(conn.getInputStream())))
+				using (new InputStreamReader(conn.getInputStream)) {
+					reader => Some(Serialization.read[T](reader))
+				}
+			}
+		}}
+	}
+
+	def post_zip(url: String, data: scala.collection.Map[String, String], file: String, runner: Boolean = true)(implicit ctx: Context): Int = {
+		log.debug("POST {}", url)
+
+		val postdata = data.map { case(key, value) =>
+			URLEncoder.encode(key, "UTF-8") + "=" + URLEncoder.encode(value, "UTF-8")
+		}.mkString("&").getBytes("UTF-8")
+
+		using (connect(url, runner)) { conn => {
+			conn.setDoOutput(true)
+			conn.setRequestMethod("POST")
+			conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
+			conn.setRequestProperty("Content-Length", postdata.length.toString)
+			using (conn.getOutputStream) { _.write(postdata, 0, postdata.length) }
+
+			try {
+				using (conn.getInputStream) { istream => {
+					using (new FileOutputStream(file)) {
+						FileUtil.copy(istream, _)
+					}
+				}}
+				200
+			} catch {
+				case e: IOException => conn.getResponseCode
 			}
 		}}
 	}

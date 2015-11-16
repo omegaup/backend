@@ -10,6 +10,7 @@ libraryDependencies ++= Seq(
   "org.eclipse.jetty" % "jetty-client" % "9.1.5.v20140505",
   "org.eclipse.jetty" % "jetty-security" % "9.1.5.v20140505",
   "org.eclipse.jetty" % "jetty-server" % "9.1.5.v20140505",
+  "org.eclipse.jetty.websocket" % "websocket-client" % "9.1.5.v20140505",
   "org.eclipse.jetty.websocket" % "websocket-server" % "9.1.5.v20140505"
 )
 

@@ -32,6 +32,21 @@ class ConfigSpec extends FlatSpec with Matchers {
 		newConfig should not be (config)
 		newConfig.grader.routing.registered_runners should be (List("omegaup-slow0"))
 	}
+
+	"Contestant list" should "be supported" in {
+		val config = Config()
+		val newConfig = ConfigMerge(config, """
+		{
+			"proxy": {
+				"contestants": [
+					"foo:bar"
+				]
+			}
+		}
+		""")
+		newConfig should not be (config)
+		newConfig.proxy.contestants should be (List("foo:bar"))
+	}
 }
 
 /* vim: set noexpandtab: */

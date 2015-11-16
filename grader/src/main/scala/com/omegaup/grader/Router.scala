@@ -165,7 +165,7 @@ object RoutingDescription extends StandardTokenParsers with Log {
 }
 
 class RunnerDispatcher(implicit var serviceCtx: Context)
-		extends ServiceInterface with Log {
+		extends RunnerDispatcherInterface with Log {
 	private val registeredEndpoints = scala.collection.mutable.HashMap.empty[RunnerEndpoint, Long]
 	private val runnerQueue = scala.collection.mutable.Queue.empty[RunnerService]
 	private val runQueue = new Array[scala.collection.mutable.Queue[RunContext]](8)
@@ -194,7 +194,7 @@ class RunnerDispatcher(implicit var serviceCtx: Context)
 		}
 	}
 
-	def status() = lock.synchronized {
+	override def status(): QueueStatus = lock.synchronized {
 		QueueStatus(
 			run_queue_length = runQueue.foldLeft(0)(_+_.size),
 			runner_queue_length = runnerQueue.size,
@@ -231,7 +231,7 @@ class RunnerDispatcher(implicit var serviceCtx: Context)
 
 	}
 
-	def register(hostname: String, port: Int): EndpointRegisterOutputMessage = {
+	override def register(hostname: String, port: Int): EndpointRegisterOutputMessage = {
 		val endpoint = new RunnerEndpoint(hostname, port)
 
 		lock.synchronized {
@@ -256,7 +256,7 @@ class RunnerDispatcher(implicit var serviceCtx: Context)
 		}
 	}
 
-	def deregister(hostname: String, port: Int): EndpointRegisterOutputMessage = {
+	override def deregister(hostname: String, port: Int): EndpointRegisterOutputMessage = {
 		val endpoint = new RunnerEndpoint(hostname, port)
 
 		lock.synchronized {
@@ -268,7 +268,7 @@ class RunnerDispatcher(implicit var serviceCtx: Context)
 		new EndpointRegisterOutputMessage()
 	}
 
-	def addRun(ctx: RunContext) = {
+	override def addRun(ctx: RunContext): Unit = {
 		ctx.queued()
 		lock.synchronized {
 			log.debug("Adding run {}", ctx)
@@ -277,7 +277,7 @@ class RunnerDispatcher(implicit var serviceCtx: Context)
 		}
 	}
 
-	def addRunner(runner: RunnerService) = {
+	override def addRunner(runner: RunnerService) = {
 		lock.synchronized {
 			addRunnerLocked(runner)
 		}

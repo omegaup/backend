@@ -11,9 +11,6 @@ import Validator._
 class Grader(implicit var serviceCtx: Context)
 extends Object with GraderService with ServiceInterface with Log {
 	type Listener = (RunContext, Run) => Unit
-	private val listeners = scala.collection.mutable.ListBuffer.empty[Listener]
-	val runnerDispatcher = new RunnerDispatcher
-	private var embeddedRunner: Boolean = false
 
 	// Loading SQL connector driver
 	Class.forName(serviceCtx.config.db.driver)
@@ -22,6 +19,14 @@ extends Object with GraderService with ServiceInterface with Log {
 		serviceCtx.config.db.user,
 		serviceCtx.config.db.password
 	)
+
+	private val listeners = scala.collection.mutable.ListBuffer.empty[Listener]
+	val runnerDispatcher: RunnerDispatcherInterface = if (serviceCtx.config.grader.proxy_runner_enabled) {
+		new ProxyRunnerDispatcher(this)
+	} else {
+		new RunnerDispatcher
+	}
+	private var embeddedRunner: Boolean = false
 
 	override def start() = {
 		runnerDispatcher.start
