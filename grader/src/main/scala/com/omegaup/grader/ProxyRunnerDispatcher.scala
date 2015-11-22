@@ -114,6 +114,7 @@ class ProxyRunnerDispatcher(grader: Grader)(implicit connection: Connection, var
 		extends RunnerDispatcherInterface with Log {
 	private val authTokens = scala.collection.mutable.HashMap.empty[String, String]
 	private val runsInFlight = scala.collection.mutable.HashMap.empty[Long, ProxiedContext]
+	private val orphanedRuns = scala.collection.mutable.HashMap.empty[String, RunDetails]
 	private var flightIndex: Long = 0
 	private val lock = new Object
 	private val socketThread = new ContestWebSocket(this)
@@ -367,6 +368,10 @@ class ProxyRunnerDispatcher(grader: Grader)(implicit connection: Connection, var
 				val proxiedCtx = new ProxiedContext(ctx, grader, remote_guid)
 				proxiedCtx.parent.startFlight(service)
 				runsInFlight(ctx.run.id) = proxiedCtx
+				if (orphanedRuns.contains(remote_guid)) {
+					resultProcessingThread.add(orphanedRuns(remote_guid))
+					orphanedRuns.remove(remote_guid)
+				}
 			}
 		}
 
@@ -487,10 +492,10 @@ class ProxyRunnerDispatcher(grader: Grader)(implicit connection: Connection, var
 		}
 
 		def getContextForDetails(details: RunDetails): Option[ProxiedContext] = {
-			ProxyGraderData.getLocal(details.guid) match {
-				case Some((id, local_guid)) => {
-					log.info("Run details from {} are here!: {}", id, details)
-					lock.synchronized {
+			lock.synchronized {
+				ProxyGraderData.getLocal(details.guid) match {
+					case Some((id, local_guid)) => {
+						log.info("Run details from {} are here!: {}", id, details)
 						if (!runsInFlight.contains(id)) {
 							GraderData.getRun(local_guid) match {
 								case None => {
@@ -509,10 +514,11 @@ class ProxyRunnerDispatcher(grader: Grader)(implicit connection: Connection, var
 						}
 						Some(runsInFlight(id))
 					}
-				}
-				case None => {
-					log.error("Received update on unknown run {}", details.guid)
-					None
+					case None => {
+						log.error("Received update on unknown run {} -- adding to orphans", details.guid)
+						orphanedRuns(details.guid) = details
+						None
+					}
 				}
 			}
 		}
