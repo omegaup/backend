@@ -118,7 +118,7 @@ case class RunDetails(username: Option[String], contest_alias: Option[String],
 	alias: String, guid: String, runtime: Double, penalty: Long, memory: Long,
 	score: Double, contest_score: Option[Double], status: String, verdict:
 	String, submit_delay: Long, time: Long, language: String)
-case class UpdateRunMessage(message: String, run: RunDetails)
+case class UpdateRunMessage(run: RunDetails, message: String = "/run/update/")
 
 object OmegaUpProtocol extends DefaultJsonProtocol {
 	implicit val nullMessageProtocol = jsonFormat0(NullMessage)

@@ -69,6 +69,7 @@ case class SubmissionResponseMessage(status: String, error: Option[String], guid
 case class RunStatusMessage(status: String, verdict: String, runtime: Int, memory: Int, score: Double, contest_score: Option[Double])
 case class OmegaUpSimpleResponse(status: String)
 case class OmegaUpErrorMessage(status: String, error: String, errorname: String, errorcode: Int, header: String)
+case class WebSocketMessage(message: String, run: Option[RunDetails])
 
 object ProxyProtocol extends DefaultJsonProtocol {
 	implicit val loginResponseProtocol =
@@ -81,6 +82,8 @@ object ProxyProtocol extends DefaultJsonProtocol {
 		jsonFormat1(OmegaUpSimpleResponse)
 	implicit val omegaUpErrorMessageProtocol =
 		jsonFormat5(OmegaUpErrorMessage)
+	implicit val webSocketMessageProtocol =
+		jsonFormat2(WebSocketMessage)
 }
 import ProxyProtocol._
 
@@ -159,22 +162,24 @@ class ProxyRunnerDispatcher(grader: Grader)(implicit connection: Connection, var
 			run_queue_length = injectionThread.queueSize,
 			runner_queue_length = -1,
 			runners = List(),
-			running = runsInFlight.values.map(ifr => new Running(ifr.service.name, ifr.run.id.toInt)).toList
+			running = runsInFlight.values.map(ifr => new Running(ifr.parent.service.name, ifr.run.id.toInt)).toList
 		)
 	}
 
 	override def updateContext(newCtx: Context) = {}
 
 	override def register(hostname: String, port: Int): EndpointRegisterOutputMessage = {
-		throw new NotImplementedError
+		log.debug("Registering runner {}:{}", hostname, port)
+		new EndpointRegisterOutputMessage(status = "error", error = Some("Proxy graders do not accept runners"))
 	}
 
 	override def deregister(hostname: String, port: Int): EndpointRegisterOutputMessage = {
-		throw new NotImplementedError
+		log.debug("Deregistering runner {}:{}", hostname, port)
+		new EndpointRegisterOutputMessage(status = "error", error = Some("Proxy graders do not accept runners"))
 	}
 
 	override def addRunner(runner: RunnerService): Unit = {
-		throw new NotImplementedError
+		log.debug("Adding runner {}", runner)
 	}
 
 	override def addRun(ctx: RunContext): Unit = {
@@ -217,7 +222,7 @@ class ProxyRunnerDispatcher(grader: Grader)(implicit connection: Connection, var
 			s"${httpProtocol}://${remoteHost}/api/user/login")
 		val result = Https.post[LoginResponseMessage](
 			s"${httpProtocol}://${remoteHost}/api/user/login/",
-			Map("usernameOrEmail" -> username, "password" -> username),
+			Map("usernameOrEmail" -> username, "password" -> password),
 			false)
 		log.info("Logged in as '{}'", username)
 		result.auth_token
@@ -256,9 +261,16 @@ class ProxyRunnerDispatcher(grader: Grader)(implicit connection: Connection, var
 		@OnWebSocketMessage
 		def onMessage(msg: String): Unit = {
 			try {
-				val updateMessage = Serialization.readString[UpdateRunMessage](msg)
-				log.info("Message: {}", updateMessage)
-				resultProcessingThread.add(updateMessage.run)
+				val webSocketMessage = Serialization.readString[WebSocketMessage](msg)
+				webSocketMessage.run match {
+					case Some(details) => {
+						log.info("Message: {}", webSocketMessage)
+						resultProcessingThread.add(details)
+					}
+					case None => {
+						log.info("Message with no run: {}", webSocketMessage.message)
+					}
+				}
 			} catch {
 				case e: Exception => { log.error(e, "Error deserializing") }
 			}
@@ -351,9 +363,10 @@ class ProxyRunnerDispatcher(grader: Grader)(implicit connection: Connection, var
 	private class InjectionThread extends ProcessingThread[RunContext] with Log {
 		override def process(ctx: RunContext): Unit = {
 			val remote_guid = getRemoteGuid(ctx)
-			ctx.startFlight(service)
 			lock.synchronized {
-				runsInFlight(ctx.run.id) = new ProxiedContext(ctx, grader, remote_guid)
+				val proxiedCtx = new ProxiedContext(ctx, grader, remote_guid)
+				proxiedCtx.parent.startFlight(service)
+				runsInFlight(ctx.run.id) = proxiedCtx
 			}
 		}
 
@@ -468,8 +481,8 @@ class ProxyRunnerDispatcher(grader: Grader)(implicit connection: Connection, var
 				ctx.updateVerdict(ctx.run)
 				lock.synchronized {
 					runsInFlight.remove(ctx.run.id)
+					ctx.parent.finish
 				}
-				ctx.parent.finish
 			})
 		}
 
@@ -488,7 +501,9 @@ class ProxyRunnerDispatcher(grader: Grader)(implicit connection: Connection, var
 									log.error("Recreating run {}", details.guid)
 									val ctx = new RunContext(serviceCtx, Some(grader), run,
 										false, false, None)
-									runsInFlight(id) = new ProxiedContext(ctx, grader, details.guid)
+									val proxiedCtx = new ProxiedContext(ctx, grader, details.guid)
+									proxiedCtx.parent.startFlight(service)
+									runsInFlight(id) = proxiedCtx
 								}
 							}
 						}

@@ -120,7 +120,7 @@ class Broadcaster(implicit var serviceCtx: Context) extends Object with
 						case None => -1
 					},
 					userOnly = false,
-					message = Serialization.writeString(UpdateRunMessage("/run/update/",
+					message = Serialization.writeString(UpdateRunMessage(
 						RunDetails(
 							username = ctx.run.user.map(_.username),
 							contest_alias = Some(contest.alias),
@@ -152,7 +152,7 @@ class Broadcaster(implicit var serviceCtx: Context) extends Object with
 						case None => -1
 					},
 					userOnly = true,
-					message = Serialization.writeString(UpdateRunMessage("/run/update/",
+					message = Serialization.writeString(UpdateRunMessage(
 						RunDetails(
 							username = ctx.run.user.map(_.username),
 							contest_alias = None,
