@@ -6,6 +6,6 @@ GRADER_SOURCES := $(shell /usr/bin/find $(SELF_DIR)/grader/src/main -name *.scal
 BACKEND_SOURCES := $(COMMON_SOURCES) $(RUNNER_SOURCES) $(GRADER_SOURCES)
 
 SCALA_VERSION := $(shell grep '^\s*scalaVersion' $(SELF_DIR)/build.sbt | sed -e 's/.*"\([0-9]\+\.[0-9]\+\).*".*/\1/')
-OMEGAUP_VERSION := $(shell cd $(SELF_DIR) && git describe --tags)
+OMEGAUP_VERSION := $(shell cd $(SELF_DIR) && git describe --tags | cut -c 2-)
 RUNNER_JAR := $(SELF_DIR)/runner/target/scala-$(SCALA_VERSION)/proguard/runner_$(SCALA_VERSION)-$(OMEGAUP_VERSION).jar
 GRADER_JAR := $(SELF_DIR)/grader/target/scala-$(SCALA_VERSION)/proguard/grader_$(SCALA_VERSION)-$(OMEGAUP_VERSION).jar
