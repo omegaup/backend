@@ -589,6 +589,19 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
         } else if (parentMeta("status") == "TO") {
           // Special case for TLE
           childMeta + ("status" -> "TO") + ("error" -> ("Parent process time limit exceeded: time " + parentMeta("time") + " time-wall: " + parentMeta("time-wall")))
+        } else if (parentMeta.contains("return") && parentMeta("return") == "239") {
+          // Special cases for protocol errors.
+          // When children intentionally call an inexistent method (or corrupt
+          // their own stack enough that it starts sending garbage), they'll
+          // cause the Main process to incur a protocol error. Those errors
+          // should not cause a JE, but a RTE.
+          childMeta + ("status" -> "RE") + ("error" -> ("Child died before finishing message"))
+        } else if (parentMeta.contains("return") && parentMeta("return") == "240") {
+          // Special cases for protocol errors.
+          childMeta + ("status" -> "RE") + ("error" -> ("Child sent an invalid cookie"))
+        } else if (parentMeta.contains("return") && parentMeta("return") == "241") {
+          // Special cases for protocol errors.
+          childMeta + ("status" -> "RE") + ("error" -> ("Child sent an invalid message id"))
         } else if (parentMeta.contains("return") && parentMeta("return") == "242") {
           // Special case for missed replies.
           childMeta + ("status" -> "RE") + ("error" -> ("Child unexpectedly terminated without replying call"))
