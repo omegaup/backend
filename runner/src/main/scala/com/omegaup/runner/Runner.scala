@@ -215,7 +215,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
       var target = Generator.target(lang, idl,
           options, path, parent)
       for (makefile <- target.generateMakefileRules.filter(!_.debug)) {
-        val targetRoot = runRoot.resolve(makefile.target.getParent)
+        val targetRoot = runRoot.resolve(makefile.target.head.getParent)
         val sources = makefile.requisites.map(runRoot.resolve(_).toString)
 
         val result = sandbox.compile(
@@ -225,7 +225,7 @@ class Runner(name: String, sandbox: Sandbox) extends RunnerService with Log with
           metaFile = targetRoot.resolve(Paths.get("compile.meta")).toString,
           outputFile = targetRoot.resolve(Paths.get("compile.out")).toString,
           errorFile = targetRoot.resolve(Paths.get("compile.err")).toString,
-          target = makefile.target.getFileName.toString,
+          target = makefile.target.head.getFileName.toString,
           extraFlags = (if (parent) {
             lang match {
                 case "c" => List("-Wl,-e__entry")
