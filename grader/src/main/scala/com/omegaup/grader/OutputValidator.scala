@@ -338,8 +338,30 @@ class NumericTokenValidator(precision: Double) extends TokenValidator {
 	def equal(a: Token, b: Token): Boolean = {
 		val da = a.toDouble
 		val db = b.toDouble
+		val diff = math.abs(da - db)
 
-		return math.abs(da - db) <= math.abs(precision * math.max(1, da))
+		if (da == db) {
+			return true
+		} else if (diff <= precision) {
+			return true
+		} else if (da == 0 || db == 0 || diff < java.lang.Double.MIN_NORMAL) {
+			return diff <= precision * java.lang.Double.MIN_NORMAL
+		} else {
+			return diff / math.min(math.abs(da) + math.abs(db), java.lang.Double.MAX_VALUE) <= precision
+		}
+	}
+}
+
+class AbsoluteNumericTokenValidator(precision: Double) extends TokenValidator {
+	def equal(a: Token, b: Token): Boolean = {
+		val da = a.toDouble
+		val db = b.toDouble
+
+		if (da == db) {
+			return true
+		} else {
+			return math.abs(da - db) <= precision
+		}
 	}
 }
 
@@ -464,6 +486,20 @@ object TokenNumericValidator extends OutputValidator with TokenizerValidator {
 			new Tokenizer(runOut, charClass),
 			new Tokenizer(problemOut, charClass),
 			new NumericTokenValidator(if (run != null) run.problem.tolerance else 1e-6))
+	}
+}
+
+object TokenAbsoluteNumericValidator extends OutputValidator with TokenizerValidator {
+	def validateCase(run: Run, caseName: String, runOut: File, problemOut: File,
+		meta: scala.collection.Map[String,String])(implicit ctx: Context):
+	Double = {
+		val charClass = (c: Char) => c.isDigit || c == '.' || c == '-'
+		validateCase(
+			run,
+			caseName,
+			new Tokenizer(runOut, charClass),
+			new Tokenizer(problemOut, charClass),
+			new AbsoluteNumericTokenValidator(if (run != null) run.problem.tolerance else 1e-6))
 	}
 }
 

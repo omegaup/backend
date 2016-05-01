@@ -191,6 +191,7 @@ object OmegaUpDriver extends Driver with Log with Using {
         case Validator.Token => TokenValidator.validateRun(run)
         case Validator.TokenCaseless => TokenCaselessValidator.validateRun(run)
         case Validator.TokenNumeric => TokenNumericValidator.validateRun(run)
+        case Validator.TokenAbsoluteNumeric => TokenAbsoluteNumericValidator.validateRun(run)
         case _ => throw new IllegalArgumentException("Validator " + run.problem.validator + " not found")
       }
     }
